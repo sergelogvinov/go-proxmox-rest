@@ -10,18 +10,17 @@ import (
 // private config fields; the last applied option wins.
 type Option func(*ClientConfig)
 
-// WithBaseURL sets the API endpoint, e.g. https://10.0.0.1:8006/api2/json.
-// A bare host is normalized to https://<host>:8006/api2/json.
+// WithBaseURL sets the API endpoint, e.g. https://10.0.0.1:8006/api2/json
 func WithBaseURL(u string) Option {
-	return func(c *ClientConfig) { c.baseURL = u }
+	return func(c *ClientConfig) { c.BaseURL = u }
 }
 
 // WithTokenAuth enables API token authentication.
 // tokenID has the form user@realm!tokenid.
 func WithTokenAuth(tokenID, secret string) Option {
 	return func(c *ClientConfig) {
-		c.token = tokenID
-		c.secret = secret
+		c.Token = tokenID
+		c.TokenSecret = secret
 	}
 }
 
@@ -29,8 +28,8 @@ func WithTokenAuth(tokenID, secret string) Option {
 // included in the username (e.g., "root@pam").
 func WithPasswordAuth(username, password string) Option {
 	return func(c *ClientConfig) {
-		c.username = username
-		c.password = password
+		c.Username = username
+		c.Password = password
 	}
 }
 
@@ -56,22 +55,22 @@ func WithRetryMaxWaitTime(d time.Duration) Option {
 
 // WithUserAgent sets a custom User-Agent header.
 func WithUserAgent(ua string) Option {
-	return func(c *ClientConfig) { c.userAgent = ua }
+	return func(c *ClientConfig) { c.UserAgent = ua }
 }
 
 // WithInsecure controls whether TLS certificate verification is skipped.
 func WithInsecure(skip bool) Option {
-	return func(c *ClientConfig) { c.insecure = skip }
+	return func(c *ClientConfig) { c.Insecure = skip }
 }
 
 // WithCACert sets the path to a PEM CA bundle to trust.
 func WithCACert(path string) Option {
-	return func(c *ClientConfig) { c.caCert = path }
+	return func(c *ClientConfig) { c.CACert = path }
 }
 
 // WithProxy sets an optional proxy URL.
 func WithProxy(p string) Option {
-	return func(c *ClientConfig) { c.proxy = p }
+	return func(c *ClientConfig) { c.Proxy = p }
 }
 
 // WithLogger sets the resty logger.

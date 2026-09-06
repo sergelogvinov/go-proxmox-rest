@@ -12,6 +12,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sergelogvinov/proxmox/go-proxmox-rest/cluster"
+	"github.com/sergelogvinov/proxmox/go-proxmox-rest/pools"
+	"github.com/sergelogvinov/proxmox/go-proxmox-rest/storage"
 	"resty.dev/v3"
 )
 
@@ -30,22 +33,23 @@ const (
 // ClientConfig holds the configuration for a Client. All fields are private
 // and can only be set through functional options (see Option).
 type ClientConfig struct {
-	baseURL   string
-	token     string
-	secret    string
-	username  string
-	password  string
-	userAgent string
-	proxy     string
+	BaseURL     string
+	Token       string
+	TokenSecret string
+	Username    string
+	Password    string
+	UserAgent   string
+	Proxy       string
 
-	insecure bool
-	caCert   string
+	Insecure bool
+	CACert   string
 
 	timeout          time.Duration
 	retryCount       int
 	retryWaitTime    time.Duration
 	retryMaxWaitTime time.Duration
-	lb               resty.LoadBalancer
+
+	lb resty.LoadBalancer
 
 	logger resty.Logger
 }
@@ -54,15 +58,15 @@ type ClientConfig struct {
 // the original.
 func (c ClientConfig) ToRESTConfig() ClientConfig {
 	return ClientConfig{
-		baseURL:          c.baseURL,
-		token:            c.token,
-		secret:           c.secret,
-		username:         c.username,
-		password:         c.password,
-		userAgent:        c.userAgent,
-		proxy:            c.proxy,
-		insecure:         c.insecure,
-		caCert:           c.caCert,
+		BaseURL:          c.BaseURL,
+		Token:            c.Token,
+		TokenSecret:      c.TokenSecret,
+		Username:         c.Username,
+		Password:         c.Password,
+		UserAgent:        c.UserAgent,
+		Proxy:            c.Proxy,
+		Insecure:         c.Insecure,
+		CACert:           c.CACert,
 		timeout:          c.timeout,
 		retryCount:       c.retryCount,
 		retryWaitTime:    c.retryWaitTime,
@@ -125,26 +129,26 @@ func New(cfg ClientConfig, opts ...Option) (*Client, error) {
 	if cfg.lb != nil {
 		rc.SetLoadBalancer(cfg.lb)
 	} else {
-		rc.SetBaseURL(cfg.baseURL)
+		rc.SetBaseURL(cfg.BaseURL)
 	}
 
-	if cfg.userAgent != "" {
-		rc.SetHeader("User-Agent", cfg.userAgent)
+	if cfg.UserAgent != "" {
+		rc.SetHeader("User-Agent", cfg.UserAgent)
 	}
 
-	if cfg.proxy != "" {
-		rc.SetProxy(cfg.proxy)
+	if cfg.Proxy != "" {
+		rc.SetProxy(cfg.Proxy)
 	}
 
 	if cfg.logger != nil {
 		rc.SetLogger(cfg.logger)
 	}
 
-	if cfg.caCert != "" {
-		rc.SetRootCertificates(cfg.caCert)
+	if cfg.CACert != "" {
+		rc.SetRootCertificates(cfg.CACert)
 	}
 
-	if cfg.insecure {
+	if cfg.Insecure {
 		tlsCfg := &tls.Config{
 			MinVersion:         tls.VersionTLS12,
 			InsecureSkipVerify: true,
@@ -162,15 +166,15 @@ func New(cfg ClientConfig, opts ...Option) (*Client, error) {
 // the original client.
 func (c *Client) ToRESTConfig() ClientConfig {
 	return ClientConfig{
-		baseURL:          c.cfg.baseURL,
-		token:            c.cfg.token,
-		secret:           c.cfg.secret,
-		username:         c.cfg.username,
-		password:         c.cfg.password,
-		userAgent:        c.cfg.userAgent,
-		proxy:            c.cfg.proxy,
-		insecure:         c.cfg.insecure,
-		caCert:           c.cfg.caCert,
+		BaseURL:          c.cfg.BaseURL,
+		Token:            c.cfg.Token,
+		TokenSecret:      c.cfg.TokenSecret,
+		Username:         c.cfg.Username,
+		Password:         c.cfg.Password,
+		UserAgent:        c.cfg.UserAgent,
+		Proxy:            c.cfg.Proxy,
+		Insecure:         c.cfg.Insecure,
+		CACert:           c.cfg.CACert,
 		timeout:          c.cfg.timeout,
 		retryCount:       c.cfg.retryCount,
 		retryWaitTime:    c.cfg.retryWaitTime,
@@ -185,7 +189,7 @@ func (c *Client) ToRESTConfig() ClientConfig {
 // for 2 hours; the client renews after sessionTTL to stay ahead of expiry.
 // It is a no-op for token-authenticated clients.
 func (c *Client) ensureSession(ctx context.Context) error {
-	if c.cfg.token != "" || c.cfg.username == "" {
+	if c.cfg.Token != "" || c.cfg.Username == "" {
 		return nil
 	}
 
@@ -206,7 +210,7 @@ func (c *Client) ensureSession(ctx context.Context) error {
 		}
 	}
 
-	return c.ticket(ctx, c.cfg.username, c.cfg.password)
+	return c.ticket(ctx, c.cfg.Username, c.cfg.Password)
 }
 
 // ticket exchanges credentials for a PVEAuthCookie via POST /access/ticket
@@ -243,32 +247,6 @@ func (c *Client) ticket(ctx context.Context, username, password string) error {
 	return nil
 }
 
-// Session returns the current authenticated session, or nil if the client
-// has not yet authenticated (or is using an API token).
-func (c *Client) Session() *Session {
-	c.sessionMux.Lock()
-	defer c.sessionMux.Unlock()
-	return c.session
-}
-
-// RefreshTicket renews the existing PVE auth ticket by re-POSTing to
-// /access/ticket with the current ticket as the password. This is the
-// documented renewal mechanism that does not require the original password.
-func (c *Client) RefreshTicket(ctx context.Context) error {
-	if c.cfg.token != "" {
-		return fmt.Errorf("refresh ticket: client uses API token auth")
-	}
-
-	c.sessionMux.Lock()
-	defer c.sessionMux.Unlock()
-
-	if c.session == nil || c.session.Ticket == "" {
-		return fmt.Errorf("refresh ticket: no session")
-	}
-
-	return c.ticket(ctx, c.session.Username, c.session.Ticket)
-}
-
 // do executes a typed request against the Proxmox API and decodes the
 // envelope payload into out.
 func (c *Client) do(ctx context.Context, method, path string, out any, params map[string]string) error {
@@ -281,9 +259,9 @@ func (c *Client) do(ctx context.Context, method, path string, out any, params ma
 		req.SetQueryParams(params)
 	}
 
-	if c.cfg.token != "" {
+	if c.cfg.Token != "" {
 		req.SetAuthScheme("PVEAPIToken")
-		req.SetAuthToken(c.cfg.token + "=" + c.cfg.secret)
+		req.SetAuthToken(c.cfg.Token + "=" + c.cfg.TokenSecret)
 	} else {
 		c.sessionMux.Lock()
 		if c.session != nil {
@@ -333,6 +311,21 @@ func (c *Client) Patch(ctx context.Context, path string, out any, params map[str
 	return c.do(ctx, http.MethodPatch, path, out, params)
 }
 
+// Cluster returns a client for the cluster API section (/cluster).
+func (c *Client) Cluster() *cluster.Client {
+	return cluster.New(c)
+}
+
+// Pools returns a client for the pools API section (/pools).
+func (c *Client) Pools() *pools.Client {
+	return pools.New(c)
+}
+
+// Storage returns a client for the storage API section (/storage).
+func (c *Client) Storage() *storage.Client {
+	return storage.New(c)
+}
+
 // Close releases the underlying resources held by the client.
 func (c *Client) Close() error {
 	c.rc.Close()
@@ -369,4 +362,30 @@ func retryCondition(res *resty.Response, err error) bool {
 		}
 	}
 	return false
+}
+
+// envelope is the Proxmox response wrapper: { "data": ..., "errors": ... }.
+type envelope struct {
+	Data   json.RawMessage `json:"data"`
+	Errors json.RawMessage `json:"errors"`
+}
+
+// decodeInto unwraps the { "data": ... } envelope and decodes the payload
+// into out. A null data yields the zero value of out. Unknown fields are
+// ignored so the API can grow without breaking this client.
+func decodeInto[T any](b []byte, out T) error {
+	var env envelope
+	if err := json.Unmarshal(b, &env); err != nil {
+		return err
+	}
+
+	if len(env.Data) == 0 || string(env.Data) == "null" {
+		return nil
+	}
+
+	if err := json.Unmarshal(env.Data, out); err != nil {
+		return err
+	}
+
+	return nil
 }
