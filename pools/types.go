@@ -3,7 +3,7 @@ package pools
 import (
 	"fmt"
 
-	"github.com/sergelogvinov/proxmox/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
 )
 
 // Pool describes a resource pool as returned by GET /pools and

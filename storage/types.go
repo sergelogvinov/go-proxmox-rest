@@ -3,7 +3,7 @@ package storage
 import (
 	"fmt"
 
-	"github.com/sergelogvinov/proxmox/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
 )
 
 // Storage describes a storage as returned by GET /storage and

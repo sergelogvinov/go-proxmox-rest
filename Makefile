@@ -31,7 +31,7 @@ help: ## This help menu
 
 .PHONY: clean
 clean: ## Clean
-	rm -rf bin/ dist/ .cache/ .gocache/
+	rm -rf bin/ dist/ .cache/ .gocache/ vendor/
 	rm -rf mimiops-mcp_*.mcpb
 
 .PHONY: tools

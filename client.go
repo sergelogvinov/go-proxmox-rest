@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sergelogvinov/proxmox/go-proxmox-rest/cluster"
-	"github.com/sergelogvinov/proxmox/go-proxmox-rest/pools"
-	"github.com/sergelogvinov/proxmox/go-proxmox-rest/storage"
+	"github.com/sergelogvinov/go-proxmox-rest/cluster"
+	"github.com/sergelogvinov/go-proxmox-rest/pools"
+	"github.com/sergelogvinov/go-proxmox-rest/storage"
 	"resty.dev/v3"
 )
 
