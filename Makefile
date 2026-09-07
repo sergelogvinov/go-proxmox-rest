@@ -51,6 +51,13 @@ vet: ## Vet Code
 unit: ## Unit Tests
 	go test -tags=unit $(shell go list ./...) $(TESTARGS)
 
+.PHONY: e2e
+e2e: ## End-to-End Tests (requires PVE_E2E_* env vars, see docs/e2e.md)
+	go test -tags=e2e ./tests/e2e/... -v $(TESTARGS)
+
+e2e-%: ## End-to-End Tests for specific module only
+	go test -tags=e2e ./tests/e2e/$*/... -v $(TESTARGS)
+
 .PHONY: test
 test: lint unit ## Run all tests
 

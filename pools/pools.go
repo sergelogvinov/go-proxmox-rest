@@ -49,14 +49,9 @@ func (c *Client) Get(ctx context.Context, poolID string) (*Pool, error) {
 // With verbose=false (default) only the pool IDs are returned. With
 // verbose=true the full pool configuration (members and comment) is
 // included for every pool.
-func (c *Client) List(ctx context.Context, verbose bool) ([]Pool, error) {
-	params := map[string]string{}
-	if verbose {
-		params["verbose"] = "1"
-	}
-
+func (c *Client) List(ctx context.Context) ([]Pool, error) {
 	var pools []Pool
-	if err := c.client.Get(ctx, "/pools", &pools, params); err != nil {
+	if err := c.client.Get(ctx, "/pools", &pools, nil); err != nil {
 		return nil, err
 	}
 
@@ -64,11 +59,13 @@ func (c *Client) List(ctx context.Context, verbose bool) ([]Pool, error) {
 }
 
 // Create creates a new pool via POST /pools.
-func (c *Client) Create(ctx context.Context, opts *CreateOptions) error {
+func (c *Client) Create(ctx context.Context, name string, opts *CreateOptions) error {
 	params, err := opts.encode()
 	if err != nil {
 		return err
 	}
+
+	params["poolid"] = name
 
 	return c.client.Create(ctx, "/pools", nil, params)
 }
