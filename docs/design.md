@@ -119,7 +119,8 @@ and the functional options populate it:
 // options.go
 type Option func(*ClientConfig)
 
-func WithBaseURL(u string) Option
+func WithURL(u string) Option // path component (e.g. /api2/json) is saved as basePath
+func WithBasePath(p string) Option // explicit API path prefix, overrides the URL path
 func WithTokenAuth(tokenID, secret string) Option
 func WithPasswordAuth(username, password, realm string) Option
 func WithTimeout(d time.Duration) Option
@@ -148,7 +149,7 @@ Deriving a mutable snapshot for reuse is done via `cfg.ToRESTConfig()`:
 // usage
 c, err := proxmox.New(
     proxmox.ClientConfig{}, // zero value; everything set via options
-    proxmox.WithBaseURL("https://pve:8006/api2/json"),
+    proxmox.WithURL("https://pve:8006/api2/json"),
     proxmox.WithTokenAuth(tokenID, secret),
     proxmox.WithCACert("/etc/ssl/pve-ca.pem"),
     proxmox.WithTimeout(60*time.Second),

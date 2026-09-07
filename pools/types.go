@@ -2,7 +2,8 @@ package pools
 
 import (
 	"fmt"
-	"strings"
+
+	"github.com/sergelogvinov/proxmox/go-proxmox-rest/internal/params"
 )
 
 // Pool describes a resource pool as returned by GET /pools and
@@ -73,12 +74,15 @@ type PoolMember struct {
 }
 
 // CreateOptions holds the parameters for POST /pools.
+//
+// Fields are encoded to form parameters via the `url` struct tags:
+// zero values are omitted, []string is comma-joined.
 type CreateOptions struct {
 	// Comment is the pool description.
-	Comment string
+	Comment string `url:"comment"`
 	// Members are the resources to add to the pool on creation, e.g.
 	// "vm/100", "storage/local".
-	Members []string
+	Members []string `url:"vms"`
 }
 
 // encode converts the options to form parameters.
@@ -87,25 +91,21 @@ func (o *CreateOptions) encode() (map[string]string, error) {
 		return nil, fmt.Errorf("pools: create options are required")
 	}
 
-	params := map[string]string{}
-	if o.Comment != "" {
-		params["comment"] = o.Comment
-	}
-	if len(o.Members) > 0 {
-		params["vms"] = strings.Join(o.Members, ",")
-	}
-
-	return params, nil
+	return params.Encode(o)
 }
 
 // UpdateOptions holds the parameters for PUT /pools/{poolid}.
+//
+// Pointer fields are always sent when non-nil (even when zero-valued),
+// which is how "clear a field" is expressed; non-pointer fields are
+// omitted when zero.
 type UpdateOptions struct {
 	// Comment is the pool description. Use a pointer to distinguish
 	// "unset" from "clear".
-	Comment *string
+	Comment *string `url:"comment"`
 	// Members is the full list of resources assigned to the pool, e.g.
 	// "vm/100", "storage/local". The list replaces the current members.
-	Members []string
+	Members []string `url:"vms"`
 }
 
 // encode converts the options to form parameters.
@@ -114,13 +114,5 @@ func (o *UpdateOptions) encode() (map[string]string, error) {
 		return nil, fmt.Errorf("pools: update options are required")
 	}
 
-	params := map[string]string{}
-	if o.Comment != nil {
-		params["comment"] = *o.Comment
-	}
-	if len(o.Members) > 0 {
-		params["vms"] = strings.Join(o.Members, ",")
-	}
-
-	return params, nil
+	return params.Encode(o)
 }

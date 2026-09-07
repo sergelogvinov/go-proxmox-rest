@@ -28,6 +28,10 @@ const (
 	// renewing it. Proxmox tickets expire after 2 hours; renew earlier to
 	// avoid a request failing mid-flight.
 	sessionTTL = 1 * time.Hour
+
+	// defaultBasePath is the Proxmox API path prefix used when a load
+	// balancer (which carries no path information) is configured.
+	defaultBasePath = "/api2/json"
 )
 
 // ClientConfig holds the configuration for a Client. All fields are private
@@ -51,6 +55,11 @@ type ClientConfig struct {
 
 	lb resty.LoadBalancer
 
+	// basePath is the API path prefix (e.g. /api2/json) extracted from
+	// BaseURL or set by LB options. It is prepended to every request path
+	// when a load balancer is used, since LB endpoints carry no path.
+	basePath string
+
 	logger resty.Logger
 }
 
@@ -72,6 +81,7 @@ func (c ClientConfig) ToRESTConfig() ClientConfig {
 		retryWaitTime:    c.retryWaitTime,
 		retryMaxWaitTime: c.retryMaxWaitTime,
 		lb:               c.lb,
+		basePath:         c.basePath,
 		logger:           c.logger,
 	}
 }
@@ -119,7 +129,13 @@ func New(cfg ClientConfig, opts ...Option) (*Client, error) {
 		cfg.retryMaxWaitTime = defaultRetryMaxWait
 	}
 
-	rc := resty.New()
+	transportSettings := &resty.TransportSettings{
+		IdleConnTimeout:     120 * time.Second,
+		TLSHandshakeTimeout: 10 * time.Second,
+		DialerTimeout:       10 * time.Second,
+	}
+
+	rc := resty.NewWithTransportSettings(transportSettings)
 	rc.SetTimeout(cfg.timeout)
 	rc.SetRetryCount(cfg.retryCount)
 	rc.SetRetryWaitTime(cfg.retryWaitTime)
@@ -128,6 +144,11 @@ func New(cfg ClientConfig, opts ...Option) (*Client, error) {
 
 	if cfg.lb != nil {
 		rc.SetLoadBalancer(cfg.lb)
+		// LB endpoints carry no path; default to the standard Proxmox
+		// API prefix unless the user set one via WithBasePath/WithURL.
+		if cfg.basePath == "" {
+			cfg.basePath = defaultBasePath
+		}
 	} else {
 		rc.SetBaseURL(cfg.BaseURL)
 	}
@@ -222,7 +243,7 @@ func (c *Client) ticket(ctx context.Context, username, password string) error {
 			"username": username,
 			"password": password,
 		}).
-		Post("/access/ticket")
+		Post(c.path("/access/ticket"))
 	if err != nil {
 		return fmt.Errorf("ticket request: %w", err)
 	}
@@ -271,7 +292,7 @@ func (c *Client) do(ctx context.Context, method, path string, out any, params ma
 		c.sessionMux.Unlock()
 	}
 
-	res, err := req.Execute(method, path)
+	res, err := req.Execute(method, c.path(path))
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return ctxErr
@@ -284,6 +305,17 @@ func (c *Client) do(ctx context.Context, method, path string, out any, params ma
 	}
 
 	return decodeInto(res.Bytes(), out)
+}
+
+// path returns the full request path: the configured base path (e.g.
+// /api2/json) joined with the resource path. When no load balancer is used,
+// resty already applies the BaseURL path, so the resource path is returned
+// as-is to avoid duplication.
+func (c *Client) path(p string) string {
+	if c.cfg.lb == nil || c.cfg.basePath == "" {
+		return p
+	}
+	return c.cfg.basePath + "/" + strings.TrimPrefix(p, "/")
 }
 
 // Get performs a GET request and decodes the response envelope into out.

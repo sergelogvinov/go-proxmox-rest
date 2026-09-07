@@ -1,6 +1,8 @@
 package proxmox
 
 import (
+	"net/url"
+	"strings"
 	"time"
 
 	"resty.dev/v3"
@@ -10,9 +12,23 @@ import (
 // private config fields; the last applied option wins.
 type Option func(*ClientConfig)
 
-// WithBaseURL sets the API endpoint, e.g. https://10.0.0.1:8006/api2/json
-func WithBaseURL(u string) Option {
-	return func(c *ClientConfig) { c.BaseURL = u }
+// WithURL sets the API endpoint, e.g. https://10.0.0.1:8006/api2/json
+// If the URL contains a path component, it is saved as the base path and
+// prepended to request paths when a load balancer is used.
+func WithURL(u string) Option {
+	return func(c *ClientConfig) {
+		c.BaseURL = u
+		if parsed, err := url.Parse(u); err == nil && parsed.Path != "" && parsed.Path != "/" {
+			c.basePath = strings.TrimSuffix(parsed.Path, "/")
+		}
+	}
+}
+
+// WithBasePath sets the API path prefix (e.g. /api2/json) explicitly,
+// overriding any path extracted from the URL. It is used when a load
+// balancer is configured, since LB endpoints carry no path information.
+func WithBasePath(p string) Option {
+	return func(c *ClientConfig) { c.basePath = strings.TrimSuffix(p, "/") }
 }
 
 // WithTokenAuth enables API token authentication.
@@ -79,31 +95,39 @@ func WithLogger(l resty.Logger) Option {
 }
 
 // WithRoundRobin distributes requests across the given API endpoints
-// round-robin style.
+// round-robin style. The endpoints ignore the API path prefix
+// To redefine the default API path, use WithBasePath
 func WithRoundRobin(urls ...string) Option {
 	return func(c *ClientConfig) {
 		if lb, err := resty.NewRoundRobin(urls...); err == nil {
 			c.lb = lb
+			c.basePath = defaultBasePath
 		}
 	}
 }
 
 // WithWeightedRoundRobin distributes requests across the given hosts
-// proportionally to their weights.
+// proportionally to their weights. Since hosts carry no path, requests are
+// prefixed with the default API path (/api2/json)
+// To redefine the default API path, use WithBasePath
 func WithWeightedRoundRobin(hosts ...*resty.Host) Option {
 	return func(c *ClientConfig) {
 		if lb, err := resty.NewWeightedRoundRobin(0, hosts...); err == nil {
 			c.lb = lb
+			c.basePath = defaultBasePath
 		}
 	}
 }
 
 // WithSRVWeightedRoundRobin resolves SRV records and load balances across
-// the discovered endpoints.
+// the discovered endpoints. Since SRV records carry no path, requests are
+// prefixed with the default API path (/api2/json)
+// To redefine the default API path, use WithBasePath
 func WithSRVWeightedRoundRobin(service, proto, domain, scheme string) Option {
 	return func(c *ClientConfig) {
 		if lb, err := resty.NewSRVWeightedRoundRobin(service, proto, domain, scheme); err == nil {
 			c.lb = lb
+			c.basePath = defaultBasePath
 		}
 	}
 }

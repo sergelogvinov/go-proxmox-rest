@@ -2,7 +2,8 @@ package storage
 
 import (
 	"fmt"
-	"strings"
+
+	"github.com/sergelogvinov/proxmox/go-proxmox-rest/internal/params"
 )
 
 // Storage describes a storage as returned by GET /storage and
@@ -67,59 +68,64 @@ type Storage struct {
 }
 
 // CreateOptions holds the parameters for POST /storage.
+//
+// Fields are encoded to form parameters via the `url` struct tags:
+// zero values are omitted, []string is comma-joined.
 type CreateOptions struct {
 	// ID is the storage identifier, e.g. "local-zfs". Required.
-	ID string
+	ID string `url:"storage"`
 	// Type is the storage plugin type, e.g. "dir", "zfs", "nfs", ...
 	// Required.
-	Type string
+	Type string `url:"type"`
 	// Content is the list of content types the storage can hold,
 	// e.g. "images", "iso", "vztmpl", "backup".
-	Content []string
+	Content []string `url:"content"`
 	// Nodes is the list of nodes the storage is available on.
 	// Empty means all nodes.
-	Nodes []string
+	Nodes []string `url:"nodes"`
 	// Shared marks the storage as shared across nodes.
-	Shared bool
+	Shared bool `url:"shared"`
 	// Disabled marks the storage as disabled.
-	Disabled bool
+	Disabled bool `url:"disable"`
 	// Enable marks the storage as enabled.
-	Enable bool
+	Enable bool `url:"enable"`
 	// MaxFiles is the maximum number of backup files per VM.
-	MaxFiles int
+	MaxFiles int `url:"maxfiles"`
 	// PruneBackups is the prune-backups configuration string,
 	// e.g. "keep-last=7,keep-daily=7".
-	PruneBackups string
+	PruneBackups string `url:"prune-backups"`
 	// Comment is the storage description.
-	Comment string
+	Comment string `url:"comment"`
 	// Username is the CIFS/Synology username.
-	Username string
+	Username string `url:"username"`
 	// Password is the CIFS/Synology password (write-only).
-	Password string
+	Password string `url:"password"`
 	// Domain is the CIFS domain.
-	Domain string
+	Domain string `url:"domain"`
 	// Path is the local filesystem path (dir/zfs plugin types).
-	Path string
+	Path string `url:"path"`
 	// Server is the remote server address (nfs/cifs/iscsi plugin types).
-	Server string
+	Server string `url:"server"`
+	// Server2 is the secondary NFS server address.
+	Server2 string `url:"server2"`
 	// Export is the NFS export path.
-	Export string
+	Export string `url:"export"`
 	// Pool is the ZFS pool name (zfs plugin type).
-	Pool string
+	Pool string `url:"pool"`
 	// BlockSize is the block size (zfs plugin type).
-	BlockSize string
+	BlockSize string `url:"blocksize"`
 	// FSName is the CIFS share name.
-	FSName string
+	FSName string `url:"fsname"`
 	// Portal is the iSCSI portal address.
-	Portal string
+	Portal string `url:"portal"`
 	// Target is the iSCSI target.
-	Target string
+	Target string `url:"target"`
 	// VGName is the LVM volume group name.
-	VGName string
+	VGName string `url:"vgname"`
 	// ThinPool is the LVM-thin pool name.
-	ThinPool string
+	ThinPool string `url:"thinpool"`
 	// Datastore is the Synology datastore name.
-	Datastore string
+	Datastore string `url:"datastore"`
 }
 
 // encode converts the options to form parameters.
@@ -134,135 +140,67 @@ func (o *CreateOptions) encode() (map[string]string, error) {
 		return nil, fmt.Errorf("storage: type is required")
 	}
 
-	params := map[string]string{
-		"storage": o.ID,
-		"type":    o.Type,
-	}
-
-	if len(o.Content) > 0 {
-		params["content"] = strings.Join(o.Content, ",")
-	}
-	if len(o.Nodes) > 0 {
-		params["nodes"] = strings.Join(o.Nodes, ",")
-	}
-	if o.Shared {
-		params["shared"] = "1"
-	}
-	if o.Disabled {
-		params["disable"] = "1"
-	}
-	if o.Enable {
-		params["enable"] = "1"
-	}
-	if o.MaxFiles > 0 {
-		params["maxfiles"] = fmt.Sprintf("%d", o.MaxFiles)
-	}
-	if o.PruneBackups != "" {
-		params["prune-backups"] = o.PruneBackups
-	}
-	if o.Comment != "" {
-		params["comment"] = o.Comment
-	}
-	if o.Username != "" {
-		params["username"] = o.Username
-	}
-	if o.Password != "" {
-		params["password"] = o.Password
-	}
-	if o.Domain != "" {
-		params["domain"] = o.Domain
-	}
-	if o.Path != "" {
-		params["path"] = o.Path
-	}
-	if o.Server != "" {
-		params["server"] = o.Server
-	}
-	if o.Export != "" {
-		params["export"] = o.Export
-	}
-	if o.Pool != "" {
-		params["pool"] = o.Pool
-	}
-	if o.BlockSize != "" {
-		params["blocksize"] = o.BlockSize
-	}
-	if o.FSName != "" {
-		params["fsname"] = o.FSName
-	}
-	if o.Portal != "" {
-		params["portal"] = o.Portal
-	}
-	if o.Target != "" {
-		params["target"] = o.Target
-	}
-	if o.VGName != "" {
-		params["vgname"] = o.VGName
-	}
-	if o.ThinPool != "" {
-		params["thinpool"] = o.ThinPool
-	}
-	if o.Datastore != "" {
-		params["datastore"] = o.Datastore
-	}
-
-	return params, nil
+	return params.Encode(o)
 }
 
 // UpdateOptions holds the parameters for PUT /storage/{storage}.
-// Only the fields that are set are sent; use pointers to distinguish
-// "unset" from "clear".
+//
+// Pointer fields are always sent when non-nil (even when zero-valued),
+// which is how "clear a field" is expressed; non-pointer fields are
+// omitted when zero.
 type UpdateOptions struct {
 	// Content is the list of content types the storage can hold.
-	Content []string
+	Content []string `url:"content"`
 	// Nodes is the list of nodes the storage is available on.
-	Nodes []string
+	Nodes []string `url:"nodes"`
 	// Shared marks the storage as shared across nodes.
-	Shared *bool
+	Shared *bool `url:"shared"`
 	// Disabled marks the storage as disabled.
-	Disabled *bool
+	Disabled *bool `url:"disable"`
 	// Enable marks the storage as enabled.
-	Enable *bool
+	Enable *bool `url:"enable"`
 	// MaxFiles is the maximum number of backup files per VM.
-	MaxFiles *int
+	MaxFiles *int `url:"maxfiles"`
 	// PruneBackups is the prune-backups configuration string.
-	PruneBackups *string
+	PruneBackups *string `url:"prune-backups"`
 	// Comment is the storage description.
-	Comment *string
+	Comment *string `url:"comment"`
 	// Username is the CIFS/Synology username.
-	Username *string
+	Username *string `url:"username"`
 	// Password is the CIFS/Synology password (write-only).
-	Password *string
+	Password *string `url:"password"`
 	// Domain is the CIFS domain.
-	Domain *string
+	Domain *string `url:"domain"`
 	// Path is the local filesystem path (dir/zfs plugin types).
-	Path *string
+	Path *string `url:"path"`
 	// Server is the remote server address (nfs/cifs/iscsi plugin types).
-	Server *string
+	Server *string `url:"server"`
+	// Server2 is the secondary NFS server address.
+	Server2 *string `url:"server2"`
 	// Export is the NFS export path.
-	Export *string
+	Export *string `url:"export"`
 	// Pool is the ZFS pool name (zfs plugin type).
-	Pool *string
+	Pool *string `url:"pool"`
 	// BlockSize is the block size (zfs plugin type).
-	BlockSize *string
+	BlockSize *string `url:"blocksize"`
 	// FSName is the CIFS share name.
-	FSName *string
+	FSName *string `url:"fsname"`
 	// Portal is the iSCSI portal address.
-	Portal *string
+	Portal *string `url:"portal"`
 	// Target is the iSCSI target.
-	Target *string
+	Target *string `url:"target"`
 	// VGName is the LVM volume group name.
-	VGName *string
+	VGName *string `url:"vgname"`
 	// ThinPool is the LVM-thin pool name.
-	ThinPool *string
+	ThinPool *string `url:"thinpool"`
 	// Datastore is the Synology datastore name.
-	Datastore *string
+	Datastore *string `url:"datastore"`
 	// Delete is the list of fields to remove from the configuration,
 	// e.g. "maxfiles", "prune-backups".
-	Delete []string
+	Delete []string `url:"delete"`
 	// Digest prevents changes if the current configuration has changed
 	// in between (value from GET /storage/{storage}).
-	Digest string
+	Digest string `url:"digest"`
 }
 
 // encode converts the options to form parameters.
@@ -271,88 +209,5 @@ func (o *UpdateOptions) encode() (map[string]string, error) {
 		return nil, fmt.Errorf("storage: update options are required")
 	}
 
-	params := map[string]string{}
-
-	if len(o.Content) > 0 {
-		params["content"] = strings.Join(o.Content, ",")
-	}
-	if len(o.Nodes) > 0 {
-		params["nodes"] = strings.Join(o.Nodes, ",")
-	}
-	if o.Shared != nil {
-		params["shared"] = boolToInt(o.Shared)
-	}
-	if o.Disabled != nil {
-		params["disable"] = boolToInt(o.Disabled)
-	}
-	if o.Enable != nil {
-		params["enable"] = boolToInt(o.Enable)
-	}
-	if o.MaxFiles != nil {
-		params["maxfiles"] = fmt.Sprintf("%d", *o.MaxFiles)
-	}
-	if o.PruneBackups != nil {
-		params["prune-backups"] = *o.PruneBackups
-	}
-	if o.Comment != nil {
-		params["comment"] = *o.Comment
-	}
-	if o.Username != nil {
-		params["username"] = *o.Username
-	}
-	if o.Password != nil {
-		params["password"] = *o.Password
-	}
-	if o.Domain != nil {
-		params["domain"] = *o.Domain
-	}
-	if o.Path != nil {
-		params["path"] = *o.Path
-	}
-	if o.Server != nil {
-		params["server"] = *o.Server
-	}
-	if o.Export != nil {
-		params["export"] = *o.Export
-	}
-	if o.Pool != nil {
-		params["pool"] = *o.Pool
-	}
-	if o.BlockSize != nil {
-		params["blocksize"] = *o.BlockSize
-	}
-	if o.FSName != nil {
-		params["fsname"] = *o.FSName
-	}
-	if o.Portal != nil {
-		params["portal"] = *o.Portal
-	}
-	if o.Target != nil {
-		params["target"] = *o.Target
-	}
-	if o.VGName != nil {
-		params["vgname"] = *o.VGName
-	}
-	if o.ThinPool != nil {
-		params["thinpool"] = *o.ThinPool
-	}
-	if o.Datastore != nil {
-		params["datastore"] = *o.Datastore
-	}
-	if len(o.Delete) > 0 {
-		params["delete"] = strings.Join(o.Delete, ",")
-	}
-	if o.Digest != "" {
-		params["digest"] = o.Digest
-	}
-
-	return params, nil
-}
-
-// boolToInt converts a *bool to the "0"/"1" form used by the Proxmox API.
-func boolToInt(b *bool) string {
-	if *b {
-		return "1"
-	}
-	return "0"
+	return params.Encode(o)
 }
