@@ -17,6 +17,7 @@
 #
 /vendor/
 /.gocache/
+/CLAUDE.md
 
 # Certificates
 *.crt

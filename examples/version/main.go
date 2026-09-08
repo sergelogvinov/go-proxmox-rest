@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/sergelogvinov/proxmox/go-proxmox-rest"
+	"github.com/sergelogvinov/go-proxmox-rest"
 )
 
 func main() {

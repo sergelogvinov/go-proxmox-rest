@@ -42,7 +42,7 @@ own Go package. The `proxmox` root package owns the `Client` and shared types.
 
 ```
 go-proxmox-rest
-├── go.mod                     // module github.com/sergelogvinov/proxmox/go-proxmox-rest
+├── go.mod                     // module github.com/sergelogvinov/go-proxmox-rest
 ├── client.go                  // Client, api-client (HTTP), TLS/auth, fluent entry points
 ├── resource.go                // shared resource primitives (resource.layer)
 ├── types.go                   // shared types (UPID, Task, errors, enums)
@@ -308,10 +308,8 @@ ctx := context.Background()
 node, err := c.Nodes().Get(ctx, "pve")
 if err != nil { log.Fatal(err) }
 
-// list cluster resources (opt-in filters via builder or per-request options)
-res, err := c.Cluster().Resources().
-    Type(cluster.ResourceTypeVM).
-    Get(ctx)
+// list cluster resources (opt-in type filter passed to Get; "" is unfiltered)
+res, err := c.Cluster().Resources().Get(ctx, cluster.ResourceTypeVM)
 ```
 
 With a **load balancer**, point the same `Client` at several Proxmox nodes and let
