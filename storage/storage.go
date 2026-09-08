@@ -56,33 +56,42 @@ func (c *Client) Get(ctx context.Context, storageID string) (*Storage, error) {
 }
 
 // Create creates a new storage via POST /storage.
-func (c *Client) Create(ctx context.Context, opts *Options) error {
+func (c *Client) Create(ctx context.Context, opts *Options) (*Storage, error) {
 	if opts == nil {
-		return fmt.Errorf("storage: options are required")
+		return nil, fmt.Errorf("storage: options are required")
 	}
 	if opts.ID == "" {
-		return fmt.Errorf("storage: id is required")
+		return nil, fmt.Errorf("storage: id is required")
 	}
 	if opts.Type == "" {
-		return fmt.Errorf("storage: type is required")
+		return nil, fmt.Errorf("storage: type is required")
 	}
 
 	params, err := opts.encode()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return c.client.Create(ctx, "/storage", nil, params)
+	var storage Storage
+	if err := c.client.Create(ctx, "/storage", &storage, params); err != nil {
+		return nil, err
+	}
+
+	return &storage, nil
 }
 
 // Update modifies an existing storage via PUT /storage/{storage}.
-func (c *Client) Update(ctx context.Context, storageID string, opts *Options) error {
+func (c *Client) Update(ctx context.Context, storageID string, opts *Options) (*Storage, error) {
 	params, err := opts.encode()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return c.client.Update(ctx, "/storage/"+storageID, nil, params)
+	var storage Storage
+	if err := c.client.Update(ctx, "/storage/"+storageID, &storage, params); err != nil {
+		return nil, err
+	}
+	return &storage, nil
 }
 
 // Delete removes a storage via DELETE /storage/{storage}.

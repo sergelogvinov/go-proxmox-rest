@@ -13,9 +13,9 @@ type Storage struct {
 	Storage string `json:"storage,omitempty"`
 	// Type is the storage plugin type, e.g. "dir", "zfs", "nfs", ...
 	Type string `json:"type,omitempty"`
-	// Content is the comma-separated list of content types the storage
-	// can hold, e.g. "images,iso,vztmpl".
-	Content string `json:"content,omitempty"`
+	// Content is the list of content types the storage can hold,
+	// e.g. "images", "iso", "vztmpl".
+	Content []string `json:"content,omitempty"`
 	// Shared is 1 if the storage is shared across nodes.
 	Shared int `json:"shared,omitempty"`
 	// Enabled is 1 if the storage is enabled.
@@ -53,8 +53,6 @@ type Storage struct {
 	// Nodes is the comma-separated list of nodes this storage is
 	// available on ("all" or empty means all nodes).
 	Nodes string `json:"nodes,omitempty"`
-	// AUS is 1 if the storage is used for VM backups (deprecated).
-	AUS int `json:"aus,omitempty"`
 	// SpaceUsed is the used space in bytes (GET /storage/{storage} only).
 	SpaceUsed int64 `json:"used,omitempty"`
 	// TotalSpace is the total space in bytes (GET /storage/{storage} only).

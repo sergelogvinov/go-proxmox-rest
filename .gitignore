@@ -22,3 +22,4 @@
 # Certificates
 *.crt
 *.key
+.env
