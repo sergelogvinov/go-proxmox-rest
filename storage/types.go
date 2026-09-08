@@ -67,91 +67,25 @@ type Storage struct {
 	Active int `json:"active,omitempty"`
 }
 
-// CreateOptions holds the parameters for POST /storage.
+// Options holds the write parameters shared by POST /storage (Create) and
+// PUT /storage/{storage} (Update).
 //
-// Fields are encoded to form parameters via the `url` struct tags:
-// zero values are omitted, []string is comma-joined.
-type CreateOptions struct {
-	// ID is the storage identifier, e.g. "local-zfs". Required.
+// ID and Type are required by Create; Update ignores them (the storage id
+// is already part of the URL and its type cannot change afterwards).
+// Pointer fields are always sent when non-nil (even when zero/empty),
+// which is how Update expresses "clear this field" — Create simply sends
+// whatever is set. Delete and Digest are meaningful to Update only.
+type Options struct {
+	// ID is the storage identifier, e.g. "local-zfs". Required by Create.
 	ID string `url:"storage"`
 	// Type is the storage plugin type, e.g. "dir", "zfs", "nfs", ...
-	// Required.
+	// Required by Create; not settable on Update.
 	Type string `url:"type"`
 	// Content is the list of content types the storage can hold,
 	// e.g. "images", "iso", "vztmpl", "backup".
 	Content []string `url:"content"`
 	// Nodes is the list of nodes the storage is available on.
 	// Empty means all nodes.
-	Nodes []string `url:"nodes"`
-	// Shared marks the storage as shared across nodes.
-	Shared bool `url:"shared"`
-	// Disabled marks the storage as disabled.
-	Disabled bool `url:"disable"`
-	// Enable marks the storage as enabled.
-	Enable bool `url:"enable"`
-	// MaxFiles is the maximum number of backup files per VM.
-	MaxFiles int `url:"maxfiles"`
-	// PruneBackups is the prune-backups configuration string,
-	// e.g. "keep-last=7,keep-daily=7".
-	PruneBackups string `url:"prune-backups"`
-	// Comment is the storage description.
-	Comment string `url:"comment"`
-	// Username is the CIFS/Synology username.
-	Username string `url:"username"`
-	// Password is the CIFS/Synology password (write-only).
-	Password string `url:"password"`
-	// Domain is the CIFS domain.
-	Domain string `url:"domain"`
-	// Path is the local filesystem path (dir/zfs plugin types).
-	Path string `url:"path"`
-	// Server is the remote server address (nfs/cifs/iscsi plugin types).
-	Server string `url:"server"`
-	// Server2 is the secondary NFS server address.
-	Server2 string `url:"server2"`
-	// Export is the NFS export path.
-	Export string `url:"export"`
-	// Pool is the ZFS pool name (zfs plugin type).
-	Pool string `url:"pool"`
-	// BlockSize is the block size (zfs plugin type).
-	BlockSize string `url:"blocksize"`
-	// FSName is the CIFS share name.
-	FSName string `url:"fsname"`
-	// Portal is the iSCSI portal address.
-	Portal string `url:"portal"`
-	// Target is the iSCSI target.
-	Target string `url:"target"`
-	// VGName is the LVM volume group name.
-	VGName string `url:"vgname"`
-	// ThinPool is the LVM-thin pool name.
-	ThinPool string `url:"thinpool"`
-	// Datastore is the Synology datastore name.
-	Datastore string `url:"datastore"`
-}
-
-// encode converts the options to form parameters.
-func (o *CreateOptions) encode() (map[string]string, error) {
-	if o == nil {
-		return nil, fmt.Errorf("storage: create options are required")
-	}
-	if o.ID == "" {
-		return nil, fmt.Errorf("storage: id is required")
-	}
-	if o.Type == "" {
-		return nil, fmt.Errorf("storage: type is required")
-	}
-
-	return params.Encode(o)
-}
-
-// UpdateOptions holds the parameters for PUT /storage/{storage}.
-//
-// Pointer fields are always sent when non-nil (even when zero-valued),
-// which is how "clear a field" is expressed; non-pointer fields are
-// omitted when zero.
-type UpdateOptions struct {
-	// Content is the list of content types the storage can hold.
-	Content []string `url:"content"`
-	// Nodes is the list of nodes the storage is available on.
 	Nodes []string `url:"nodes"`
 	// Shared marks the storage as shared across nodes.
 	Shared *bool `url:"shared"`
@@ -161,7 +95,8 @@ type UpdateOptions struct {
 	Enable *bool `url:"enable"`
 	// MaxFiles is the maximum number of backup files per VM.
 	MaxFiles *int `url:"maxfiles"`
-	// PruneBackups is the prune-backups configuration string.
+	// PruneBackups is the prune-backups configuration string,
+	// e.g. "keep-last=7,keep-daily=7".
 	PruneBackups *string `url:"prune-backups"`
 	// Comment is the storage description.
 	Comment *string `url:"comment"`
@@ -195,18 +130,18 @@ type UpdateOptions struct {
 	ThinPool *string `url:"thinpool"`
 	// Datastore is the Synology datastore name.
 	Datastore *string `url:"datastore"`
-	// Delete is the list of fields to remove from the configuration,
-	// e.g. "maxfiles", "prune-backups".
+	// Delete is the list of fields to remove from the configuration
+	// (Update only), e.g. "maxfiles", "prune-backups".
 	Delete []string `url:"delete"`
 	// Digest prevents changes if the current configuration has changed
-	// in between (value from GET /storage/{storage}).
+	// in between (value from GET /storage/{storage}). Update only.
 	Digest string `url:"digest"`
 }
 
 // encode converts the options to form parameters.
-func (o *UpdateOptions) encode() (map[string]string, error) {
+func (o *Options) encode() (map[string]string, error) {
 	if o == nil {
-		return nil, fmt.Errorf("storage: update options are required")
+		return nil, fmt.Errorf("storage: options are required")
 	}
 
 	return params.Encode(o)

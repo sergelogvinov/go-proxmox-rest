@@ -170,9 +170,9 @@ Storage is the reference module because it supports the complete lifecycle.
 |------|------|--------|
 | 1. list | `Storage().List(ctx, "")` | no error; returns `[]Storage` |
 | 2. get (absent) | `Storage().Get(ctx, name)` | `IsNotFound` |
-| 3. create | `Storage().Create(ctx, &CreateOptions{ID, Type:"dir", Content:["iso","vztmpl"], Path})` | no error |
+| 3. create | `Storage().Create(ctx, &Options{ID, Type:"dir", Content:["iso","vztmpl"], Path})` | no error |
 | 4. get | `Storage().Get(ctx, name)` | `Storage.Storage == name`, `Type == "dir"`, `Content` contains `iso`, `Path` matches |
-| 5. update | `Storage().Update(ctx, name, &UpdateOptions{Comment: ptr("e2e"), MaxFiles: ptr(3)})` | no error |
+| 5. update | `Storage().Update(ctx, name, &Options{Comment: ptr("e2e"), MaxFiles: ptr(3)})` | no error |
 | 6. get | `Storage().Get(ctx, name)` | `Comment == "e2e"`, `MaxFiles == 3`, `Type`/`Path` unchanged |
 | 7. delete | `Storage().Delete(ctx, name)` | no error |
 | 8. list | `Storage().List(ctx, "")` | `name` absent |
@@ -189,9 +189,9 @@ Additional storage-specific cases:
 |------|------|--------|
 | 1. list | `Pools().List(ctx)` | no error |
 | 2. get (absent) | `Pools().Get(ctx, name)` | `IsNotFound` |
-| 3. create | `Pools().Create(ctx, &CreateOptions{ID: name, Comment})` | no error |
+| 3. create | `Pools().Create(ctx, name, &Options{Comment: ptr("e2e")})` | no error |
 | 4. get | `Pools().Get(ctx, name)` | `PoolID == name`, `Comment` matches |
-| 5. update | `Pools().Update(ctx, name, &UpdateOptions{Comment: ptr("e2e")})` | no error |
+| 5. update | `Pools().Update(ctx, name, &Options{Comment: ptr("e2e")})` | no error |
 | 6. get | `Pools().Get(ctx, name)` | `Comment == "e2e"` |
 | 7. delete | `Pools().Delete(ctx, name)` | no error |
 | 8. list | `Pools().List(ctx)` | `name` absent |

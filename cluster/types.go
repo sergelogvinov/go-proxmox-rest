@@ -1,5 +1,11 @@
 package cluster
 
+import (
+	"fmt"
+
+	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+)
+
 // Status contains the cluster status returned by GET /cluster/status.
 //
 // The response mixes two kinds of entries in a single list: the overall
@@ -107,4 +113,81 @@ type Resource struct {
 	HAState string `json:"hastate,omitempty"`
 	// Lock is the guest lock state (vm entries only).
 	Lock string `json:"lock,omitempty"`
+}
+
+// Options describes the cluster-wide configuration exposed by
+// GET/PUT /cluster/options. Every field is optional: Proxmox only includes
+// a key in the GET response once it has been explicitly set, and PUT only
+// changes the fields that are non-zero (via the `url` tag) — to explicitly
+// reset a field to its default, list it in Delete instead of trying to
+// send a zero value.
+//
+// Several fields (Bwlimit, Migration, HA, CRS, Notify, NextID, TagStyle,
+// U2F, Webauthn) are Proxmox "property strings" (e.g.
+// "type=secure,network=10.0.0.0/24") rather than nested JSON objects, so
+// they are kept as opaque strings, matching how similar property strings
+// (e.g. storage.Storage.PruneBackups) are handled elsewhere.
+type Options struct {
+	// Description is a cluster-wide description/comment (Datacenter
+	// "Notes" field in the UI).
+	Description string `json:"description,omitempty" url:"description"`
+	// EmailFrom is the sender address used for outbound notifications.
+	EmailFrom string `json:"email_from,omitempty" url:"email_from"`
+	// Keyboard is the default keyboard layout for VNC/console access.
+	Keyboard string `json:"keyboard,omitempty" url:"keyboard"`
+	// Language is the default UI language.
+	Language string `json:"language,omitempty" url:"language"`
+	// Console is the default console viewer: "applet", "vv", "html5" or
+	// "xtermjs".
+	Console string `json:"console,omitempty" url:"console"`
+	// HTTPProxy is the proxy used for outbound HTTP requests, e.g. when
+	// downloading appliance images.
+	HTTPProxy string `json:"http_proxy,omitempty" url:"http_proxy"`
+	// MacPrefix is the OUI prefix used when generating guest MAC
+	// addresses.
+	MacPrefix string `json:"mac_prefix,omitempty" url:"mac_prefix"`
+	// MaxWorkers is the maximal number of worker processes per node.
+	MaxWorkers int `json:"max_workers,omitempty" url:"max_workers"`
+	// Bwlimit is the property-string of default I/O bandwidth limits,
+	// e.g. "clone=10240,default=0".
+	Bwlimit string `json:"bwlimit,omitempty" url:"bwlimit"`
+	// Migration is the property-string controlling live migration, e.g.
+	// "type=secure,network=10.0.0.0/24".
+	Migration string `json:"migration,omitempty" url:"migration"`
+	// HA is the property-string configuring cluster-wide HA behavior,
+	// e.g. "shutdown_policy=freeze".
+	HA string `json:"ha,omitempty" url:"ha"`
+	// CRS is the property-string configuring the cluster resource
+	// scheduler.
+	CRS string `json:"crs,omitempty" url:"crs"`
+	// Notify is the property-string of default notification targets.
+	Notify string `json:"notify,omitempty" url:"notify"`
+	// NextID is the property-string constraining VMID auto-allocation,
+	// e.g. "lower=100,upper=999999999".
+	NextID string `json:"next-id,omitempty" url:"next-id"`
+	// RegisteredTags is the comma-separated list of tags that are
+	// managed/registered cluster-wide.
+	RegisteredTags string `json:"registered-tags,omitempty" url:"registered-tags"`
+	// TagStyle is the property-string configuring tag appearance and
+	// ordering in the UI.
+	TagStyle string `json:"tag-style,omitempty" url:"tag-style"`
+	// U2F is the property-string of U2F authentication settings
+	// (superseded by Webauthn).
+	U2F string `json:"u2f,omitempty" url:"u2f"`
+	// Webauthn is the property-string of WebAuthn authentication
+	// settings.
+	Webauthn string `json:"webauthn,omitempty" url:"webauthn"`
+
+	// Delete lists properties to reset to their default value. Write-only:
+	// Proxmox never returns it, so Get leaves it empty.
+	Delete []string `json:"-" url:"delete"`
+}
+
+// encode converts the options to form parameters for PUT /cluster/options.
+func (o *Options) encode() (map[string]string, error) {
+	if o == nil {
+		return nil, fmt.Errorf("cluster: options are required")
+	}
+
+	return params.Encode(o)
 }

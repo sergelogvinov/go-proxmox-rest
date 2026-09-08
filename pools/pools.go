@@ -59,7 +59,7 @@ func (c *Client) List(ctx context.Context) ([]Pool, error) {
 }
 
 // Create creates a new pool via POST /pools.
-func (c *Client) Create(ctx context.Context, name string, opts *CreateOptions) error {
+func (c *Client) Create(ctx context.Context, name string, opts *Options) error {
 	params, err := opts.encode()
 	if err != nil {
 		return err
@@ -71,7 +71,7 @@ func (c *Client) Create(ctx context.Context, name string, opts *CreateOptions) e
 }
 
 // Update modifies an existing pool via PUT /pools/?poolid={poolid}.
-func (c *Client) Update(ctx context.Context, poolID string, opts *UpdateOptions) error {
+func (c *Client) Update(ctx context.Context, poolID string, opts *Options) error {
 	params, err := opts.encode()
 	if err != nil {
 		return err

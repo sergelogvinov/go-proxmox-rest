@@ -11,6 +11,7 @@ import (
 // from the root package (no import cycle).
 type Getter interface {
 	Get(ctx context.Context, path string, out any, params map[string]string) error
+	Update(ctx context.Context, path string, out any, params map[string]string) error
 }
 
 // Client provides access to the cluster API section.

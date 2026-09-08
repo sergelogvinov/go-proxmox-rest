@@ -13,7 +13,7 @@ import (
 func main() {
 	c, err := proxmox.New(
 		proxmox.ClientConfig{},
-		proxmox.WithBaseURL(os.Getenv("PROXMOX_URL")),
+		proxmox.WithURL(os.Getenv("PROXMOX_URL")),
 		// proxmox.WithTokenAuth(os.Getenv("PROXMOX_TOKENID"), os.Getenv("PROXMOX_SECRET")),
 		proxmox.WithPasswordAuth(os.Getenv("PROXMOX_USERNAME"), os.Getenv("PROXMOX_PASSWORD")),
 		proxmox.WithInsecure(true),
@@ -39,7 +39,7 @@ func main() {
 	}
 	fmt.Printf("Cluster status: %+v\n", status)
 
-	pools, err := c.Pools().List(ctx, false)
+	pools, err := c.Pools().List(ctx)
 	if err != nil {
 		log.Printf("getting pools list: %v", err)
 		return

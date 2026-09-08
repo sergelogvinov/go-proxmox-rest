@@ -4,6 +4,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 )
 
 // Getter is the subset of the root client used by this package. It is
@@ -55,7 +56,17 @@ func (c *Client) Get(ctx context.Context, storageID string) (*Storage, error) {
 }
 
 // Create creates a new storage via POST /storage.
-func (c *Client) Create(ctx context.Context, opts *CreateOptions) error {
+func (c *Client) Create(ctx context.Context, opts *Options) error {
+	if opts == nil {
+		return fmt.Errorf("storage: options are required")
+	}
+	if opts.ID == "" {
+		return fmt.Errorf("storage: id is required")
+	}
+	if opts.Type == "" {
+		return fmt.Errorf("storage: type is required")
+	}
+
 	params, err := opts.encode()
 	if err != nil {
 		return err
@@ -65,7 +76,7 @@ func (c *Client) Create(ctx context.Context, opts *CreateOptions) error {
 }
 
 // Update modifies an existing storage via PUT /storage/{storage}.
-func (c *Client) Update(ctx context.Context, storageID string, opts *UpdateOptions) error {
+func (c *Client) Update(ctx context.Context, storageID string, opts *Options) error {
 	params, err := opts.encode()
 	if err != nil {
 		return err

@@ -73,45 +73,27 @@ type PoolMember struct {
 	StorageContent string `json:"content,omitempty"`
 }
 
-// CreateOptions holds the parameters for POST /pools.
+// Options holds the write parameters shared by POST /pools (Create) and
+// PUT /pools/{poolid} (Update).
 //
-// Fields are encoded to form parameters via the `url` struct tags:
-// zero values are omitted, []string is comma-joined.
-type CreateOptions struct {
-	// Comment is the pool description.
-	Comment string `url:"comment"`
-	// Members are the resources to add to the pool on creation, e.g.
-	// "vm/100", "storage/local".
-	Members []string `url:"vms"`
-}
-
-// encode converts the options to form parameters.
-func (o *CreateOptions) encode() (map[string]string, error) {
-	if o == nil {
-		return nil, fmt.Errorf("pools: create options are required")
-	}
-
-	return params.Encode(o)
-}
-
-// UpdateOptions holds the parameters for PUT /pools/{poolid}.
-//
-// Pointer fields are always sent when non-nil (even when zero-valued),
-// which is how "clear a field" is expressed; non-pointer fields are
-// omitted when zero.
-type UpdateOptions struct {
+// Fields are encoded to form parameters via the `url` struct tags: plain
+// fields are omitted when zero, []string is comma-joined. Comment is a
+// pointer so Update can distinguish "leave unchanged" (nil) from "clear"
+// (pointer to ""); Create simply sends whatever is set.
+type Options struct {
 	// Comment is the pool description. Use a pointer to distinguish
 	// "unset" from "clear".
 	Comment *string `url:"comment"`
-	// Members is the full list of resources assigned to the pool, e.g.
-	// "vm/100", "storage/local". The list replaces the current members.
+	// Members are the resources assigned to the pool, e.g. "vm/100",
+	// "storage/local". On Create these seed the pool; on Update the list
+	// replaces the current members.
 	Members []string `url:"vms"`
 }
 
 // encode converts the options to form parameters.
-func (o *UpdateOptions) encode() (map[string]string, error) {
+func (o *Options) encode() (map[string]string, error) {
 	if o == nil {
-		return nil, fmt.Errorf("pools: update options are required")
+		return nil, fmt.Errorf("pools: options are required")
 	}
 
 	return params.Encode(o)
