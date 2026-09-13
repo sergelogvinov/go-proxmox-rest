@@ -196,15 +196,46 @@ Additional storage-specific cases:
 | 7. delete | `Pools().Delete(ctx, name)` | no error |
 | 8. list | `Pools().List(ctx)` | `name` absent |
 
-### 5.3 `cluster/` — read-only (status/resources)
+### 5.3 `cluster/` — status/resources read-only; HA groups full CRUD
 
-Cluster status is read-only; no create/update/delete.
+Cluster status and resources are read-only; no create/update/delete.
 
 | Step | Call | Verify |
 |------|------|--------|
 | 1. status | `Cluster().Status(ctx)` | no error; returns cluster status incl. `Name` |
 | 2. resources | `Cluster().Resources(ctx)` | no error; returns `[]Resource` |
 | 3. resources (type filter) | `Cluster().Resources(ctx, "vm")` | no error; all entries match type |
+
+`Cluster().HA().Groups()` supports the full CRUD lifecycle from §4, bound to
+the node named by `PVE_E2E_NODE` (the test is skipped when unset):
+
+| Step | Call | Verify |
+|------|------|--------|
+| 1. list | `HA().Groups().List(ctx)` | no error |
+| 2. get (absent) | `HA().Groups().Get(ctx, name)` | error |
+| 3. create | `HA().Groups().Create(ctx, &HAGroupOptions{ID, Nodes: &node, Comment})` | no error |
+| 4. get | `HA().Groups().Get(ctx, name)` | `Group == name`, `Nodes == node`, `Comment` matches |
+| 5. update | `HA().Groups().Update(ctx, name, &HAGroupOptions{Comment, Restricted, Nofailback})` | no error |
+| 6. get | `HA().Groups().Get(ctx, name)` | `Comment`/`Restricted`/`Nofailback` updated, `Nodes` unchanged |
+| 7. delete | `HA().Groups().Delete(ctx, name)` | no error |
+| 8. list | `HA().Groups().List(ctx)` | `name` absent |
+
+`Cluster().HA().Rules()` also supports the full CRUD lifecycle, using a
+node-affinity rule bound to `PVE_E2E_NODE` and a synthetic (non-existent)
+`vm:<id>` resource — HA rules are plain configuration entries, so Proxmox
+does not require the referenced guest to exist:
+
+| Step | Call | Verify |
+|------|------|--------|
+| 1. list | `HA().Rules().List(ctx, "", "")` | no error |
+| 2. get (absent) | `HA().Rules().Get(ctx, name)` | error |
+| 3. create | `HA().Rules().Create(ctx, &HARuleOptions{ID, Type: NodeAffinity, Resources, Nodes: &node, Comment})` | no error |
+| 4. get | `HA().Rules().Get(ctx, name)` | `Rule == name`, `Type`/`Resources`/`Nodes`/`Comment` match |
+| 5. update | `HA().Rules().Update(ctx, name, &HARuleOptions{Type: NodeAffinity, Comment, Disable})` (Type must be resent) | no error |
+| 6. get | `HA().Rules().Get(ctx, name)` | `Comment`/`Disable` updated, `Resources` unchanged |
+| 7. delete | `HA().Rules().Delete(ctx, name)` | no error |
+| 8. list | `HA().Rules().List(ctx, "", "")` | `name` absent |
+| type filter | `HA().Rules().List(ctx, "node-affinity", "")` vs `"resource-affinity"` | our rule present only under its own type |
 
 ### 5.4 `nodes/` — read-only (list/get)
 
