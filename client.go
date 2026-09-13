@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/sergelogvinov/go-proxmox-rest/cluster"
+	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
 	"github.com/sergelogvinov/go-proxmox-rest/pools"
 	"github.com/sergelogvinov/go-proxmox-rest/storage"
 	"resty.dev/v3"
@@ -404,20 +405,16 @@ type envelope struct {
 
 // decodeInto unwraps the { "data": ... } envelope and decodes the payload
 // into out. A null data yields the zero value of out. Unknown fields are
-// ignored so the API can grow without breaking this client.
+// ignored so the API can grow without breaking this client. Decoding uses
+// params.Decode rather than plain json.Unmarshal so that []string fields
+// Proxmox sends as a comma-joined string (e.g. storage.Storage.Content)
+// decode correctly; every other field behaves exactly as encoding/json
+// would.
 func decodeInto[T any](b []byte, out T) error {
 	var env envelope
 	if err := json.Unmarshal(b, &env); err != nil {
 		return err
 	}
 
-	if len(env.Data) == 0 || string(env.Data) == "null" {
-		return nil
-	}
-
-	if err := json.Unmarshal(env.Data, out); err != nil {
-		return err
-	}
-
-	return nil
+	return params.Decode(env.Data, out)
 }
