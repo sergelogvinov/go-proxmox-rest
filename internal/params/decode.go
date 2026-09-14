@@ -9,14 +9,20 @@ import (
 
 // Decode is the reverse of Encode: it unmarshals a Proxmox API JSON payload
 // into out (a non-nil pointer), recursing into nested structs and slices of
-// structs using the `json` struct tags already carried by every response
-// DTO.
+// structs using the same `url` struct tags Encode uses, so a single tag per
+// field names it on the wire for both directions.
 //
-// It behaves like encoding/json for every field except one: a field of type
-// []string is, like Encode's comma-join, allowed to arrive on the wire as a
-// single JSON string (e.g. "content":"images,iso,vztmpl") rather than a JSON
-// array. Decode splits that string on "," into the slice. A field already
-// sent as a genuine JSON array decodes exactly as encoding/json would.
+// It behaves like encoding/json for every field except two:
+//
+//   - A field of type []string is, like Encode's comma-join, allowed to
+//     arrive on the wire as a single JSON string (e.g.
+//     "content":"images,iso,vztmpl") rather than a JSON array. Decode splits
+//     that string on "," into the slice. A field already sent as a genuine
+//     JSON array decodes exactly as encoding/json would.
+//   - A field of type bool (or *bool) is allowed to arrive on the wire as a
+//     JSON number (1/0) or a JSON string ("1"/"0"/"true"/"false"), in
+//     addition to a genuine JSON bool, matching Proxmox's inconsistent
+//     encoding of boolean fields across endpoints.
 func Decode(data []byte, out any) error {
 	if len(data) == 0 || string(data) == "null" {
 		return nil
@@ -47,6 +53,9 @@ func decodeValue(raw json.RawMessage, rv reflect.Value) error {
 	case rv.Kind() == reflect.Slice && rv.Type().Elem().Kind() == reflect.String && raw[0] == '"':
 		return decodeCommaList(raw, rv)
 
+	case rv.Kind() == reflect.Bool:
+		return decodeBool(raw, rv)
+
 	case rv.Kind() == reflect.Struct:
 		return decodeStruct(raw, rv)
 
@@ -59,7 +68,7 @@ func decodeValue(raw json.RawMessage, rv reflect.Value) error {
 }
 
 // decodeStruct decodes a JSON object into rv field-by-field, matching each
-// field's `json` tag name.
+// field's `url` tag name.
 func decodeStruct(raw json.RawMessage, rv reflect.Value) error {
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &m); err != nil {
@@ -73,7 +82,7 @@ func decodeStruct(raw json.RawMessage, rv reflect.Value) error {
 			continue
 		}
 
-		name, ok := jsonName(f.Tag.Get("json"), f.Name)
+		name, ok := urlName(f.Tag.Get("url"), f.Name)
 		if !ok {
 			continue
 		}
@@ -139,6 +148,39 @@ func decodeCommaList(raw json.RawMessage, rv reflect.Value) error {
 	return nil
 }
 
+// decodeBool decodes raw into the bool rv, accepting a genuine JSON bool, a
+// JSON number (nonzero is true), or a JSON string ("1"/"0"/"true"/"false"),
+// since Proxmox encodes boolean fields inconsistently across endpoints.
+func decodeBool(raw json.RawMessage, rv reflect.Value) error {
+	var v any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return err
+	}
+
+	switch t := v.(type) {
+	case bool:
+		rv.SetBool(t)
+
+	case float64:
+		rv.SetBool(t != 0)
+
+	case string:
+		switch strings.ToLower(t) {
+		case "1", "true":
+			rv.SetBool(true)
+		case "0", "false", "":
+			rv.SetBool(false)
+		default:
+			return fmt.Errorf("params: cannot decode %q as bool", t)
+		}
+
+	default:
+		return fmt.Errorf("params: cannot decode %T as bool", v)
+	}
+
+	return nil
+}
+
 // elemIsStruct reports whether t (or the type it points to) is a struct.
 func elemIsStruct(t reflect.Type) bool {
 	if t.Kind() == reflect.Pointer {
@@ -147,12 +189,12 @@ func elemIsStruct(t reflect.Type) bool {
 	return t.Kind() == reflect.Struct
 }
 
-// jsonName extracts the wire field name from a `json:"..."` tag, reporting
-// whether the field should be decoded at all (mirrors encoding/json: a "-"
-// tag skips the field; a missing/empty name falls back to the Go field
-// name).
-func jsonName(tag, fieldName string) (string, bool) {
-	if tag == "-" {
+// urlName extracts the wire field name from a `url:"..."` tag, reporting
+// whether the field should be decoded at all: a missing or "-" tag skips
+// the field, since (unlike encoding/json) an untagged field carries no wire
+// name to decode by.
+func urlName(tag, fieldName string) (string, bool) {
+	if tag == "" || tag == "-" {
 		return "", false
 	}
 

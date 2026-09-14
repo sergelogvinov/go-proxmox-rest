@@ -55,11 +55,11 @@ func (c *Client) Status(ctx context.Context) (*Status, error) {
 // statusEntry mirrors the flat list returned by GET /cluster/status, where
 // the cluster-level entry and per-node entries share the same shape.
 type statusEntry struct {
-	NodeStatus `json:",inline"`
+	NodeStatus `json:",inline" url:",inline"`
 
-	ID      string `json:"id,omitempty"`
-	Name    string `json:"name,omitempty"`
-	Type    string `json:"type,omitempty"`
-	Quorate int    `json:"quorate,omitempty"`
-	Version int    `json:"version,omitempty"`
+	ID      string `json:"id,omitempty" url:"id,omitempty"`
+	Name    string `json:"name,omitempty" url:"name,omitempty"`
+	Type    string `json:"type,omitempty" url:"type,omitempty"`
+	Quorate int    `json:"quorate,omitempty" url:"quorate,omitempty"`
+	Version int    `json:"version,omitempty" url:"version,omitempty"`
 }

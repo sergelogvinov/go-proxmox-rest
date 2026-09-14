@@ -7,11 +7,11 @@ import (
 // Version contains the Proxmox VE version information.
 type Version struct {
 	// Release is the version string, e.g. "8.2.2".
-	Release string `json:"release,omitempty"`
+	Release string `json:"release,omitempty" url:"release,omitempty"`
 	// Version is the Proxmox VE version string, e.g. "8.2.2".
-	Version string `json:"version,omitempty"`
+	Version string `json:"version,omitempty" url:"version,omitempty"`
 	// Repoid is the git commit hash of the running pve-manager.
-	Repoid string `json:"repoid,omitempty"`
+	Repoid string `json:"repoid,omitempty" url:"repoid,omitempty"`
 }
 
 // Version retrieves the version information of the Proxmox VE server.

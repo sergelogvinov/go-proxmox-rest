@@ -7,15 +7,15 @@ import (
 
 func TestDecode(t *testing.T) {
 	type member struct {
-		Name string   `json:"name"`
-		Tags []string `json:"tags"`
+		Name string   `url:"name"`
+		Tags []string `url:"tags"`
 	}
 
 	type storage struct {
-		ID      string   `json:"storage"`
-		Content []string `json:"content"`
-		Shared  int      `json:"shared"`
-		Ignored string   `json:"-"`
+		ID      string   `url:"storage"`
+		Content []string `url:"content"`
+		Shared  int      `url:"shared"`
+		Ignored string   `url:"-"`
 	}
 
 	t.Run("comma-joined string decodes to []string", func(t *testing.T) {
@@ -61,7 +61,7 @@ func TestDecode(t *testing.T) {
 		}
 	})
 
-	t.Run("json:- field is skipped", func(t *testing.T) {
+	t.Run("url:- field is skipped", func(t *testing.T) {
 		var s storage
 		if err := Decode([]byte(`{"Ignored":"x"}`), &s); err != nil {
 			t.Fatalf("Decode() error = %v", err)
@@ -83,7 +83,7 @@ func TestDecode(t *testing.T) {
 
 	t.Run("nested struct slice with comma field", func(t *testing.T) {
 		type pool struct {
-			Members []member `json:"members"`
+			Members []member `url:"members"`
 		}
 
 		var p pool
@@ -128,6 +128,59 @@ func TestDecode(t *testing.T) {
 		var s storage
 		if err := Decode(nil, &s); err != nil {
 			t.Fatalf("Decode() error = %v", err)
+		}
+	})
+}
+
+func TestDecodeBool(t *testing.T) {
+	type flags struct {
+		Enabled  bool  `url:"enabled"`
+		Disabled *bool `url:"disabled"`
+	}
+
+	wantTrueFalse := func(t *testing.T, f flags) {
+		t.Helper()
+		if !f.Enabled || f.Disabled == nil || *f.Disabled {
+			t.Errorf("f = %+v, want Enabled=true Disabled=false", f)
+		}
+	}
+
+	t.Run("decodes from genuine JSON bool", func(t *testing.T) {
+		var f flags
+		if err := Decode([]byte(`{"enabled":true,"disabled":false}`), &f); err != nil {
+			t.Fatalf("Decode() error = %v", err)
+		}
+		wantTrueFalse(t, f)
+	})
+
+	t.Run("decodes from JSON number 1/0", func(t *testing.T) {
+		var f flags
+		if err := Decode([]byte(`{"enabled":1,"disabled":0}`), &f); err != nil {
+			t.Fatalf("Decode() error = %v", err)
+		}
+		wantTrueFalse(t, f)
+	})
+
+	t.Run("decodes from JSON string 1/0", func(t *testing.T) {
+		var f flags
+		if err := Decode([]byte(`{"enabled":"1","disabled":"0"}`), &f); err != nil {
+			t.Fatalf("Decode() error = %v", err)
+		}
+		wantTrueFalse(t, f)
+	})
+
+	t.Run("decodes from JSON string true/false", func(t *testing.T) {
+		var f flags
+		if err := Decode([]byte(`{"enabled":"true","disabled":"false"}`), &f); err != nil {
+			t.Fatalf("Decode() error = %v", err)
+		}
+		wantTrueFalse(t, f)
+	})
+
+	t.Run("errors on unrecognized string", func(t *testing.T) {
+		var f flags
+		if err := Decode([]byte(`{"enabled":"yes"}`), &f); err == nil {
+			t.Fatal("Decode() error = nil, want error")
 		}
 	})
 }

@@ -10,59 +10,59 @@ import (
 // GET /storage/{storage}.
 type Storage struct {
 	// Storage is the storage identifier, e.g. "local".
-	Storage string `json:"storage,omitempty"`
+	Storage string `json:"storage,omitempty" url:"storage,omitempty"`
 	// Type is the storage plugin type, e.g. "dir", "zfs", "nfs", ...
-	Type string `json:"type,omitempty"`
+	Type string `json:"type,omitempty" url:"type,omitempty"`
 	// Content is the list of content types the storage can hold,
 	// e.g. "images", "iso", "vztmpl".
-	Content []string `json:"content,omitempty"`
+	Content []string `json:"content,omitempty" url:"content,omitempty"`
 	// Shared is 1 if the storage is shared across nodes.
-	Shared int `json:"shared,omitempty"`
+	Shared int `json:"shared,omitempty" url:"shared,omitempty"`
 	// Enabled is 1 if the storage is enabled.
-	Enabled int `json:"enabled,omitempty"`
+	Enabled int `json:"enabled,omitempty" url:"enabled,omitempty"`
 	// Path is the local filesystem path (dir/zfs plugin types).
-	Path string `json:"path,omitempty"`
+	Path string `json:"path,omitempty" url:"path,omitempty"`
 	// Server is the remote server address (nfs/cifs/iscsi plugin types).
-	Server string `json:"server,omitempty"`
+	Server string `json:"server,omitempty" url:"server,omitempty"`
 	// Export is the NFS export path.
-	Export string `json:"export,omitempty"`
+	Export string `json:"export,omitempty" url:"export,omitempty"`
 	// Pool is the ZFS pool name (zfs plugin type).
-	Pool string `json:"pool,omitempty"`
+	Pool string `json:"pool,omitempty" url:"pool,omitempty"`
 	// BlockSize is the block size (zfs plugin type).
-	BlockSize string `json:"blocksize,omitempty"`
+	BlockSize string `json:"blocksize,omitempty" url:"blocksize,omitempty"`
 	// FSName is the CIFS share name.
-	FSName string `json:"fsname,omitempty"`
+	FSName string `json:"fsname,omitempty" url:"fsname,omitempty"`
 	// Portal is the iSCSI portal address.
-	Portal string `json:"portal,omitempty"`
+	Portal string `json:"portal,omitempty" url:"portal,omitempty"`
 	// Target is the iSCSI target.
-	Target string `json:"target,omitempty"`
+	Target string `json:"target,omitempty" url:"target,omitempty"`
 	// VGName is the LVM volume group name.
-	VGName string `json:"vgname,omitempty"`
+	VGName string `json:"vgname,omitempty" url:"vgname,omitempty"`
 	// ThinPool is the LVM-thin pool name.
-	ThinPool string `json:"thinpool,omitempty"`
+	ThinPool string `json:"thinpool,omitempty" url:"thinpool,omitempty"`
 	// Datastore is the Synology datastore name.
-	Datastore string `json:"datastore,omitempty"`
+	Datastore string `json:"datastore,omitempty" url:"datastore,omitempty"`
 	// Username is the CIFS/Synology username.
-	Username string `json:"username,omitempty"`
+	Username string `json:"username,omitempty" url:"username,omitempty"`
 	// Domain is the CIFS domain.
-	Domain string `json:"domain,omitempty"`
+	Domain string `json:"domain,omitempty" url:"domain,omitempty"`
 	// MaxFiles is the maximum number of backup files per VM.
-	MaxFiles int `json:"maxfiles,omitempty"`
+	MaxFiles int `json:"maxfiles,omitempty" url:"maxfiles,omitempty"`
 	// PruneBackups is the prune-backups configuration string.
-	PruneBackups string `json:"prune-backups,omitempty"`
+	PruneBackups string `json:"prune-backups,omitempty" url:"prune-backups,omitempty"`
 	// Nodes is the comma-separated list of nodes this storage is
 	// available on ("all" or empty means all nodes).
-	Nodes string `json:"nodes,omitempty"`
+	Nodes string `json:"nodes,omitempty" url:"nodes,omitempty"`
 	// SpaceUsed is the used space in bytes (GET /storage/{storage} only).
-	SpaceUsed int64 `json:"used,omitempty"`
+	SpaceUsed int64 `json:"used,omitempty" url:"used,omitempty"`
 	// TotalSpace is the total space in bytes (GET /storage/{storage} only).
-	TotalSpace int64 `json:"total,omitempty"`
+	TotalSpace int64 `json:"total,omitempty" url:"total,omitempty"`
 	// AvailableSpace is the available space in bytes
 	// (GET /storage/{storage} only).
-	AvailableSpace int64 `json:"avail,omitempty"`
+	AvailableSpace int64 `json:"avail,omitempty" url:"avail,omitempty"`
 	// Active is 1 if the storage is active on the queried node
 	// (GET /storage/{storage} only).
-	Active int `json:"active,omitempty"`
+	Active int `json:"active,omitempty" url:"active,omitempty"`
 }
 
 // Options holds the write parameters shared by POST /storage (Create) and

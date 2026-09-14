@@ -100,11 +100,11 @@ type Client struct {
 // Session holds the ticket-based authentication data returned by
 // POST /access/ticket.
 type Session struct {
-	Username            string `json:"username,omitempty"`
-	Ticket              string `json:"ticket,omitempty"`
-	CSRFPreventionToken string `json:"CSRFPreventionToken,omitempty"`
-	Cap                 any    `json:"cap,omitempty"`
-	ClusterName         string `json:"clustername,omitempty"`
+	Username            string `json:"username,omitempty" url:"username,omitempty"`
+	Ticket              string `json:"ticket,omitempty" url:"ticket,omitempty"`
+	CSRFPreventionToken string `json:"CSRFPreventionToken,omitempty" url:"CSRFPreventionToken,omitempty"`
+	Cap                 any    `json:"cap,omitempty" url:"cap,omitempty"`
+	ClusterName         string `json:"clustername,omitempty" url:"clustername,omitempty"`
 }
 
 // New builds a Client from the given config, applying the options on a copy

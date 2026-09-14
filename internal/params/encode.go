@@ -81,7 +81,12 @@ func encodeField(params map[string]string, name string, fv reflect.Value, isPtr 
 		if !isPtr && !fv.Bool() {
 			return nil
 		}
-		params[name] = strconv.FormatBool(fv.Bool()) // "true"/"false"
+
+		if fv.Bool() {
+			params[name] = "1"
+		} else {
+			params[name] = "0"
+		}
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		if !isPtr && fv.Int() == 0 {
