@@ -213,9 +213,9 @@ the node named by `PVE_E2E_NODE` (the test is skipped when unset):
 |------|------|--------|
 | 1. list | `HA().Groups().List(ctx)` | no error |
 | 2. get (absent) | `HA().Groups().Get(ctx, name)` | error |
-| 3. create | `HA().Groups().Create(ctx, &HAGroupOptions{ID, Nodes: &node, Comment})` | no error |
+| 3. create | `HA().Groups().Create(ctx, &GroupOptions{ID, Nodes: &node, Comment})` | no error |
 | 4. get | `HA().Groups().Get(ctx, name)` | `Group == name`, `Nodes == node`, `Comment` matches |
-| 5. update | `HA().Groups().Update(ctx, name, &HAGroupOptions{Comment, Restricted, Nofailback})` | no error |
+| 5. update | `HA().Groups().Update(ctx, name, &GroupOptions{Comment, Restricted, Nofailback})` | no error |
 | 6. get | `HA().Groups().Get(ctx, name)` | `Comment`/`Restricted`/`Nofailback` updated, `Nodes` unchanged |
 | 7. delete | `HA().Groups().Delete(ctx, name)` | no error |
 | 8. list | `HA().Groups().List(ctx)` | `name` absent |
@@ -229,9 +229,9 @@ does not require the referenced guest to exist:
 |------|------|--------|
 | 1. list | `HA().Rules().List(ctx, "", "")` | no error |
 | 2. get (absent) | `HA().Rules().Get(ctx, name)` | error |
-| 3. create | `HA().Rules().Create(ctx, &HARuleOptions{ID, Type: NodeAffinity, Resources, Nodes: &node, Comment})` | no error |
+| 3. create | `HA().Rules().Create(ctx, &RuleOptions{ID, Type: NodeAffinity, Resources, Nodes: &node, Comment})` | no error |
 | 4. get | `HA().Rules().Get(ctx, name)` | `Rule == name`, `Type`/`Resources`/`Nodes`/`Comment` match |
-| 5. update | `HA().Rules().Update(ctx, name, &HARuleOptions{Type: NodeAffinity, Comment, Disable})` (Type must be resent) | no error |
+| 5. update | `HA().Rules().Update(ctx, name, &RuleOptions{Type: NodeAffinity, Comment, Disable})` (Type must be resent) | no error |
 | 6. get | `HA().Rules().Get(ctx, name)` | `Comment`/`Disable` updated, `Resources` unchanged |
 | 7. delete | `HA().Rules().Delete(ctx, name)` | no error |
 | 8. list | `HA().Rules().List(ctx, "", "")` | `name` absent |

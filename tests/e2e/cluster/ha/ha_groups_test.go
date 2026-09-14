@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sergelogvinov/go-proxmox-rest/cluster"
+	"github.com/sergelogvinov/go-proxmox-rest/cluster/ha"
 	e2e "github.com/sergelogvinov/go-proxmox-rest/tests/e2e"
 )
 
@@ -61,7 +61,7 @@ func TestHAGroupsLifecycle(t *testing.T) {
 	// 3. create — a uniquely-named group bound to the configured node.
 	comment := "e2e lifecycle"
 	nodes := cfg.Node
-	group, err := hg.Create(ctx, &cluster.HAGroupOptions{
+	group, err := hg.Create(ctx, &ha.GroupOptions{
 		ID:      name,
 		Nodes:   &nodes,
 		Comment: &comment,
@@ -87,7 +87,7 @@ func TestHAGroupsLifecycle(t *testing.T) {
 	// 5. update — mutate the comment and enable restricted/nofailback.
 	newComment := "e2e updated"
 	trueVal := true
-	_, err = hg.Update(ctx, name, &cluster.HAGroupOptions{
+	_, err = hg.Update(ctx, name, &ha.GroupOptions{
 		Comment:    &newComment,
 		Restricted: &trueVal,
 		Nofailback: &trueVal,
@@ -142,10 +142,10 @@ func TestHAGroupsValidation(t *testing.T) {
 	e2e.RequireError(t, "create with nil options", err)
 
 	nodes := "does-not-matter"
-	_, err = hg.Create(ctx, &cluster.HAGroupOptions{Nodes: &nodes})
+	_, err = hg.Create(ctx, &ha.GroupOptions{Nodes: &nodes})
 	e2e.RequireError(t, "create with missing id", err)
 
-	_, err = hg.Create(ctx, &cluster.HAGroupOptions{ID: "does-not-matter"})
+	_, err = hg.Create(ctx, &ha.GroupOptions{ID: "does-not-matter"})
 	e2e.RequireError(t, "create with missing nodes", err)
 
 	_, err = hg.Update(ctx, "does-not-matter", nil)
@@ -154,6 +154,6 @@ func TestHAGroupsValidation(t *testing.T) {
 
 // containsHAGroup reports whether the slice contains an HA group with the
 // given ID.
-func containsHAGroup(list []cluster.HAGroup, id string) bool {
-	return slices.ContainsFunc(list, func(g cluster.HAGroup) bool { return g.Group == id })
+func containsHAGroup(list []ha.Group, id string) bool {
+	return slices.ContainsFunc(list, func(g ha.Group) bool { return g.Group == id })
 }

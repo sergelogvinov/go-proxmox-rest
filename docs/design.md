@@ -54,6 +54,10 @@ go-proxmox-rest
 ├── cluster/
 │   ├── resources.go           // Cluster().Resources()
 │   ├── options.go
+│   ├── ha/                    // cluster/ha/ — /cluster/ha/* (groups, rules)
+│   │   ├── groups.go          // Cluster().HA().Groups()
+│   │   ├── rules.go           // Cluster().HA().Rules()
+│   │   └── types.go
 │   └── ...
 ├── nodes/
 │   ├── client.go              // Nodes().Get(ctx, "node")
@@ -70,10 +74,40 @@ proxmox (root)   ->  resty
       ^
       |
 access/cluster/nodes/pools/storage/version  ->  proxmox (root)
+      ^
+      |
+cluster/ha  ->  proxmox (root)   // not -> cluster
 ```
 
 Child packages depend **only** on the root package — never on each other — so the
 dependency graph stays acyclic and each section can be developed independently.
+
+### Two levels of nesting
+
+Proxmox nests some API sections one level deeper than the top-level resource tree
+(e.g. `/cluster/ha/groups`, `/cluster/ha/rules`). Where a section's endpoints live
+under a path with their own sub-resources and enough surface area to earn their own
+DTOs/encode/decode files, the module layout mirrors that with a second directory
+level (`cluster/ha/`) rather than piling more types into the parent package
+(`cluster/`). This is a size/surface judgment call, not a rule applied to every
+nested path — a handful of fields folded into the parent's `types.go` (as
+`cluster.Options` is for `/cluster/options`) stays in the parent package.
+
+The dependency rule from §2 generalizes unchanged: `cluster/ha` depends only on the
+root package (it defines its own `Getter` interface, satisfied structurally by
+`*proxmox.Client`, exactly like `cluster`, `pools`, etc.) — **not** on `cluster`,
+even though `cluster/ha` lives inside the `cluster/` directory. The only edge
+connecting the two is the parent wiring the child in, the same lazy-construction
+seam root uses for its direct children:
+
+```go
+// cluster/status.go
+func (c *Client) HA() *ha.Client { return ha.New(c.client) }
+```
+
+Naming inside a nested package drops the parent's name as a prefix — `ha.Group`,
+not `ha.HAGroup` — the same stutter-avoidance already used for `cluster.Options`,
+`cluster.Status`, and `cluster.Resource` rather than `cluster.ClusterOptions` etc.
 
 ---
 

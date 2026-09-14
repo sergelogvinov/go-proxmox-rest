@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sergelogvinov/go-proxmox-rest/cluster"
+	"github.com/sergelogvinov/go-proxmox-rest/cluster/ha"
 	e2e "github.com/sergelogvinov/go-proxmox-rest/tests/e2e"
 )
 
@@ -59,9 +59,9 @@ func TestHARulesLifecycle(t *testing.T) {
 	// configured node.
 	comment := "e2e lifecycle"
 	nodes := cfg.Node
-	rule, err := hr.Create(ctx, &cluster.HARuleOptions{
+	rule, err := hr.Create(ctx, &ha.RuleOptions{
 		ID:        name,
-		Type:      cluster.HARuleTypeNodeAffinity,
+		Type:      ha.RuleTypeNodeAffinity,
 		Resources: []string{resource},
 		Nodes:     &nodes,
 		Comment:   &comment,
@@ -77,8 +77,8 @@ func TestHARulesLifecycle(t *testing.T) {
 	if rule.Rule != name {
 		t.Errorf("get: Rule = %q, want %q", rule.Rule, name)
 	}
-	if rule.Type != string(cluster.HARuleTypeNodeAffinity) {
-		t.Errorf("get: Type = %q, want %q", rule.Type, cluster.HARuleTypeNodeAffinity)
+	if rule.Type != string(ha.RuleTypeNodeAffinity) {
+		t.Errorf("get: Type = %q, want %q", rule.Type, ha.RuleTypeNodeAffinity)
 	}
 	if !slices.Contains(rule.Resources, resource) {
 		t.Errorf("get: Resources = %v, want to contain %q", rule.Resources, resource)
@@ -94,8 +94,8 @@ func TestHARulesLifecycle(t *testing.T) {
 	// resent (Proxmox requires it on every update).
 	newComment := "e2e updated"
 	disabled := true
-	_, err = hr.Update(ctx, name, &cluster.HARuleOptions{
-		Type:    cluster.HARuleTypeNodeAffinity,
+	_, err = hr.Update(ctx, name, &ha.RuleOptions{
+		Type:    ha.RuleTypeNodeAffinity,
 		Comment: &newComment,
 		Disable: &disabled,
 	})
@@ -155,28 +155,28 @@ func TestHARulesListTypeFilter(t *testing.T) {
 		})
 	}
 
-	_, err := hr.Create(ctx, &cluster.HARuleOptions{
+	_, err := hr.Create(ctx, &ha.RuleOptions{
 		ID:        name,
-		Type:      cluster.HARuleTypeNodeAffinity,
+		Type:      ha.RuleTypeNodeAffinity,
 		Resources: []string{resource},
 		Nodes:     &nodes,
 	})
 	e2e.RequireNoError(t, "create ha rule", err)
 
 	// The filter must include our node-affinity rule.
-	nodeAffinity, err := hr.List(ctx, cluster.HARuleTypeNodeAffinity, "")
+	nodeAffinity, err := hr.List(ctx, ha.RuleTypeNodeAffinity, "")
 	e2e.RequireNoError(t, "list ha rules filtered by type=node-affinity", err)
 	if !containsHARule(nodeAffinity, name) {
 		t.Errorf("list type=node-affinity: rule %q missing from result", name)
 	}
 	for _, r := range nodeAffinity {
-		if r.Type != string(cluster.HARuleTypeNodeAffinity) {
-			t.Errorf("list type=node-affinity: rule %q has Type %q, want %q", r.Rule, r.Type, cluster.HARuleTypeNodeAffinity)
+		if r.Type != string(ha.RuleTypeNodeAffinity) {
+			t.Errorf("list type=node-affinity: rule %q has Type %q, want %q", r.Rule, r.Type, ha.RuleTypeNodeAffinity)
 		}
 	}
 
 	// A filter for the other type must not include our rule.
-	resourceAffinity, err := hr.List(ctx, cluster.HARuleTypeResourceAffinity, "")
+	resourceAffinity, err := hr.List(ctx, ha.RuleTypeResourceAffinity, "")
 	e2e.RequireNoError(t, "list ha rules filtered by type=resource-affinity", err)
 	if containsHARule(resourceAffinity, name) {
 		t.Errorf("list type=resource-affinity: node-affinity rule %q unexpectedly present", name)
@@ -201,28 +201,28 @@ func TestHARulesValidation(t *testing.T) {
 	_, err := hr.Create(ctx, nil)
 	e2e.RequireError(t, "create with nil options", err)
 
-	_, err = hr.Create(ctx, &cluster.HARuleOptions{
-		Type:      cluster.HARuleTypeNodeAffinity,
+	_, err = hr.Create(ctx, &ha.RuleOptions{
+		Type:      ha.RuleTypeNodeAffinity,
 		Resources: []string{"vm:100"},
 	})
 	e2e.RequireError(t, "create with missing id", err)
 
-	_, err = hr.Create(ctx, &cluster.HARuleOptions{
+	_, err = hr.Create(ctx, &ha.RuleOptions{
 		ID:        "does-not-matter",
 		Resources: []string{"vm:100"},
 	})
 	e2e.RequireError(t, "create with missing type", err)
 
-	_, err = hr.Create(ctx, &cluster.HARuleOptions{
+	_, err = hr.Create(ctx, &ha.RuleOptions{
 		ID:   "does-not-matter",
-		Type: cluster.HARuleTypeNodeAffinity,
+		Type: ha.RuleTypeNodeAffinity,
 	})
 	e2e.RequireError(t, "create with missing resources", err)
 
 	_, err = hr.Update(ctx, "does-not-matter", nil)
 	e2e.RequireError(t, "update with nil options", err)
 
-	_, err = hr.Update(ctx, "does-not-matter", &cluster.HARuleOptions{})
+	_, err = hr.Update(ctx, "does-not-matter", &ha.RuleOptions{})
 	e2e.RequireError(t, "update with missing type", err)
 }
 
@@ -234,6 +234,6 @@ func uniqueVMResource() string {
 
 // containsHARule reports whether the slice contains an HA rule with the
 // given ID.
-func containsHARule(list []cluster.HARule, id string) bool {
-	return slices.ContainsFunc(list, func(r cluster.HARule) bool { return r.Rule == id })
+func containsHARule(list []ha.Rule, id string) bool {
+	return slices.ContainsFunc(list, func(r ha.Rule) bool { return r.Rule == id })
 }

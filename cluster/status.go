@@ -4,6 +4,8 @@ package cluster
 
 import (
 	"context"
+
+	"github.com/sergelogvinov/go-proxmox-rest/cluster/ha"
 )
 
 // Getter is the subset of the root client used by this package. It is
@@ -24,6 +26,12 @@ type Client struct {
 // New returns a new cluster client backed by the given root client.
 func New(c Getter) *Client {
 	return &Client{client: c}
+}
+
+// HA returns an accessor for the /cluster/ha resource tree, the
+// cluster-wide high-availability configuration.
+func (c *Client) HA() *ha.Client {
+	return ha.New(c.client)
 }
 
 // Status retrieves the cluster status via GET /cluster/status.
