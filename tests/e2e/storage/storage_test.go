@@ -39,7 +39,12 @@ func TestStorageLifecycle(t *testing.T) {
 	// mid-way, unless the caller asked to keep resources for debugging.
 	if cfg.CleanupOnFailure {
 		t.Cleanup(func() {
-			_ = sc.Delete(ctx, name)
+			cleanupCtx, cancel := e2e.CleanupContext()
+			defer cancel()
+
+			e2e.RetryCleanup(t, "delete storage", func() error {
+				return sc.Delete(cleanupCtx, name)
+			})
 		})
 	}
 
@@ -132,7 +137,12 @@ func TestStorageListTypeFilter(t *testing.T) {
 
 	if cfg.CleanupOnFailure {
 		t.Cleanup(func() {
-			_ = sc.Delete(ctx, name)
+			cleanupCtx, cancel := e2e.CleanupContext()
+			defer cancel()
+
+			e2e.RetryCleanup(t, "delete storage", func() error {
+				return sc.Delete(cleanupCtx, name)
+			})
 		})
 	}
 
@@ -184,7 +194,12 @@ func TestStorageUpdateContent(t *testing.T) {
 
 	if cfg.CleanupOnFailure {
 		t.Cleanup(func() {
-			_ = sc.Delete(ctx, name)
+			cleanupCtx, cancel := e2e.CleanupContext()
+			defer cancel()
+
+			e2e.RetryCleanup(t, "delete storage", func() error {
+				return sc.Delete(cleanupCtx, name)
+			})
 		})
 	}
 

@@ -43,7 +43,12 @@ func TestHAGroupsLifecycle(t *testing.T) {
 	// unless the caller asked to keep resources for debugging.
 	if cfg.CleanupOnFailure {
 		t.Cleanup(func() {
-			_ = hg.Delete(ctx, name)
+			cleanupCtx, cancel := e2e.CleanupContext()
+			defer cancel()
+
+			e2e.RetryCleanup(t, "delete ha group", func() error {
+				return hg.Delete(cleanupCtx, name)
+			})
 		})
 	}
 

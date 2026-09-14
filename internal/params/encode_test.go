@@ -81,6 +81,21 @@ func TestEncode(t *testing.T) {
 			}{Name: empty},
 			want: map[string]string{},
 		},
+		{
+			name: "readonly field is never sent, even non-zero",
+			opts: struct {
+				Name   string `url:"name"`
+				Digest string `url:"digest,readonly"`
+			}{Name: "pve", Digest: "abc123"},
+			want: map[string]string{"name": "pve"},
+		},
+		{
+			name: "writeonly modifier has no effect on Encode",
+			opts: struct {
+				Rename string `url:"rename,writeonly"`
+			}{Rename: "old-name"},
+			want: map[string]string{"rename": "old-name"},
+		},
 	}
 
 	for _, test := range cases {

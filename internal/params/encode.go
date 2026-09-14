@@ -1,8 +1,12 @@
-// Package params provides a reflection-based encoder that converts option
-// structs into the flat form parameters expected by the Proxmox API
+// Package params provides a reflection-based encoder/decoder that converts
+// between option structs and the flat form parameters / JSON responses used
+// by the Proxmox API.
 //
-// Tag format: `url:"name"` — the wire parameter name. Fields without a
-// tag (and unexported fields) are skipped.
+// Tag format: `url:"name[,modifier...]"` — see parseTag's doc comment
+// (tag.go) for the full grammar, including the "readonly"/"writeonly"
+// modifiers Encode and Decode use to let a single struct carry both a
+// resource's read and write shape when appropriate. Fields without a tag
+// (and unexported fields) are skipped by both Encode and Decode.
 //
 // Encoding rules:
 //   - *T (pointer): encoded iff non-nil; the value is always sent, even
@@ -11,6 +15,7 @@
 //   - bool: sent as "1" when true; skipped when false.
 //   - int/float: skipped when zero.
 //   - []string: comma-joined, skipped when empty.
+//   - a field tagged "readonly" is never sent, regardless of its value.
 package params
 
 import (
@@ -43,8 +48,8 @@ func Encode(v any) (map[string]string, error) {
 			continue
 		}
 
-		name, ok := splitTag(f.Tag.Get("url"))
-		if !ok {
+		name, readonly, _, ok := parseTag(f.Tag.Get("url"))
+		if !ok || readonly {
 			continue
 		}
 
@@ -121,16 +126,4 @@ func encodeField(params map[string]string, name string, fv reflect.Value, isPtr 
 	}
 
 	return nil
-}
-
-// splitTag extracts the parameter name from a `url:"name"` tag,
-// reporting whether the field should be encoded at all.
-func splitTag(tag string) (string, bool) {
-	if tag == "" || tag == "-" {
-		return "", false
-	}
-	if i := strings.IndexByte(tag, ','); i >= 0 {
-		tag = tag[:i]
-	}
-	return tag, true
 }

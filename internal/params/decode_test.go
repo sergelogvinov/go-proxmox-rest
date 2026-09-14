@@ -71,6 +71,39 @@ func TestDecode(t *testing.T) {
 		}
 	})
 
+	t.Run("writeonly field is skipped even if the key is present", func(t *testing.T) {
+		type group struct {
+			Name   string `url:"group"`
+			Rename string `url:"rename,writeonly"`
+		}
+
+		var g group
+		if err := Decode([]byte(`{"group":"g1","rename":"old-name"}`), &g); err != nil {
+			t.Fatalf("Decode() error = %v", err)
+		}
+		if g.Name != "g1" {
+			t.Errorf("Name = %q, want %q", g.Name, "g1")
+		}
+		if g.Rename != "" {
+			t.Errorf("Rename = %q, want empty (writeonly field must not decode)", g.Rename)
+		}
+	})
+
+	t.Run("readonly modifier has no effect on Decode", func(t *testing.T) {
+		type alias struct {
+			Name      string `url:"name"`
+			IPVersion int    `url:"ipversion,readonly"`
+		}
+
+		var a alias
+		if err := Decode([]byte(`{"name":"a1","ipversion":4}`), &a); err != nil {
+			t.Fatalf("Decode() error = %v", err)
+		}
+		if a.IPVersion != 4 {
+			t.Errorf("IPVersion = %d, want 4 (readonly only affects Encode)", a.IPVersion)
+		}
+	})
+
 	t.Run("null data leaves zero value", func(t *testing.T) {
 		s := storage{ID: "keep", Content: nil, Shared: 0, Ignored: ""}
 		if err := Decode([]byte(`null`), &s); err != nil {
@@ -180,6 +213,42 @@ func TestDecodeBool(t *testing.T) {
 	t.Run("errors on unrecognized string", func(t *testing.T) {
 		var f flags
 		if err := Decode([]byte(`{"enabled":"yes"}`), &f); err == nil {
+			t.Fatal("Decode() error = nil, want error")
+		}
+	})
+}
+
+func TestDecodeNumber(t *testing.T) {
+	type nums struct {
+		Count  int     `url:"count"`
+		Total  *int    `url:"total"`
+		Shared uint    `url:"shared"`
+		Ratio  float64 `url:"ratio"`
+	}
+
+	t.Run("decodes from genuine JSON number", func(t *testing.T) {
+		var n nums
+		if err := Decode([]byte(`{"count":5,"total":10,"shared":2,"ratio":1.5}`), &n); err != nil {
+			t.Fatalf("Decode() error = %v", err)
+		}
+		if n.Count != 5 || n.Total == nil || *n.Total != 10 || n.Shared != 2 || n.Ratio != 1.5 {
+			t.Errorf("n = %+v, want Count=5 Total=10 Shared=2 Ratio=1.5", n)
+		}
+	})
+
+	t.Run("decodes from JSON string", func(t *testing.T) {
+		var n nums
+		if err := Decode([]byte(`{"count":"5","total":"10","shared":"2","ratio":"1.5"}`), &n); err != nil {
+			t.Fatalf("Decode() error = %v", err)
+		}
+		if n.Count != 5 || n.Total == nil || *n.Total != 10 || n.Shared != 2 || n.Ratio != 1.5 {
+			t.Errorf("n = %+v, want Count=5 Total=10 Shared=2 Ratio=1.5", n)
+		}
+	})
+
+	t.Run("errors on unrecognized string", func(t *testing.T) {
+		var n nums
+		if err := Decode([]byte(`{"count":"not-a-number"}`), &n); err == nil {
 			t.Fatal("Decode() error = nil, want error")
 		}
 	})

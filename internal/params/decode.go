@@ -4,13 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
 // Decode is the reverse of Encode: it unmarshals a Proxmox API JSON payload
 // into out (a non-nil pointer), recursing into nested structs and slices of
-// structs using the same `url` struct tags Encode uses, so a single tag per
-// field names it on the wire for both directions.
+// structs using the same `url` struct tags Encode uses (see tag.go's
+// parseTag), so a single tag per field names it on the wire for both
+// directions. This means every field a caller wants populated from a GET
+// response must carry a `url` tag with its wire name — a bare `json` tag
+// is not enough, since Decode does not consult it.
+//
+// A field tagged "writeonly" (e.g. `url:"rename,writeonly"`) is always
+// skipped by Decode, even if the response happens to contain a matching
+// key — this is for write-only parameters that share a struct with a
+// resource's read fields but never appear in a GET response.
 //
 // It behaves like encoding/json for every field except two:
 //
@@ -23,6 +32,10 @@ import (
 //     JSON number (1/0) or a JSON string ("1"/"0"/"true"/"false"), in
 //     addition to a genuine JSON bool, matching Proxmox's inconsistent
 //     encoding of boolean fields across endpoints.
+//   - A numeric field (int/uint/float, or a pointer to one) is allowed to
+//     arrive on the wire as a JSON string (e.g. "5"), in addition to a
+//     genuine JSON number, matching Proxmox's inconsistent encoding of
+//     numeric fields across endpoints.
 func Decode(data []byte, out any) error {
 	if len(data) == 0 || string(data) == "null" {
 		return nil
@@ -56,6 +69,9 @@ func decodeValue(raw json.RawMessage, rv reflect.Value) error {
 	case rv.Kind() == reflect.Bool:
 		return decodeBool(raw, rv)
 
+	case isNumericKind(rv.Kind()):
+		return decodeNumber(raw, rv)
+
 	case rv.Kind() == reflect.Struct:
 		return decodeStruct(raw, rv)
 
@@ -82,9 +98,12 @@ func decodeStruct(raw json.RawMessage, rv reflect.Value) error {
 			continue
 		}
 
-		name, ok := urlName(f.Tag.Get("url"), f.Name)
-		if !ok {
+		name, _, writeonly, ok := parseTag(f.Tag.Get("url"))
+		if !ok || writeonly {
 			continue
+		}
+		if name == "" {
+			name = f.Name
 		}
 
 		item, present := m[name]
@@ -181,27 +200,63 @@ func decodeBool(raw json.RawMessage, rv reflect.Value) error {
 	return nil
 }
 
+// isNumericKind reports whether k is a Go int/uint/float kind, i.e. one
+// decodeNumber knows how to populate.
+func isNumericKind(k reflect.Kind) bool {
+	switch k { //nolint:exhaustive
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
+		return true
+	default:
+		return false
+	}
+}
+
+// decodeNumber decodes raw into the numeric rv, accepting a genuine JSON
+// number or a JSON string holding one (e.g. "5"), since Proxmox encodes
+// numeric fields inconsistently across endpoints.
+func decodeNumber(raw json.RawMessage, rv reflect.Value) error {
+	var v any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return err
+	}
+
+	var f float64
+
+	switch t := v.(type) {
+	case float64:
+		f = t
+
+	case string:
+		parsed, err := strconv.ParseFloat(strings.TrimSpace(t), 64)
+		if err != nil {
+			return fmt.Errorf("params: cannot decode %q as number", t)
+		}
+		f = parsed
+
+	default:
+		return fmt.Errorf("params: cannot decode %T as number", v)
+	}
+
+	switch rv.Kind() { //nolint:exhaustive
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		rv.SetInt(int64(f))
+
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		rv.SetUint(uint64(f))
+
+	case reflect.Float32, reflect.Float64:
+		rv.SetFloat(f)
+	}
+
+	return nil
+}
+
 // elemIsStruct reports whether t (or the type it points to) is a struct.
 func elemIsStruct(t reflect.Type) bool {
 	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 	return t.Kind() == reflect.Struct
-}
-
-// urlName extracts the wire field name from a `url:"..."` tag, reporting
-// whether the field should be decoded at all: a missing or "-" tag skips
-// the field, since (unlike encoding/json) an untagged field carries no wire
-// name to decode by.
-func urlName(tag, fieldName string) (string, bool) {
-	if tag == "" || tag == "-" {
-		return "", false
-	}
-
-	name, _, _ := strings.Cut(tag, ",")
-	if name == "" {
-		name = fieldName
-	}
-
-	return name, true
 }

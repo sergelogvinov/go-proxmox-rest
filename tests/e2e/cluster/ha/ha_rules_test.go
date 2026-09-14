@@ -40,7 +40,12 @@ func TestHARulesLifecycle(t *testing.T) {
 	// unless the caller asked to keep resources for debugging.
 	if cfg.CleanupOnFailure {
 		t.Cleanup(func() {
-			_ = hr.Delete(ctx, name)
+			cleanupCtx, cancel := e2e.CleanupContext()
+			defer cancel()
+
+			e2e.RetryCleanup(t, "delete ha rule", func() error {
+				return hr.Delete(cleanupCtx, name)
+			})
 		})
 	}
 
@@ -151,7 +156,12 @@ func TestHARulesListTypeFilter(t *testing.T) {
 
 	if cfg.CleanupOnFailure {
 		t.Cleanup(func() {
-			_ = hr.Delete(ctx, name)
+			cleanupCtx, cancel := e2e.CleanupContext()
+			defer cancel()
+
+			e2e.RetryCleanup(t, "delete ha rule", func() error {
+				return hr.Delete(cleanupCtx, name)
+			})
 		})
 	}
 

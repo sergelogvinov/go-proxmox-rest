@@ -423,6 +423,67 @@ Rules:
   depending on the endpoint.
 - Endpoint-specific quirks go in a per-package `encode.go`.
 
+### Read (`X`) vs. write (`XOptions`) structs: when to merge
+
+Every resource has a read shape (returned by GET) and a write shape (accepted by
+POST/PUT). Before adding a new resource, check whether these two shapes should be one
+Go type or two — don't default to splitting them without checking, and don't merge
+them just because the field lists look similar at a glance.
+
+**Default: two separate types, `X` (read) and `XOptions` (write).** This is the shape
+for every multi-item, key-addressed resource (`List`/`Get`/`Create`/`Update`/`Delete`)
+— e.g. `pools.Pool`/`pools.Options`, `ha.Group`/`ha.GroupOptions`,
+`ha.Rule`/`ha.RuleOptions`, `firewall.Alias`/`firewall.AliasOptions`,
+`firewall.Group`/`firewall.GroupOptions`, `firewall.IPSet`/`firewall.IPSetOptions`,
+`firewall.Rule`/`firewall.RuleOptions`. Keep them separate whenever any of these hold:
+- Update needs to distinguish "leave unchanged" from "explicitly clear to zero/empty"
+  — that requires pointer fields (`*string`, `*bool`, ...) on the write side, which
+  would force needless nil-checks on the read side for no benefit.
+- Create and Update don't require exactly the same fields (e.g. `RuleOptions.Type`/
+  `Action` are required on both, but most other fields are pointer-optional).
+- Either side has fields the other has no use for: write-only knobs (`Rename`,
+  `Delete []string`), or read-only/server-computed fields (`Digest` as returned by
+  GET, `Pos`, `IPVersion`).
+
+**Exception: merge into one type for a cluster-wide singleton** — a resource with
+exactly one instance and no Create/Delete, only GET/PUT (currently `cluster.Options`
+and `firewall.Options`, i.e. the `.../options` config endpoints). Use one struct with
+dual `json:"...,omitempty"` + `url:"...,omitempty"` tags per field, non-pointer fields
+relying on the params encoder's "skip the zero value" rule, and a `Delete []string`
+field for explicit resets. There's no Create/Update field-set asymmetry to reconcile
+(PUT is the only write verb) and no per-item pointer "clear" semantics needed beyond
+what `Delete` already covers, so a second type would be a field-for-field duplicate.
+
+**The check, concretely:** list the read fields and the write fields side by side. Only
+merge when they're identical *and* the resource is a GET/PUT singleton. A near match on
+a key-addressed resource is not enough — e.g. `firewall.Alias` (`Name`, `CIDR`,
+`Comment`, `IPVersion`, `Digest`) vs. `firewall.AliasOptions` (`Name`, `CIDR`,
+`Comment *string`, `Rename *string`, `Digest`) look close, but `IPVersion` is
+read-only, `Rename` is write-only, and `Comment` needs pointer semantics on write —
+merging would leak write-only/read-only fields across both directions and lose the
+unchanged-vs-cleared distinction on `Comment`. As of this writing, the merge applies to
+exactly one subtree (the `.../options` singletons); every other resource keeps the
+two-type shape.
+
+**`readonly`/`writeonly` tag modifiers (a narrower tool, not a blanket merge-enabler).**
+`internal/params` tags support `url:"name,readonly"` and `url:"name,writeonly"` (see
+`internal/params/tag.go`'s `parseTag`): a `readonly` field is populated by `Decode` but
+never sent by `Encode`, no matter its value; a `writeonly` field is the mirror image.
+This solves *one* of the three reasons listed above for keeping types separate — fields
+that only make sense on one side (a write-only `Rename`, a read-only `Digest`/`Pos`/
+`IPVersion`) can now coexist in a single struct without a read call accidentally
+populating a write-only field, or a write call built by copying a fetched struct
+accidentally re-sending a read-only one. It does **not** solve the other two: it can't
+give a plain field pointer "clear vs. unchanged" semantics, and it can't make Create and
+Update require different fields. Concretely, this is why `firewall.Alias` still can't
+merge with `AliasOptions` even with these modifiers available: `IPVersion`/`Rename`
+could be tagged `readonly`/`writeonly` easily enough, but `Comment` would still need to
+be a pointer to support explicit-clear on Update (Proxmox's alias `PUT` has no `delete`
+list to fall back on), which pushes nil-checks onto every read-path caller — the actual
+blocker was never the field-name overlap. Reach for these modifiers only when a
+resource's read/write shapes are identical *except* for a handful of one-sided fields,
+none of which need pointer clear-semantics.
+
 ### Decode helpers
 ```go
 // Generic decode: unwrap envelope, then map snake_case JSON → Go struct.

@@ -31,7 +31,12 @@ func TestPoolsLifecycle(t *testing.T) {
 	// unless the caller asked to keep resources for debugging.
 	if cfg.CleanupOnFailure {
 		t.Cleanup(func() {
-			_ = pc.Delete(ctx, name, true)
+			cleanupCtx, cancel := e2e.CleanupContext()
+			defer cancel()
+
+			e2e.RetryCleanup(t, "delete pool", func() error {
+				return pc.Delete(cleanupCtx, name, true)
+			})
 		})
 	}
 
@@ -105,7 +110,12 @@ func TestPoolsUpdateClearComment(t *testing.T) {
 
 	if cfg.CleanupOnFailure {
 		t.Cleanup(func() {
-			_ = pc.Delete(ctx, name, true)
+			cleanupCtx, cancel := e2e.CleanupContext()
+			defer cancel()
+
+			e2e.RetryCleanup(t, "delete pool", func() error {
+				return pc.Delete(cleanupCtx, name, true)
+			})
 		})
 	}
 

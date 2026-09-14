@@ -5,6 +5,7 @@ package cluster
 import (
 	"context"
 
+	"github.com/sergelogvinov/go-proxmox-rest/cluster/firewall"
 	"github.com/sergelogvinov/go-proxmox-rest/cluster/ha"
 )
 
@@ -32,6 +33,12 @@ func New(c Getter) *Client {
 // cluster-wide high-availability configuration.
 func (c *Client) HA() *ha.Client {
 	return ha.New(c.client)
+}
+
+// Firewall returns an accessor for the /cluster/firewall resource tree,
+// the cluster-wide firewall configuration.
+func (c *Client) Firewall() *firewall.Client {
+	return firewall.New(c.client)
 }
 
 // Status retrieves the cluster status via GET /cluster/status.
