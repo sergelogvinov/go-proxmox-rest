@@ -4,6 +4,7 @@ package cluster_e2e
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/sergelogvinov/go-proxmox-rest/cluster"
@@ -23,9 +24,18 @@ func TestHAGroupsLifecycle(t *testing.T) {
 		t.Skip("PVE_E2E_NODE is not set; skipping HA group tests")
 	}
 
-	client := e2e.NewE2EClient(t, cfg)
-	hg := client.Cluster().HA().Groups()
 	ctx := t.Context()
+
+	client := e2e.NewE2EClient(t, cfg)
+
+	v, err := client.Version(ctx)
+	e2e.RequireNoError(t, "get version", err)
+
+	if strings.HasPrefix(v.Version, "8.") {
+		t.Skip("Proxmox version < 9; skipping HA group tests")
+	}
+
+	hg := client.Cluster().HA().Groups()
 
 	name := e2e.UniqueName(cfg.Prefix)
 

@@ -57,6 +57,7 @@ linters:
     - wrapcheck
     - wsl
     - gomodguard
+    - exhaustruct_v5
 
     # temporarily disabled linters
     - noinlineerr
@@ -69,6 +70,7 @@ linters:
     #
     - errcheck
     - funcorder
+    - revive
   settings:
     wsl_v5:
       allow-first-in-block: true
@@ -131,6 +133,7 @@ linters:
         linters:
           - dupl
           - goconst
+          - exhaustruct_v5
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
