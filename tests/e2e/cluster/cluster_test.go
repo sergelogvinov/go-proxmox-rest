@@ -2,7 +2,7 @@
 
 // Package cluster_e2e exercises the read-only cluster module against a live
 // Proxmox VE cluster: status, resources (unfiltered and type-filtered),
-// recent tasks, and the next free VMID.
+// recent tasks, the next free VMID, and the cluster log.
 package cluster_e2e
 
 import (
@@ -126,5 +126,32 @@ func TestClusterNextID(t *testing.T) {
 	e2e.RequireNoError(t, "nextid (assert free)", err)
 	if same != next {
 		t.Errorf("nextid (assert free): got %d, want %d", same, next)
+	}
+}
+
+// TestClusterLog verifies GET /cluster/log decodes without error and that
+// a limit caps the number of entries returned.
+func TestClusterLog(t *testing.T) {
+	cfg := e2e.MustConfig(t)
+	if cfg.Parallel {
+		t.Parallel()
+	}
+
+	client := e2e.NewE2EClient(t, cfg)
+	cc := client.Cluster()
+	ctx := t.Context()
+
+	entries, err := cc.Log(ctx, 0)
+	e2e.RequireNoError(t, "log (unfiltered)", err)
+	for _, e := range entries {
+		if e.ID == "" || e.Node == "" {
+			t.Errorf("log: entry with empty ID/Node: %+v", e)
+		}
+	}
+
+	limited, err := cc.Log(ctx, 1)
+	e2e.RequireNoError(t, "log (limit=1)", err)
+	if len(limited) > 1 {
+		t.Errorf("log (limit=1): got %d entries, want at most 1", len(limited))
 	}
 }

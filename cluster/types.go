@@ -47,6 +47,31 @@ type NodeStatus struct {
 	Local int `json:"local,omitempty" url:"local,omitempty"`
 }
 
+// LogEntry describes a single cluster log entry returned by
+// GET /cluster/log.
+type LogEntry struct {
+	// ID uniquely identifies the entry: "<uid>:<node>".
+	ID string `json:"id,omitempty" url:"id,omitempty"`
+	// UID is the entry's sequence number within the node's log ring
+	// buffer (not globally unique across nodes; combine with Node, or
+	// use ID, for a unique key).
+	UID int64 `json:"uid,omitempty" url:"uid,omitempty"`
+	// Time is the UNIX timestamp the entry was logged at.
+	Time int64 `json:"time,omitempty" url:"time,omitempty"`
+	// Priority is the syslog priority level (0 emerg .. 7 debug).
+	Priority int `json:"pri,omitempty" url:"pri,omitempty"`
+	// Tag is the originating service/tag, e.g. "pvedaemon".
+	Tag string `json:"tag,omitempty" url:"tag,omitempty"`
+	// PID is the process ID that logged the entry.
+	PID int `json:"pid,omitempty" url:"pid,omitempty"`
+	// Node is the node the entry was logged on.
+	Node string `json:"node,omitempty" url:"node,omitempty"`
+	// User is the user that triggered the entry, e.g. "root@pam".
+	User string `json:"user,omitempty" url:"user,omitempty"`
+	// Message is the log message text.
+	Message string `json:"msg,omitempty" url:"msg,omitempty"`
+}
+
 // Task describes a single recent task entry returned by GET /cluster/tasks,
 // the cluster-wide aggregation of every node's task list.
 type Task struct {
