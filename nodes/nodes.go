@@ -8,6 +8,8 @@ import (
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/capabilities"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/hardware"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/network"
+	"github.com/sergelogvinov/go-proxmox-rest/nodes/replication"
+	"github.com/sergelogvinov/go-proxmox-rest/nodes/tasks"
 )
 
 // Getter is the subset of the root client used by this package. It is
@@ -55,4 +57,17 @@ func (c *Client) Network() *network.Client {
 // migration capabilities.
 func (c *Client) Capabilities() *capabilities.Client {
 	return capabilities.New(c.client)
+}
+
+// Replication returns an accessor for the /nodes/{node}/replication
+// resource tree: the runtime status and logs of storage replication jobs
+// whose guest runs on that node.
+func (c *Client) Replication() *replication.Client {
+	return replication.New(c.client)
+}
+
+// Tasks returns an accessor for the /nodes/{node}/tasks resource tree: the
+// node's task history, and a single task's log/status/stop.
+func (c *Client) Tasks() *tasks.Client {
+	return tasks.New(c.client)
 }
