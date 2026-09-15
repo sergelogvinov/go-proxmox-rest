@@ -9,6 +9,7 @@ import (
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/hardware"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/network"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/replication"
+	"github.com/sergelogvinov/go-proxmox-rest/nodes/storage"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/tasks"
 )
 
@@ -70,4 +71,11 @@ func (c *Client) Replication() *replication.Client {
 // node's task history, and a single task's log/status/stop.
 func (c *Client) Tasks() *tasks.Client {
 	return tasks.New(c.client)
+}
+
+// Storage returns an accessor for the /nodes/{node}/storage resource
+// tree: each storage's status on that node, its content (volumes), and
+// backup retention pruning.
+func (c *Client) Storage() *storage.Client {
+	return storage.New(c.client)
 }
