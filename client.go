@@ -15,6 +15,7 @@ import (
 
 	"github.com/sergelogvinov/go-proxmox-rest/cluster"
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/nodes"
 	"github.com/sergelogvinov/go-proxmox-rest/pools"
 	"github.com/sergelogvinov/go-proxmox-rest/storage"
 	"resty.dev/v3"
@@ -386,6 +387,11 @@ func (c *Client) UpdateValues(ctx context.Context, path string, out any, params 
 // Cluster returns a client for the cluster API section (/cluster).
 func (c *Client) Cluster() *cluster.Client {
 	return cluster.New(c)
+}
+
+// Nodes returns a client for the per-node API section (/nodes/{node}).
+func (c *Client) Nodes() *nodes.Client {
+	return nodes.New(c)
 }
 
 // Pools returns a client for the pools API section (/pools).
