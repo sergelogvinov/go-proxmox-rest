@@ -47,6 +47,40 @@ type NodeStatus struct {
 	Local int `json:"local,omitempty" url:"local,omitempty"`
 }
 
+// Task describes a single recent task entry returned by GET /cluster/tasks,
+// the cluster-wide aggregation of every node's task list.
+type Task struct {
+	// UPID is the unique process/task identifier.
+	UPID string `json:"upid,omitempty" url:"upid,omitempty"`
+	// Node is the node the task ran/runs on.
+	Node string `json:"node,omitempty" url:"node,omitempty"`
+	// PID is the worker process ID.
+	PID int `json:"pid,omitempty" url:"pid,omitempty"`
+	// PStart is the worker process start time (used with PID to detect
+	// PID reuse), not a wall-clock time.
+	PStart int `json:"pstart,omitempty" url:"pstart,omitempty"`
+	// StartTime is the UNIX timestamp the task started at.
+	StartTime int64 `json:"starttime,omitempty" url:"starttime,omitempty"`
+	// Type is the task kind, e.g. "vzdump", "qmstart", "vncshell".
+	Type string `json:"type,omitempty" url:"type,omitempty"`
+	// ID is the task's subject id, meaning depends on Type (e.g. a VMID
+	// for guest tasks).
+	ID string `json:"id,omitempty" url:"id,omitempty"`
+	// User is the user that started the task, e.g. "root@pam". If the
+	// task was started via an API token, this is the bare username and
+	// TokenID holds the token id separately.
+	User string `json:"user,omitempty" url:"user,omitempty"`
+	// TokenID is the API token id (without the user prefix) if the task
+	// was started via an API token.
+	TokenID string `json:"tokenid,omitempty" url:"tokenid,omitempty"`
+	// EndTime is the UNIX timestamp the task finished at. Zero while the
+	// task is still running.
+	EndTime int64 `json:"endtime,omitempty" url:"endtime,omitempty"`
+	// Status is "OK" on success, or an error message, once the task has
+	// finished. Empty while the task is still running.
+	Status string `json:"status,omitempty" url:"status,omitempty"`
+}
+
 // Resource describes a single entry returned by GET /cluster/resources.
 // The field set varies by Type: only the fields relevant to that type are
 // populated.

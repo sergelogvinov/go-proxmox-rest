@@ -1,7 +1,8 @@
 //go:build e2e
 
 // Package cluster_e2e exercises the read-only cluster module against a live
-// Proxmox VE cluster: status and resources (unfiltered and type-filtered).
+// Proxmox VE cluster: status, resources (unfiltered and type-filtered),
+// recent tasks, and the next free VMID.
 package cluster_e2e
 
 import (
@@ -76,5 +77,54 @@ func TestClusterResources(t *testing.T) {
 		if r.Type != "qemu" && r.Type != "lxc" {
 			t.Errorf("resources(type=vm): Type = %q, want %q or %q", r.Type, "qemu", "lxc")
 		}
+	}
+}
+
+// TestClusterTasks verifies GET /cluster/tasks decodes without error and
+// that every entry has a non-empty UPID/Node/Type. The cluster may have no
+// recent tasks at all, so this doesn't assert on the list being non-empty.
+func TestClusterTasks(t *testing.T) {
+	cfg := e2e.MustConfig(t)
+	if cfg.Parallel {
+		t.Parallel()
+	}
+
+	client := e2e.NewE2EClient(t, cfg)
+	ctx := t.Context()
+
+	tasks, err := client.Cluster().Tasks(ctx)
+	e2e.RequireNoError(t, "cluster tasks", err)
+
+	for _, task := range tasks {
+		if task.UPID == "" || task.Node == "" || task.Type == "" {
+			t.Errorf("tasks: entry with empty UPID/Node/Type: %+v", task)
+		}
+	}
+}
+
+// TestClusterNextID verifies GET /cluster/nextid returns a usable VMID both
+// unfiltered and when asserting a specific, currently-free id is available.
+func TestClusterNextID(t *testing.T) {
+	cfg := e2e.MustConfig(t)
+	if cfg.Parallel {
+		t.Parallel()
+	}
+
+	client := e2e.NewE2EClient(t, cfg)
+	cc := client.Cluster()
+	ctx := t.Context()
+
+	next, err := cc.NextID(ctx, 0)
+	e2e.RequireNoError(t, "nextid (unfiltered)", err)
+	if next < 100 {
+		t.Errorf("nextid: got %d, want >= 100", next)
+	}
+
+	// Asserting that the id nextid itself just returned is still free
+	// must succeed and return the same id.
+	same, err := cc.NextID(ctx, next)
+	e2e.RequireNoError(t, "nextid (assert free)", err)
+	if same != next {
+		t.Errorf("nextid (assert free): got %d, want %d", same, next)
 	}
 }
