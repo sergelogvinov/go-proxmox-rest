@@ -1,11 +1,13 @@
 // Package qemu provides access to the Proxmox VE per-node QEMU guest API
-// (endpoints under /nodes/{node}/qemu/{vmid}). This currently covers only
-// the status resource tree (endpoints under .../status): the guest's
-// current status, and its start/stop/reset/shutdown/reboot/suspend/resume
-// power actions — folded directly onto Client rather than behind a
-// separate accessor, since status is (so far) this package's only
-// resource. The much larger config/clone/migrate/snapshot/... surface is
-// left for a future addition.
+// (endpoints under /nodes/{node}/qemu/{vmid}). This currently covers the
+// status resource tree (current status and the
+// start/stop/reset/shutdown/reboot/suspend/resume power actions),
+// config (read/update the guest's configuration), clone, and template —
+// all folded directly onto Client rather than behind per-resource
+// accessors, since a chain would only add a layer of indirection over
+// what's otherwise a flat set of {vmid}-scoped actions. The much larger
+// migrate/snapshot/firewall/agent/... surface is left for a future
+// addition.
 package qemu
 
 import (
@@ -18,6 +20,7 @@ import (
 type Getter interface {
 	Get(ctx context.Context, path string, out any, params map[string]string) error
 	Create(ctx context.Context, path string, out any, params map[string]string) error
+	Update(ctx context.Context, path string, out any, params map[string]string) error
 }
 
 // Client provides access to the /nodes/{node}/qemu/{vmid} resource tree.

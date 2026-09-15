@@ -82,9 +82,9 @@ func (c *Client) Storage() *storage.Client {
 }
 
 // Qemu returns an accessor for the /nodes/{node}/qemu/{vmid} resource
-// tree. Currently covers only the status resource tree: the guest's
-// current status (Status) and its power actions (Start, Stop, Reset,
-// Shutdown, Reboot, Suspend, Resume).
+// tree: the guest's current status (Status) and power actions (Start,
+// Stop, Reset, Shutdown, Reboot, Suspend, Resume), its configuration
+// (Config, UpdateConfig, UpdateConfigAsync), and Clone/Template.
 func (c *Client) Qemu() *qemu.Client {
 	return qemu.New(c.client)
 }

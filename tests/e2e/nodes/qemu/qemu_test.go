@@ -1,13 +1,20 @@
 //go:build e2e
 
-// Package qemu_e2e exercises the per-node QEMU guest status module
-// against a live Proxmox VE cluster.
+// Package qemu_e2e exercises the per-node QEMU guest module (status,
+// config, clone, template) against a live Proxmox VE cluster.
 //
-// This suite has no VM creation module yet (nodes/qemu only covers the
-// status resource tree so far) and, even if it did, starting/stopping a
-// real guest is far too disruptive to run unattended as part of a
-// general e2e suite. So every check here runs against a syntactically
-// valid but guaranteed-nonexistent VMID.
+// This suite has no VM creation or destroy method yet, so every write
+// path here (the power actions in this file, UpdateConfig/
+// UpdateConfigAsync in config_test.go, Clone in clone_test.go, Template
+// in template_test.go) runs against a syntactically valid but
+// guaranteed-nonexistent VMID rather than a real guest: starting/
+// stopping/reconfiguring a real guest is too disruptive to run
+// unattended, and Clone/Template would leave state (a new guest, or an
+// irreversible template conversion) this suite has no way to clean up.
+// Config's read path (config_test.go) is the exception — being
+// read-only, it's also exercised opportunistically against any real
+// guest found via cluster.Resources, to verify decoding against
+// production data.
 //
 // Proxmox's own actions split on this: Reset/Reboot/Suspend/Resume all
 // call PVE::QemuServer::check_running (or, for Resume, additionally try
