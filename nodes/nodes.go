@@ -8,6 +8,7 @@ import (
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/capabilities"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/hardware"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/network"
+	"github.com/sergelogvinov/go-proxmox-rest/nodes/qemu"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/replication"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/storage"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/tasks"
@@ -78,4 +79,12 @@ func (c *Client) Tasks() *tasks.Client {
 // backup retention pruning.
 func (c *Client) Storage() *storage.Client {
 	return storage.New(c.client)
+}
+
+// Qemu returns an accessor for the /nodes/{node}/qemu/{vmid} resource
+// tree. Currently covers only the status resource tree: the guest's
+// current status (Status) and its power actions (Start, Stop, Reset,
+// Shutdown, Reboot, Suspend, Resume).
+func (c *Client) Qemu() *qemu.Client {
+	return qemu.New(c.client)
 }
