@@ -1,0 +1,62 @@
+// Package qemu provides access to the Proxmox VE cluster-wide QEMU API
+// (endpoints under /cluster/qemu): available CPU flags and custom CPU
+// model definitions.
+package qemu
+
+import (
+	"context"
+)
+
+// Getter is the subset of the root client used by this package. It is
+// satisfied by *proxmox.Client, which keeps the qemu package decoupled from
+// the root package (no import cycle).
+type Getter interface {
+	Get(ctx context.Context, path string, out any, params map[string]string) error
+	Create(ctx context.Context, path string, out any, params map[string]string) error
+	Update(ctx context.Context, path string, out any, params map[string]string) error
+	Delete(ctx context.Context, path string, out any, params map[string]string) error
+}
+
+// Client provides access to the /cluster/qemu resource tree.
+type Client struct {
+	client Getter
+}
+
+// New returns a new qemu client backed by the given root client.
+func New(c Getter) *Client {
+	return &Client{client: c}
+}
+
+// CPUFlags retrieves the CPU flags available cluster-wide via
+// GET /cluster/qemu/cpu-flags.
+//
+// arch is currently only meaningfully implemented for ArchX8664 by
+// Proxmox (ArchAarch64 always returns an empty list); an empty arch
+// defaults to the host's own architecture. An empty accel defaults to
+// AccelKVM.
+func (c *Client) CPUFlags(ctx context.Context, arch Arch, accel Accel) ([]CPUFlag, error) {
+	var reqParams map[string]string
+	if arch != "" || accel != "" {
+		reqParams = map[string]string{}
+		if arch != "" {
+			reqParams["arch"] = string(arch)
+		}
+		if accel != "" {
+			reqParams["accel"] = string(accel)
+		}
+	}
+
+	var flags []CPUFlag
+	if err := c.client.Get(ctx, "/cluster/qemu/cpu-flags", &flags, reqParams); err != nil {
+		return nil, err
+	}
+
+	return flags, nil
+}
+
+// CustomCPUModels returns an accessor for the
+// /cluster/qemu/custom-cpu-models resource, cluster-wide custom CPU model
+// definitions.
+func (c *Client) CustomCPUModels() *customCPUModelsResource {
+	return &customCPUModelsResource{client: c.client}
+}

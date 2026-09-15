@@ -11,6 +11,7 @@ import (
 	"github.com/sergelogvinov/go-proxmox-rest/cluster/firewall"
 	"github.com/sergelogvinov/go-proxmox-rest/cluster/ha"
 	"github.com/sergelogvinov/go-proxmox-rest/cluster/mapping"
+	"github.com/sergelogvinov/go-proxmox-rest/cluster/qemu"
 )
 
 // Getter is the subset of the root client used by this package. It is
@@ -69,6 +70,12 @@ func (c *Client) Ceph() *ceph.Client {
 // across nodes.
 func (c *Client) Mapping() *mapping.Client {
 	return mapping.New(c.client)
+}
+
+// Qemu returns an accessor for the /cluster/qemu resource tree: available
+// CPU flags and cluster-wide custom CPU model definitions.
+func (c *Client) Qemu() *qemu.Client {
+	return qemu.New(c.client)
 }
 
 // Status retrieves the cluster status via GET /cluster/status.

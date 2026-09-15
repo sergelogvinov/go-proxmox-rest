@@ -94,18 +94,21 @@ func CleanupContext() (context.Context, context.CancelFunc) {
 // a failure.
 //
 // Most Proxmox delete endpoints signal this with a proper 404
-// (proxmox.IsNotFound). A few firewall endpoints instead respond 500 with a
-// "no such <resource> '<name>'" message — e.g.
-// DELETE .../firewall/groups/{group} on a group already removed by the
-// test's own happy path. Matching that message shape is scoped to cleanup
-// idempotency only; it does not change proxmox.IsNotFound's general,
-// status-code-based semantics used elsewhere.
+// (proxmox.IsNotFound). Others instead respond 500 with a plain die()
+// message — e.g. "no such <resource> '<name>'" from
+// DELETE .../firewall/groups/{group}, or "custom CPU model '<name>' does
+// not exist" from DELETE .../qemu/custom-cpu-models/{cputype} — on a
+// resource already removed by the test's own happy path. Matching these
+// message shapes is scoped to cleanup idempotency only; it does not change
+// proxmox.IsNotFound's general, status-code-based semantics used elsewhere.
 func alreadyGone(err error) bool {
 	if proxmox.IsNotFound(err) {
 		return true
 	}
 
-	return strings.Contains(strings.ToLower(err.Error()), "no such")
+	msg := strings.ToLower(err.Error())
+
+	return strings.Contains(msg, "no such") || strings.Contains(msg, "does not exist")
 }
 
 // RetryCleanup calls fn up to cleanupRetries times, waiting
