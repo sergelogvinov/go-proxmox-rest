@@ -12,6 +12,7 @@ import (
 	"github.com/sergelogvinov/go-proxmox-rest/cluster/ha"
 	"github.com/sergelogvinov/go-proxmox-rest/cluster/mapping"
 	"github.com/sergelogvinov/go-proxmox-rest/cluster/qemu"
+	"github.com/sergelogvinov/go-proxmox-rest/cluster/replication"
 )
 
 // Getter is the subset of the root client used by this package. It is
@@ -76,6 +77,12 @@ func (c *Client) Mapping() *mapping.Client {
 // CPU flags and cluster-wide custom CPU model definitions.
 func (c *Client) Qemu() *qemu.Client {
 	return qemu.New(c.client)
+}
+
+// Replication returns an accessor for the /cluster/replication resource
+// tree, the cluster-wide storage replication job schedule.
+func (c *Client) Replication() *replication.Client {
+	return replication.New(c.client)
 }
 
 // Status retrieves the cluster status via GET /cluster/status.
