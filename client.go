@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -272,13 +273,35 @@ func (c *Client) ticket(ctx context.Context, username, password string) error {
 // do executes a typed request against the Proxmox API and decodes the
 // envelope payload into out.
 func (c *Client) do(ctx context.Context, method, path string, out any, params map[string]string) error {
-	if err := c.ensureSession(ctx); err != nil {
-		return err
-	}
-
 	req := c.rc.R().SetContext(ctx)
 	if len(params) > 0 {
 		req.SetQueryParams(params)
+	}
+
+	return c.send(ctx, method, path, out, req)
+}
+
+// doValues is do's counterpart for query parameters that need more than one
+// value under the same key — genuine Proxmox "array"-typed parameters,
+// which the API expects as repeated same-named fields rather than a single
+// comma-joined value (e.g. cluster/mapping's "map" property, whose entries
+// are themselves comma-bearing property strings that a comma-join would
+// corrupt).
+func (c *Client) doValues(ctx context.Context, method, path string, out any, params url.Values) error {
+	req := c.rc.R().SetContext(ctx)
+	if len(params) > 0 {
+		req.SetQueryParamsFromValues(params)
+	}
+
+	return c.send(ctx, method, path, out, req)
+}
+
+// send finishes preparing req (session + auth), executes it, and decodes
+// the envelope payload into out. Shared by do and doValues, which differ
+// only in how they populate req's query parameters.
+func (c *Client) send(ctx context.Context, method, path string, out any, req *resty.Request) error {
+	if err := c.ensureSession(ctx); err != nil {
+		return err
 	}
 
 	if c.cfg.Token != "" {
@@ -342,6 +365,22 @@ func (c *Client) Delete(ctx context.Context, path string, out any, params map[st
 // Patch performs a PATCH request with form-encoded params.
 func (c *Client) Patch(ctx context.Context, path string, out any, params map[string]string) error {
 	return c.do(ctx, http.MethodPatch, path, out, params)
+}
+
+// CreateValues performs a POST request with url.Values params, which
+// (unlike Create's map[string]string) support multiple values under the
+// same key. Used only by endpoints with a genuine Proxmox "array"-typed
+// parameter (see doValues).
+func (c *Client) CreateValues(ctx context.Context, path string, out any, params url.Values) error {
+	return c.doValues(ctx, http.MethodPost, path, out, params)
+}
+
+// UpdateValues performs a PUT request with url.Values params, which (unlike
+// Update's map[string]string) support multiple values under the same key.
+// Used only by endpoints with a genuine Proxmox "array"-typed parameter
+// (see doValues).
+func (c *Client) UpdateValues(ctx context.Context, path string, out any, params url.Values) error {
+	return c.doValues(ctx, http.MethodPut, path, out, params)
 }
 
 // Cluster returns a client for the cluster API section (/cluster).

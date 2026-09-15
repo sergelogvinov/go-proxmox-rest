@@ -4,19 +4,30 @@ package cluster
 
 import (
 	"context"
+	"net/url"
 
+	"github.com/sergelogvinov/go-proxmox-rest/cluster/backup"
+	"github.com/sergelogvinov/go-proxmox-rest/cluster/ceph"
 	"github.com/sergelogvinov/go-proxmox-rest/cluster/firewall"
 	"github.com/sergelogvinov/go-proxmox-rest/cluster/ha"
+	"github.com/sergelogvinov/go-proxmox-rest/cluster/mapping"
 )
 
 // Getter is the subset of the root client used by this package. It is
 // satisfied by *proxmox.Client, which keeps the cluster package decoupled
 // from the root package (no import cycle).
+//
+// CreateValues/UpdateValues (url.Values, supporting multiple values under
+// the same key) are carried here, even though only cluster/mapping needs
+// them, for the same reason Create/Update/Delete are: so every child
+// package can be wired in from the single c.client value below.
 type Getter interface {
 	Get(ctx context.Context, path string, out any, params map[string]string) error
 	Create(ctx context.Context, path string, out any, params map[string]string) error
 	Update(ctx context.Context, path string, out any, params map[string]string) error
 	Delete(ctx context.Context, path string, out any, params map[string]string) error
+	CreateValues(ctx context.Context, path string, out any, params url.Values) error
+	UpdateValues(ctx context.Context, path string, out any, params url.Values) error
 }
 
 // Client provides access to the cluster API section.
@@ -39,6 +50,25 @@ func (c *Client) HA() *ha.Client {
 // the cluster-wide firewall configuration.
 func (c *Client) Firewall() *firewall.Client {
 	return firewall.New(c.client)
+}
+
+// Backup returns an accessor for the /cluster/backup resource tree, the
+// cluster-wide vzdump backup job schedule.
+func (c *Client) Backup() *backup.Client {
+	return backup.New(c.client)
+}
+
+// Ceph returns an accessor for the /cluster/ceph resource tree, the
+// cluster-wide Ceph status and configuration.
+func (c *Client) Ceph() *ceph.Client {
+	return ceph.New(c.client)
+}
+
+// Mapping returns an accessor for the /cluster/mapping resource tree, the
+// cluster-wide hardware mappings (PCI, USB, directory) shared by name
+// across nodes.
+func (c *Client) Mapping() *mapping.Client {
+	return mapping.New(c.client)
 }
 
 // Status retrieves the cluster status via GET /cluster/status.
