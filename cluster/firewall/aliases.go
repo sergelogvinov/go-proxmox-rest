@@ -45,7 +45,7 @@ func (a *aliasesResource) Create(ctx context.Context, opts *AliasOptions) error 
 		return fmt.Errorf("firewall: alias cidr is required")
 	}
 
-	params, err := opts.encode()
+	params, err := opts.Encode()
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (a *aliasesResource) Update(ctx context.Context, name string, opts *AliasOp
 		return fmt.Errorf("firewall: alias cidr is required")
 	}
 
-	params, err := opts.encode()
+	params, err := opts.Encode()
 	if err != nil {
 		return err
 	}

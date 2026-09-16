@@ -3,14 +3,17 @@
 // the status resource tree (current status and the
 // start/stop/shutdown/reboot/suspend/resume power actions — LXC has no
 // "reset" action, unlike QEMU), config (read/update the container's
-// configuration), clone, and template — all folded directly onto Client
-// rather than behind per-resource accessors, mirroring the nodes/qemu
-// package's shape. The much larger snapshot/firewall/feature/... surface
-// is left for a future addition.
+// configuration), clone, template, and the per-guest firewall
+// (nodes/lxc/firewall, behind the Firewall() accessor) — all but the
+// latter folded directly onto Client rather than behind per-resource
+// accessors, mirroring the nodes/qemu package's shape. The larger
+// snapshot/feature/... surface is left for a future addition.
 package lxc
 
 import (
 	"context"
+
+	"github.com/sergelogvinov/go-proxmox-rest/nodes/lxc/firewall"
 )
 
 // Getter is the subset of the root client used by this package. It is
@@ -20,6 +23,7 @@ type Getter interface {
 	Get(ctx context.Context, path string, out any, params map[string]string) error
 	Create(ctx context.Context, path string, out any, params map[string]string) error
 	Update(ctx context.Context, path string, out any, params map[string]string) error
+	Delete(ctx context.Context, path string, out any, params map[string]string) error
 }
 
 // Client provides access to the /nodes/{node}/lxc/{vmid} resource tree.
@@ -33,4 +37,11 @@ type Client struct {
 // New returns a new lxc client backed by the given root client.
 func New(c Getter) *Client {
 	return &Client{client: c}
+}
+
+// Firewall returns an accessor for the
+// /nodes/{node}/lxc/{vmid}/firewall resource tree: rules, aliases, IP
+// sets, options, the firewall log, and reference lookups.
+func (c *Client) Firewall() *firewall.Client {
+	return firewall.New(c.client)
 }

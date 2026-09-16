@@ -31,7 +31,7 @@ func (s *ipsetResource) Create(ctx context.Context, opts *IPSetOptions) error {
 		return fmt.Errorf("firewall: ipset name is required")
 	}
 
-	params, err := opts.encode()
+	params, err := opts.Encode()
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func (s *ipsetResource) Update(ctx context.Context, name string, opts *IPSetOpti
 		return fmt.Errorf("firewall: ipset options are required")
 	}
 
-	params, err := opts.encode()
+	params, err := opts.Encode()
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (e *ipsetEntriesResource) Create(ctx context.Context, opts *IPSetEntryOptio
 		return fmt.Errorf("firewall: ipset entry cidr is required")
 	}
 
-	params, err := opts.encode()
+	params, err := opts.Encode()
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func (e *ipsetEntriesResource) Update(ctx context.Context, cidr string, opts *IP
 		return fmt.Errorf("firewall: ipset entry cidr is required")
 	}
 
-	params, err := opts.encode()
+	params, err := opts.Encode()
 	if err != nil {
 		return err
 	}

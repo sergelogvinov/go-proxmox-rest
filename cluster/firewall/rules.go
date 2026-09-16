@@ -61,7 +61,7 @@ func (r *ruleResource) Create(ctx context.Context, opts *RuleOptions) error {
 		return fmt.Errorf("firewall: rule action is required")
 	}
 
-	params, err := opts.encode()
+	params, err := opts.Encode()
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func (r *ruleResource) Update(ctx context.Context, pos int, opts *RuleOptions) e
 		}
 	}
 
-	params, err := opts.encode()
+	params, err := opts.Encode()
 	if err != nil {
 		return err
 	}

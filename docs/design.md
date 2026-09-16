@@ -82,6 +82,23 @@ cluster/ha  ->  proxmox (root)   // not -> cluster
 Child packages depend **only** on the root package — never on each other — so the
 dependency graph stays acyclic and each section can be developed independently.
 
+### Shared types across sibling packages
+
+Proxmox sometimes backs two unrelated API sections with the same underlying wire
+format — e.g. `cluster/firewall` and `nodes/qemu/firewall` both sit on top of
+`PVE::Firewall::Rules/Aliases/IPSet`, so `Rule`, `Alias`, `IPSet`, `IPSetEntry`,
+`Ref` and their write-options types are identical between them. Since the
+dependency rule above forbids one from importing the other, and root types.go
+can't hold them either (root imports both `cluster` and `nodes`, so a subpackage
+importing root would close a cycle), identical shapes like this live in the
+top-level `types` package instead: a plain leaf package with no dependency on
+root or on any subpackage. Each sibling re-exports what it needs via type
+aliases (`type Rule = types.Rule`) so call sites keep the section's own package
+name (`firewall.Rule`, not `types.Rule`). Only genuinely identical types belong
+here — where a shape merely looks similar but differs in practice (e.g. the two
+firewall packages' `Options`, which have different field sets), keep it local
+and let the two definitions diverge.
+
 ### Two levels of nesting
 
 Proxmox nests some API sections one level deeper than the top-level resource tree

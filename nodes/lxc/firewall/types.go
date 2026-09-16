@@ -6,15 +6,14 @@ import (
 
 // RuleType, RuleLogLevel, Policy, Rule, RuleOptions, Alias, AliasOptions,
 // IPSet, IPSetOptions, IPSetEntry, IPSetEntryOptions, RefType, Ref,
-// Options, LogEntry and LogOptions are all identical between the QEMU and
-// LXC per-guest firewalls (and, except for Options/LogEntry/LogOptions,
+// Options, LogEntry and LogOptions are all identical between the LXC and
+// QEMU per-guest firewalls (and, except for Options/LogEntry/LogOptions,
 // the cluster-wide firewall too): Proxmox backs every one of them with
 // the same PVE::Firewall::Rules/Aliases/IPSet modules and, for the guest
 // scope specifically, the literal same PVE::API2::Firewall::VMBase
 // handler for both VMs and CTs. They live in the shared types package
-// (see its doc comment) and are re-exported here as aliases so existing
-// call sites (firewall.Rule, firewall.Options, ...) keep working
-// unchanged.
+// (see its doc comment) and are re-exported here as aliases so call
+// sites read as firewall.Rule, firewall.Options, ... .
 type (
 	RuleType          = types.RuleType
 	RuleLogLevel      = types.RuleLogLevel

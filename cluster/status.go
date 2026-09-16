@@ -1,5 +1,3 @@
-// Package cluster provides access to the Proxmox VE cluster API
-// (GET/POST endpoints under /cluster).
 package cluster
 
 import (
