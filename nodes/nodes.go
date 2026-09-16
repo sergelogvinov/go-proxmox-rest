@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/capabilities"
+	"github.com/sergelogvinov/go-proxmox-rest/nodes/ceph"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/hardware"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/lxc"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/network"
@@ -96,4 +97,11 @@ func (c *Client) Qemu() *qemu.Client {
 // action), its configuration (Config, UpdateConfig), and Clone/Template.
 func (c *Client) LXC() *lxc.Client {
 	return lxc.New(c.client)
+}
+
+// Ceph returns an accessor for the /nodes/{node}/ceph resource tree's
+// basic service-lifecycle operations: cluster status, start/stop/
+// restart, installable release listing, and the Ceph log.
+func (c *Client) Ceph() *ceph.Client {
+	return ceph.New(c.client)
 }
