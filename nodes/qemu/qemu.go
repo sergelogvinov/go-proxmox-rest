@@ -4,18 +4,20 @@
 // start/stop/reset/shutdown/reboot/suspend/resume power actions),
 // config (read/update the guest's configuration), clone, template,
 // migrate (precondition check and the migration task itself), feature
-// (capability checks), move_disk, resize, unlink, snapshot (behind the
-// Snapshot() accessor), and the QEMU Guest Agent (nodes/qemu/agent,
-// behind the Agent() accessor — large enough to earn its own
-// subpackage, unlike the rest of this package's flat, direct-on-Client
-// shape). The much larger firewall/... surface is left for a future
-// addition.
+// (capability checks), move_disk, resize, unlink, cloudinit
+// (pending values and regeneration), snapshot (behind the Snapshot()
+// accessor), the per-guest firewall (nodes/qemu/firewall, behind the
+// Firewall() accessor), and the QEMU Guest Agent (nodes/qemu/agent,
+// behind the Agent() accessor) — the latter two large enough to earn
+// their own subpackages, unlike the rest of this package's flat,
+// direct-on-Client shape.
 package qemu
 
 import (
 	"context"
 
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/qemu/agent"
+	"github.com/sergelogvinov/go-proxmox-rest/nodes/qemu/firewall"
 )
 
 // Getter is the subset of the root client used by this package. It is
@@ -55,4 +57,11 @@ func (c *Client) Agent() *agent.Client {
 // rolling back to one.
 func (c *Client) Snapshot() *snapshotResource {
 	return &snapshotResource{client: c.client}
+}
+
+// Firewall returns an accessor for the
+// /nodes/{node}/qemu/{vmid}/firewall resource tree: rules, aliases, IP
+// sets, options, the firewall log, and reference lookups.
+func (c *Client) Firewall() *firewall.Client {
+	return firewall.New(c.client)
 }
