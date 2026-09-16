@@ -35,7 +35,7 @@ func TestPoolsLifecycle(t *testing.T) {
 			defer cancel()
 
 			e2e.RetryCleanup(t, "delete pool", func() error {
-				return pc.Delete(cleanupCtx, name, true)
+				return pc.Delete(cleanupCtx, name)
 			})
 		})
 	}
@@ -78,8 +78,8 @@ func TestPoolsLifecycle(t *testing.T) {
 		t.Errorf("get after update: Comment = %q, want %q", pool.Comment, newComment)
 	}
 
-	// 7. delete — remove the pool (it has no members, so no force needed).
-	err = pc.Delete(ctx, name, false)
+	// 7. delete — remove the (empty) pool.
+	err = pc.Delete(ctx, name)
 	e2e.RequireNoError(t, "delete pool", err)
 
 	// 8. list — verify the delete.
@@ -114,7 +114,7 @@ func TestPoolsUpdateClearComment(t *testing.T) {
 			defer cancel()
 
 			e2e.RetryCleanup(t, "delete pool", func() error {
-				return pc.Delete(cleanupCtx, name, true)
+				return pc.Delete(cleanupCtx, name)
 			})
 		})
 	}
@@ -133,7 +133,7 @@ func TestPoolsUpdateClearComment(t *testing.T) {
 		t.Errorf("get after clear: Comment = %q, want empty", pool.Comment)
 	}
 
-	err = pc.Delete(ctx, name, false)
+	err = pc.Delete(ctx, name)
 	e2e.RequireNoError(t, "delete pool", err)
 }
 

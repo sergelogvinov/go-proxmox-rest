@@ -83,13 +83,11 @@ func (c *Client) Update(ctx context.Context, poolID string, opts *Options) error
 
 // Delete removes a pool via DELETE /pools/?poolid={poolid}.
 //
-// The pool must be empty (no members); Proxmox refuses to delete a pool
-// that still contains guests or storages unless force is set.
-func (c *Client) Delete(ctx context.Context, poolID string, force bool) error {
-	params := map[string]string{"poolid": poolID}
-	if force {
-		params["force"] = "1"
-	}
-
-	return c.client.Delete(ctx, "/pools/", nil, params)
+// The pool must be empty (no members) and have no nested sub-pools;
+// Proxmox unconditionally refuses to delete a pool that still contains
+// either — there is no force option to override this (unlike Update,
+// which does support removing individual members). Remove every member
+// via Update first if needed.
+func (c *Client) Delete(ctx context.Context, poolID string) error {
+	return c.client.Delete(ctx, "/pools/", nil, map[string]string{"poolid": poolID})
 }

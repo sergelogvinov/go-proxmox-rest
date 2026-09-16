@@ -32,12 +32,28 @@ func TestBackupLifecycle(t *testing.T) {
 
 	// Cleanup registry: delete the job even if the test fails mid-way,
 	// unless the caller asked to keep resources for debugging.
+	//
+	// Checks existence via Get before calling Delete, rather than just
+	// letting RetryCleanup's alreadyGone handle a redundant delete like
+	// every other cleanup in this suite: PVE::API2::Backup::delete_job
+	// re-raises its "no such job" exception through a bare `die "$@"`
+	// inside a cfs_lock_file callback, which stringifies (and loses the
+	// HTTP-400 typing of) the original PVE::Exception::Param — so
+	// deleting an already-absent backup job surfaces here as a generic
+	// HTTP 500 ("500 400 Parameter verification failed", with the
+	// "no such job ..." detail truncated out of the mangled status
+	// line) instead of the clean 400 alreadyGone recognizes. read_job
+	// has no such bug (its raise_param_exc is not re-thrown through
+	// cfs_lock_file), so Get's error is reliably matchable.
 	if cfg.CleanupOnFailure {
 		t.Cleanup(func() {
 			cleanupCtx, cancel := e2e.CleanupContext()
 			defer cancel()
 
 			e2e.RetryCleanup(t, "delete backup job", func() error {
+				if _, err := bc.Get(cleanupCtx, name); err != nil {
+					return err
+				}
 				return bc.Delete(cleanupCtx, name)
 			})
 		})
