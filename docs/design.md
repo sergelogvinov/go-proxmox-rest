@@ -95,9 +95,44 @@ top-level `types` package instead: a plain leaf package with no dependency on
 root or on any subpackage. Each sibling re-exports what it needs via type
 aliases (`type Rule = types.Rule`) so call sites keep the section's own package
 name (`firewall.Rule`, not `types.Rule`). Only genuinely identical types belong
-here — where a shape merely looks similar but differs in practice (e.g. the two
-firewall packages' `Options`, which have different field sets), keep it local
-and let the two definitions diverge.
+here — where a shape merely looks similar but differs in practice (e.g.
+`cluster/firewall`'s `Options`, which has a different field set from the
+per-guest firewall packages'), keep it local and let the two definitions
+diverge. `types/ceph.go` is the same pattern for `cluster/ceph` and
+`nodes/ceph`'s `Status`/`Health`/`MonMap`/`OSDMap`/`PGState`/`PGMap`/`MgrMap` —
+Proxmox's own docs state the per-node Ceph status endpoint returns the same
+shape as the cluster-wide one. `types/vzdump.go` shares only the narrower
+slice that's actually identical between `cluster/backup` and `nodes/vzdump`
+— the `Compress`/`Mode`/`MailNotification`/`NotificationMode`/
+`PBSChangeDetectionMode` enums, both drawn from the same
+`PVE::VZDump::Common` confdesc — while each package's own job/options
+struct stays local, since those really do differ (a persistent scheduled
+job with typed nested `Fleecing`/`Performance`/`PruneBackups` structs vs. a
+single merged create-request/defaults-response struct with the same three
+kept as opaque property strings). Sharing only the parts that are
+genuinely identical, down to individual enums within an otherwise-diverged
+pair of types, is the norm — dedupe what matches, leave the rest local.
+
+`types/qemu.go` adds a wrinkle worth calling out explicitly: `cluster/qemu`
+and `nodes/capabilities` both define a `CPUModel` type, but they are *not*
+the same shape — `cluster/qemu.CPUModel` is a custom CPU model's full
+read/write definition, `nodes/capabilities.CPUModel` is a lightweight
+summary of any available model (built-in or custom). Sharing a name is not
+evidence of sharing a shape; only `Arch`, `Accel` and `CPUFlag` (the CPU
+flag enumeration, identical field-for-field) were moved, and `CPUModel`
+was deliberately left duplicated under the same name in both packages.
+Check the actual field sets before aliasing, not just the type name.
+
+`types/replication.go` is the narrow-slice pattern again: `cluster/
+replication` and `nodes/replication` both back onto the same
+`PVE::ReplicationConfig` section type, so their `Type`/`RemoveJob` enums
+are identical and got moved — but `cluster/replication.Job` (a writable
+config entry, with a `JobOptions` for Create/Update) and `nodes/
+replication.JobStatus` (that same config merged with runtime state —
+`NextSync`/`LastSync`/`LastTry`/`FailCount`/`Error`/`Duration`/`PID` —
+and read-only, since `nodes/replication` has no Create/Update/Delete)
+stay local, since the runtime fields make them a different shape despite
+sharing most of their config fields.
 
 ### Two levels of nesting
 

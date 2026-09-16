@@ -1,53 +1,44 @@
 package vzdump
 
-// Compress is a backup's dump file compression.
-type Compress string
+import "github.com/sergelogvinov/go-proxmox-rest/types"
 
-const (
-	CompressNone Compress = "0"
-	// CompressGzipShort is the legacy "1" alias for gzip.
-	CompressGzipShort Compress = "1"
-	CompressGzip      Compress = "gzip"
-	CompressLZO       Compress = "lzo"
-	CompressZstd      Compress = "zstd"
+// Compress, Mode, MailNotification, NotificationMode and
+// PBSChangeDetectionMode are identical between this package and
+// cluster/backup: both draw them from the same PVE::VZDump::Common
+// confdesc. They live in the shared types package (see its doc comment)
+// and are re-exported here as aliases so call sites keep reading as
+// vzdump.Compress, vzdump.ModeSnapshot, ... . Options below is not
+// shared — see the types package doc comment for why.
+type (
+	Compress               = types.Compress
+	Mode                   = types.Mode
+	MailNotification       = types.MailNotification
+	NotificationMode       = types.NotificationMode
+	PBSChangeDetectionMode = types.PBSChangeDetectionMode
 )
 
-// Mode is a backup's guest-quiescing strategy.
-type Mode string
-
 const (
-	ModeSnapshot Mode = "snapshot"
-	ModeSuspend  Mode = "suspend"
-	ModeStop     Mode = "stop"
-)
+	CompressNone = types.CompressNone
+	// CompressGzipLegacy is the legacy "1" alias for gzip.
+	CompressGzipLegacy = types.CompressGzipLegacy
+	CompressGzip       = types.CompressGzip
+	CompressLZO        = types.CompressLZO
+	CompressZstd       = types.CompressZstd
 
-// MailNotification selects when a legacy-sendmail backup notification is
-// sent. Deprecated by Proxmox in favor of the notification system
-// (NotificationMode); kept for backward compatibility.
-type MailNotification string
+	ModeSnapshot = types.ModeSnapshot
+	ModeSuspend  = types.ModeSuspend
+	ModeStop     = types.ModeStop
 
-const (
-	MailNotificationAlways  MailNotification = "always"
-	MailNotificationFailure MailNotification = "failure"
-)
+	MailNotificationAlways  = types.MailNotificationAlways
+	MailNotificationFailure = types.MailNotificationFailure
 
-// NotificationMode selects which notification system a backup job uses.
-type NotificationMode string
+	NotificationModeAuto           = types.NotificationModeAuto
+	NotificationModeLegacySendmail = types.NotificationModeLegacySendmail
+	NotificationModeSystem         = types.NotificationModeSystem
 
-const (
-	NotificationModeAuto               NotificationMode = "auto"
-	NotificationModeLegacySendmail     NotificationMode = "legacy-sendmail"
-	NotificationModeNotificationSystem NotificationMode = "notification-system"
-)
-
-// PBSChangeDetectionMode selects how container backups sent to a Proxmox
-// Backup Server detect file changes.
-type PBSChangeDetectionMode string
-
-const (
-	PBSChangeDetectionLegacy   PBSChangeDetectionMode = "legacy"
-	PBSChangeDetectionData     PBSChangeDetectionMode = "data"
-	PBSChangeDetectionMetadata PBSChangeDetectionMode = "metadata"
+	PBSChangeDetectionLegacy   = types.PBSChangeDetectionLegacy
+	PBSChangeDetectionData     = types.PBSChangeDetectionData
+	PBSChangeDetectionMetadata = types.PBSChangeDetectionMetadata
 )
 
 // Options holds the parameters shared by Client.Create

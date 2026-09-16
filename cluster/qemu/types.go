@@ -4,40 +4,29 @@ import (
 	"fmt"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/types"
 )
 
-// Arch filters CPUFlags to a single virtual processor architecture. An
-// empty value defaults to the host's own architecture.
-type Arch string
+// Arch, Accel and CPUFlag are identical between this package and
+// nodes/capabilities: both back onto the same QEMU/KVM CPU-flag
+// enumeration logic. They live in the shared types package (see its doc
+// comment) and are re-exported here as aliases so call sites keep
+// reading as qemu.Arch, qemu.CPUFlag, ... . CPUModel below is a
+// different shape despite the shared name with
+// nodes/capabilities.CPUModel — see the types package doc comment.
+type (
+	Arch    = types.Arch
+	Accel   = types.Accel
+	CPUFlag = types.CPUFlag
+)
 
 const (
-	// ArchX8664 matches x86_64 CPU flags.
-	ArchX8664 Arch = "x86_64"
-	// ArchAarch64 matches aarch64 CPU flags (Proxmox reports none today).
-	ArchAarch64 Arch = "aarch64"
+	ArchX8664   = types.ArchX8664
+	ArchAarch64 = types.ArchAarch64
+
+	AccelKVM = types.AccelKVM
+	AccelTCG = types.AccelTCG
 )
-
-// Accel is the acceleration type CPUFlags checks node compatibility for.
-type Accel string
-
-const (
-	// AccelKVM checks flags supported under hardware-accelerated KVM.
-	AccelKVM Accel = "kvm"
-	// AccelTCG checks flags supported under software-emulated TCG.
-	AccelTCG Accel = "tcg"
-)
-
-// CPUFlag describes a single available CPU flag, as returned by
-// GET /cluster/qemu/cpu-flags.
-type CPUFlag struct {
-	// Name is the CPU flag name.
-	Name string `json:"name,omitempty" url:"name,omitempty"`
-	// Description describes the flag.
-	Description string `json:"description,omitempty" url:"description,omitempty"`
-	// SupportedOn lists the nodes that support this flag with the
-	// requested acceleration type.
-	SupportedOn []string `json:"supported-on,omitempty" url:"supported-on,omitempty"`
-}
 
 // CPUModel describes a custom CPU model definition as returned by
 // GET /cluster/qemu/custom-cpu-models and

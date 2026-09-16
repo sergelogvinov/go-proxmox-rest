@@ -1,24 +1,26 @@
 package capabilities
 
-// Arch filters CPUModels/CPUFlags/Machines to a single virtual processor
-// architecture. An empty value defaults to the host's own architecture.
-type Arch string
+import "github.com/sergelogvinov/go-proxmox-rest/types"
 
-const (
-	// ArchX8664 matches x86_64 capabilities.
-	ArchX8664 Arch = "x86_64"
-	// ArchAarch64 matches aarch64 capabilities.
-	ArchAarch64 Arch = "aarch64"
+// Arch, Accel and CPUFlag are identical between this package and
+// cluster/qemu: both back onto the same QEMU/KVM CPU-flag enumeration
+// logic. They live in the shared types package (see its doc comment)
+// and are re-exported here as aliases so call sites keep reading as
+// capabilities.Arch, capabilities.CPUFlag, ... . CPUModel below is a
+// different shape despite the shared name with cluster/qemu.CPUModel —
+// see the types package doc comment.
+type (
+	Arch    = types.Arch
+	Accel   = types.Accel
+	CPUFlag = types.CPUFlag
 )
 
-// Accel is the acceleration type CPUFlags checks node compatibility for.
-type Accel string
-
 const (
-	// AccelKVM checks flags supported under hardware-accelerated KVM.
-	AccelKVM Accel = "kvm"
-	// AccelTCG checks flags supported under software-emulated TCG.
-	AccelTCG Accel = "tcg"
+	ArchX8664   = types.ArchX8664
+	ArchAarch64 = types.ArchAarch64
+
+	AccelKVM = types.AccelKVM
+	AccelTCG = types.AccelTCG
 )
 
 // CPUModel describes a single CPU model available for QEMU guests on this
@@ -37,18 +39,6 @@ type CPUModel struct {
 	// Vendor is the CPU vendor visible to the guest when this model is
 	// selected (the reported model's vendor, for custom models).
 	Vendor string `json:"vendor,omitempty" url:"vendor,omitempty"`
-}
-
-// CPUFlag describes a single available CPU flag, as returned by
-// GET /nodes/{node}/capabilities/qemu/cpu-flags.
-type CPUFlag struct {
-	// Name is the CPU flag name.
-	Name string `json:"name,omitempty" url:"name,omitempty"`
-	// Description describes the flag.
-	Description string `json:"description,omitempty" url:"description,omitempty"`
-	// SupportedOn lists the nodes that support this flag with the
-	// requested acceleration type.
-	SupportedOn []string `json:"supported-on,omitempty" url:"supported-on,omitempty"`
 }
 
 // MachineKind is a QEMU machine type's chipset family.

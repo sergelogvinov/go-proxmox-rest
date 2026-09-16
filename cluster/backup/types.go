@@ -4,73 +4,45 @@ import (
 	"fmt"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/types"
 )
 
-// Compress is the vzdump dump file compression algorithm.
-type Compress string
-
-const (
-	// CompressNone disables compression.
-	CompressNone Compress = "0"
-	// CompressGzipLegacy is a deprecated alias for CompressGzip, kept for
-	// backwards compatibility with old vzdump configs.
-	CompressGzipLegacy Compress = "1"
-	// CompressGzip compresses with gzip.
-	CompressGzip Compress = "gzip"
-	// CompressLZO compresses with lzo.
-	CompressLZO Compress = "lzo"
-	// CompressZstd compresses with zstd.
-	CompressZstd Compress = "zstd"
+// Compress, Mode, MailNotification, NotificationMode and
+// PBSChangeDetectionMode are identical between this package and
+// nodes/vzdump: both draw them from the same PVE::VZDump::Common
+// confdesc. They live in the shared types package (see its doc comment)
+// and are re-exported here as aliases so call sites keep reading as
+// backup.Compress, backup.ModeSnapshot, ... . Job/JobOptions below are
+// not shared — see the types package doc comment for why.
+type (
+	Compress               = types.Compress
+	Mode                   = types.Mode
+	MailNotification       = types.MailNotification
+	NotificationMode       = types.NotificationMode
+	PBSChangeDetectionMode = types.PBSChangeDetectionMode
 )
 
-// Mode is the vzdump backup mode.
-type Mode string
-
 const (
-	// ModeSnapshot backs up a live snapshot of the guest.
-	ModeSnapshot Mode = "snapshot"
-	// ModeSuspend suspends the guest for the duration of the backup.
-	ModeSuspend Mode = "suspend"
-	// ModeStop stops the guest for the duration of the backup.
-	ModeStop Mode = "stop"
-)
+	CompressNone       = types.CompressNone
+	CompressGzipLegacy = types.CompressGzipLegacy
+	CompressGzip       = types.CompressGzip
+	CompressLZO        = types.CompressLZO
+	CompressZstd       = types.CompressZstd
 
-// MailNotification controls when a job sends the deprecated legacy-sendmail
-// notification.
-type MailNotification string
+	ModeSnapshot = types.ModeSnapshot
+	ModeSuspend  = types.ModeSuspend
+	ModeStop     = types.ModeStop
 
-const (
-	// MailNotificationAlways sends a mail after every backup run.
-	MailNotificationAlways MailNotification = "always"
-	// MailNotificationFailure sends a mail only when a guest backup fails.
-	MailNotificationFailure MailNotification = "failure"
-)
+	MailNotificationAlways  = types.MailNotificationAlways
+	MailNotificationFailure = types.MailNotificationFailure
 
-// NotificationMode selects which notification system a job uses.
-type NotificationMode string
+	NotificationModeAuto           = types.NotificationModeAuto
+	NotificationModeLegacySendmail = types.NotificationModeLegacySendmail
+	NotificationModeSystem         = types.NotificationModeSystem
 
-const (
-	// NotificationModeAuto sends mail when Mailto is set, otherwise uses
-	// the notification system.
-	NotificationModeAuto NotificationMode = "auto"
-	// NotificationModeLegacySendmail always uses Mailto/MailNotification
-	// via the local sendmail command.
-	NotificationModeLegacySendmail NotificationMode = "legacy-sendmail"
-	// NotificationModeSystem always uses PVE's notification system.
-	NotificationModeSystem NotificationMode = "notification-system"
-)
-
-// PBSChangeDetectionMode is the PBS file-change detection mode used for
-// container backups.
-type PBSChangeDetectionMode string
-
-const (
-	// PBSChangeDetectionLegacy uses the legacy change detection/encoding.
-	PBSChangeDetectionLegacy PBSChangeDetectionMode = "legacy"
-	// PBSChangeDetectionData detects changes from file data.
-	PBSChangeDetectionData PBSChangeDetectionMode = "data"
-	// PBSChangeDetectionMetadata detects changes from file metadata.
-	PBSChangeDetectionMetadata PBSChangeDetectionMode = "metadata"
+	PBSChangeDetectionLegacy   = types.PBSChangeDetectionLegacy
+	PBSChangeDetectionData     = types.PBSChangeDetectionData
+	PBSChangeDetectionMetadata = types.PBSChangeDetectionMetadata
 )
 
 // Fleecing describes a job's backup-fleecing settings, as returned (as a

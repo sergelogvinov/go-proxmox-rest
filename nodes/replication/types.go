@@ -1,26 +1,24 @@
 package replication
 
-// Type is a replication job's storage replication mechanism. Proxmox
-// currently implements only TypeLocal (node-to-node ZFS replication).
-type Type string
+import "github.com/sergelogvinov/go-proxmox-rest/types"
 
-const (
-	// TypeLocal replicates ZFS-backed guest volumes to another node in
-	// the same cluster.
-	TypeLocal Type = "local"
+// Type and RemoveJob are identical between this package and
+// cluster/replication: both back onto the same
+// PVE::ReplicationConfig section type. They live in the shared types
+// package (see its doc comment) and are re-exported here as aliases so
+// call sites keep reading as replication.Type,
+// replication.RemoveJobFull, ... . JobStatus below is not shared — see
+// the types package doc comment.
+type (
+	Type      = types.Type
+	RemoveJob = types.RemoveJob
 )
 
-// RemoveJob marks a replication job for removal: the job stays in the
-// configuration until the background removal task has cleaned up its
-// snapshots (and, for RemoveJobFull, the replicated volumes on the
-// target), then removes itself.
-type RemoveJob string
-
 const (
-	// RemoveJobLocal removes only the local replication snapshots.
-	RemoveJobLocal RemoveJob = "local"
-	// RemoveJobFull also removes the replicated volumes on the target.
-	RemoveJobFull RemoveJob = "full"
+	TypeLocal = types.TypeLocal
+
+	RemoveJobLocal = types.RemoveJobLocal
+	RemoveJobFull  = types.RemoveJobFull
 )
 
 // JobStatus describes a replication job's configuration merged with its
