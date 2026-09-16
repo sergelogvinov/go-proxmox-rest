@@ -7,6 +7,7 @@ import (
 
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/capabilities"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/hardware"
+	"github.com/sergelogvinov/go-proxmox-rest/nodes/lxc"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/network"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/qemu"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/replication"
@@ -87,4 +88,12 @@ func (c *Client) Storage() *storage.Client {
 // (Config, UpdateConfig, UpdateConfigAsync), and Clone/Template.
 func (c *Client) Qemu() *qemu.Client {
 	return qemu.New(c.client)
+}
+
+// LXC returns an accessor for the /nodes/{node}/lxc/{vmid} resource
+// tree: the container's current status (Status) and power actions
+// (Start, Stop, Shutdown, Reboot, Suspend, Resume — LXC has no "reset"
+// action), its configuration (Config, UpdateConfig), and Clone/Template.
+func (c *Client) LXC() *lxc.Client {
+	return lxc.New(c.client)
 }
