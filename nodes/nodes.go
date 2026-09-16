@@ -14,6 +14,7 @@ import (
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/replication"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/storage"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/tasks"
+	"github.com/sergelogvinov/go-proxmox-rest/nodes/vzdump"
 )
 
 // Getter is the subset of the root client used by this package. It is
@@ -104,4 +105,12 @@ func (c *Client) LXC() *lxc.Client {
 // restart, installable release listing, and the Ceph log.
 func (c *Client) Ceph() *ceph.Client {
 	return ceph.New(c.client)
+}
+
+// VZDump returns an accessor for the /nodes/{node}/vzdump resource tree:
+// creating an on-demand backup job (Create), reading the node's
+// configured backup defaults (Defaults), and extracting a guest's
+// configuration from an existing backup archive (ExtractConfig).
+func (c *Client) VZDump() *vzdump.Client {
+	return vzdump.New(c.client)
 }
