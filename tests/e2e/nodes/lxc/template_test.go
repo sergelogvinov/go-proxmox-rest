@@ -24,6 +24,6 @@ func TestLXCTemplateAbsent(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	err := client.Nodes().LXC().Template(ctx, cfg.Node, nonexistentVMID)
+	err := client.Nodes(cfg.Node).LXC().Template(ctx, nonexistentVMID)
 	e2e.RequireError(t, "template absent container", err)
 }

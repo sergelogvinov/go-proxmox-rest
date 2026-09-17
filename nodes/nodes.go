@@ -32,56 +32,58 @@ type Getter interface {
 	Delete(ctx context.Context, path string, out any, params map[string]string) error
 }
 
-// Client provides access to the nodes API section. Every method takes the
-// target node's name as a call argument (matching the fluent chain's
-// filter-as-argument shape, e.g. cluster.Client.Resources().Get(ctx, type)),
-// rather than a separate chain setter.
+// Client provides access to a single node's API section. The node's name
+// is fixed at construction (via the root client's Nodes(node) call,
+// k8s-clientset style), so every method and child accessor below operates
+// on that node without repeating its name.
 type Client struct {
 	client Getter
+	node   string
 }
 
-// New returns a new nodes client backed by the given root client.
-func New(c Getter) *Client {
-	return &Client{client: c}
+// New returns a new nodes client backed by the given root client, scoped
+// to node.
+func New(c Getter, node string) *Client {
+	return &Client{client: c, node: node}
 }
 
 // Hardware returns an accessor for the /nodes/{node}/hardware resource
 // tree, a node's local PCI and USB device inventories.
 func (c *Client) Hardware() *hardware.Client {
-	return hardware.New(c.client)
+	return hardware.New(c.client, c.node)
 }
 
 // Network returns an accessor for the /nodes/{node}/network resource tree,
 // a node's network interface configuration.
 func (c *Client) Network() *network.Client {
-	return network.New(c.client)
+	return network.New(c.client, c.node)
 }
 
 // Capabilities returns an accessor for the /nodes/{node}/capabilities
 // resource tree: available QEMU CPU models/flags, machine types, and
 // migration capabilities.
 func (c *Client) Capabilities() *capabilities.Client {
-	return capabilities.New(c.client)
+	return capabilities.New(c.client, c.node)
 }
 
 // Replication returns an accessor for the /nodes/{node}/replication
 // resource tree: the runtime status and logs of storage replication jobs
 // whose guest runs on that node.
 func (c *Client) Replication() *replication.Client {
-	return replication.New(c.client)
+	return replication.New(c.client, c.node)
 }
 
 // Tasks returns an accessor for the /nodes/{node}/tasks resource tree: the
 // node's task history, and a single task's log/status/stop.
 func (c *Client) Tasks() *tasks.Client {
-	return tasks.New(c.client)
+	return tasks.New(c.client, c.node)
 }
 
 // Storage returns an accessor for the /nodes/{node}/storage resource
 // tree: each storage's status on that node, its content (volumes), and
 // backup retention pruning.
 func (c *Client) Storage() *storage.Client {
-	return storage.New(c.client)
+	return storage.New(c.client, c.node)
 }
 
 // Qemu returns an accessor for the /nodes/{node}/qemu/{vmid} resource
@@ -89,7 +91,7 @@ func (c *Client) Storage() *storage.Client {
 // Stop, Reset, Shutdown, Reboot, Suspend, Resume), its configuration
 // (Config, UpdateConfig, UpdateConfigAsync), and Clone/Template.
 func (c *Client) Qemu() *qemu.Client {
-	return qemu.New(c.client)
+	return qemu.New(c.client, c.node)
 }
 
 // LXC returns an accessor for the /nodes/{node}/lxc/{vmid} resource
@@ -97,14 +99,14 @@ func (c *Client) Qemu() *qemu.Client {
 // (Start, Stop, Shutdown, Reboot, Suspend, Resume — LXC has no "reset"
 // action), its configuration (Config, UpdateConfig), and Clone/Template.
 func (c *Client) LXC() *lxc.Client {
-	return lxc.New(c.client)
+	return lxc.New(c.client, c.node)
 }
 
 // Ceph returns an accessor for the /nodes/{node}/ceph resource tree's
 // basic service-lifecycle operations: cluster status, start/stop/
 // restart, installable release listing, and the Ceph log.
 func (c *Client) Ceph() *ceph.Client {
-	return ceph.New(c.client)
+	return ceph.New(c.client, c.node)
 }
 
 // VZDump returns an accessor for the /nodes/{node}/vzdump resource tree:
@@ -112,5 +114,5 @@ func (c *Client) Ceph() *ceph.Client {
 // configured backup defaults (Defaults), and extracting a guest's
 // configuration from an existing backup archive (ExtractConfig).
 func (c *Client) VZDump() *vzdump.Client {
-	return vzdump.New(c.client)
+	return vzdump.New(c.client, c.node)
 }

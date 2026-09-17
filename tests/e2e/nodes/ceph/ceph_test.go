@@ -34,7 +34,7 @@ func TestCephStatus(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	status, err := client.Nodes().Ceph().Status(ctx, cfg.Node)
+	status, err := client.Nodes(cfg.Node).Ceph().Status(ctx)
 	if err != nil {
 		t.Skipf("ceph status: %v (Ceph may not be configured on this node)", err)
 	}
@@ -69,7 +69,7 @@ func TestCephReleases(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	releases, err := client.Nodes().Ceph().Releases(ctx, cfg.Node)
+	releases, err := client.Nodes(cfg.Node).Ceph().Releases(ctx)
 	e2e.RequireNoError(t, "list ceph releases", err)
 	if len(releases) == 0 {
 		t.Fatalf("releases: got an empty list")
@@ -105,7 +105,7 @@ func TestCephLog(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().Ceph().Log(ctx, cfg.Node, &ceph.LogOptions{Limit: 5})
+	_, err := client.Nodes(cfg.Node).Ceph().Log(ctx, &ceph.LogOptions{Limit: 5})
 	if err != nil {
 		t.Skipf("ceph log: %v (Ceph may not be configured on this node)", err)
 	}

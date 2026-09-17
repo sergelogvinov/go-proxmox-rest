@@ -23,7 +23,7 @@ type UnlinkOptions struct {
 // via PUT /nodes/{node}/qemu/{vmid}/unlink. This is a thin,
 // synchronous convenience wrapper around UpdateConfig's Delete
 // mechanism, exposed by Proxmox as its own endpoint.
-func (c *Client) Unlink(ctx context.Context, node string, vmid int, opts *UnlinkOptions) error {
+func (c *Client) Unlink(ctx context.Context, vmid int, opts *UnlinkOptions) error {
 	if opts == nil {
 		return fmt.Errorf("qemu: unlink options are required")
 	}
@@ -36,5 +36,5 @@ func (c *Client) Unlink(ctx context.Context, node string, vmid int, opts *Unlink
 		return err
 	}
 
-	return c.client.Update(ctx, "/nodes/"+node+"/qemu/"+strconv.Itoa(vmid)+"/unlink", nil, p)
+	return c.client.Update(ctx, "/nodes/"+c.node+"/qemu/"+strconv.Itoa(vmid)+"/unlink", nil, p)
 }

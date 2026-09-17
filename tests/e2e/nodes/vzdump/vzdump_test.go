@@ -34,10 +34,10 @@ func TestVZDumpCreateValidation(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().VZDump().Create(ctx, cfg.Node, nil)
+	_, err := client.Nodes(cfg.Node).VZDump().Create(ctx, nil)
 	e2e.RequireError(t, "create backup with nil options", err)
 
-	_, err = client.Nodes().VZDump().Create(ctx, cfg.Node, &vzdump.Options{})
+	_, err = client.Nodes(cfg.Node).VZDump().Create(ctx, &vzdump.Options{})
 	e2e.RequireError(t, "create backup without vmid or all", err)
 }
 
@@ -57,7 +57,7 @@ func TestVZDumpDefaults(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	defaults, err := client.Nodes().VZDump().Defaults(ctx, cfg.Node, "")
+	defaults, err := client.Nodes(cfg.Node).VZDump().Defaults(ctx, "")
 	e2e.RequireNoError(t, "vzdump defaults", err)
 	if defaults.Storage == "" && defaults.DumpDir == "" {
 		t.Errorf("defaults: both Storage and DumpDir are empty, want at least one set")
@@ -78,6 +78,6 @@ func TestVZDumpExtractConfigAbsent(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().VZDump().ExtractConfig(ctx, cfg.Node, "local:backup/vzdump-qemu-999999999-2000_01_01-00_00_00.vma.zst")
+	_, err := client.Nodes(cfg.Node).VZDump().ExtractConfig(ctx, "local:backup/vzdump-qemu-999999999-2000_01_01-00_00_00.vma.zst")
 	e2e.RequireError(t, "extract config of absent backup volume", err)
 }

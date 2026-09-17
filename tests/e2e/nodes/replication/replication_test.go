@@ -28,15 +28,15 @@ func TestReplicationList(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	rc := client.Nodes().Replication()
+	rc := client.Nodes(cfg.Node).Replication()
 	ctx := t.Context()
 
-	_, err := rc.List(ctx, cfg.Node, 0)
+	_, err := rc.List(ctx, 0)
 	e2e.RequireNoError(t, "list replication jobs (unfiltered)", err)
 
 	// No guest is guaranteed to have replication jobs, so only assert
 	// that the filtered call itself decodes without error.
-	_, err = rc.List(ctx, cfg.Node, 999999999)
+	_, err = rc.List(ctx, 999999999)
 	e2e.RequireNoError(t, "list replication jobs (guest filter)", err)
 }
 
@@ -52,12 +52,12 @@ func TestReplicationGetAbsent(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	rc := client.Nodes().Replication()
+	rc := client.Nodes(cfg.Node).Replication()
 	ctx := t.Context()
 
-	_, err := rc.Get(ctx, cfg.Node, "999999999-0")
+	_, err := rc.Get(ctx, "999999999-0")
 	e2e.RequireError(t, "get absent replication job", err)
 
-	_, err = rc.Log(ctx, cfg.Node, "999999999-0", nil)
+	_, err = rc.Log(ctx, "999999999-0", nil)
 	e2e.RequireError(t, "log absent replication job", err)
 }

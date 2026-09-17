@@ -44,7 +44,7 @@ func configPath(node string, vmid int) string {
 // Config retrieves a guest's configuration via
 // GET /nodes/{node}/qemu/{vmid}/config. opts may be nil to request the
 // configuration with pending changes applied.
-func (c *Client) Config(ctx context.Context, node string, vmid int, opts *ConfigOptions) (*Config, error) {
+func (c *Client) Config(ctx context.Context, vmid int, opts *ConfigOptions) (*Config, error) {
 	var p map[string]string
 	if opts != nil {
 		var err error
@@ -55,7 +55,7 @@ func (c *Client) Config(ctx context.Context, node string, vmid int, opts *Config
 	}
 
 	var raw map[string]json.RawMessage
-	if err := c.client.Get(ctx, configPath(node, vmid), &raw, p); err != nil {
+	if err := c.client.Get(ctx, configPath(c.node, vmid), &raw, p); err != nil {
 		return nil, err
 	}
 
@@ -67,27 +67,27 @@ func (c *Client) Config(ctx context.Context, node string, vmid int, opts *Config
 // changes involving hotplug or storage allocation, per Proxmox's own
 // guidance. cfg.BackgroundDelay and cfg.ImportWorkingStorage are rejected
 // by this endpoint (POST-only); leave them unset.
-func (c *Client) UpdateConfig(ctx context.Context, node string, vmid int, cfg *Config) error {
+func (c *Client) UpdateConfig(ctx context.Context, vmid int, cfg *Config) error {
 	p, err := encodeConfig(cfg)
 	if err != nil {
 		return err
 	}
 
-	return c.client.Update(ctx, configPath(node, vmid), nil, p)
+	return c.client.Update(ctx, configPath(c.node, vmid), nil, p)
 }
 
 // UpdateConfigAsync sets a guest's configuration via
 // POST /nodes/{node}/qemu/{vmid}/config, as a background task — the
 // endpoint to prefer for changes involving hotplug or storage
 // allocation. Returns the task's UPID.
-func (c *Client) UpdateConfigAsync(ctx context.Context, node string, vmid int, cfg *Config) (string, error) {
+func (c *Client) UpdateConfigAsync(ctx context.Context, vmid int, cfg *Config) (string, error) {
 	p, err := encodeConfig(cfg)
 	if err != nil {
 		return "", err
 	}
 
 	var upid string
-	if err := c.client.Create(ctx, configPath(node, vmid), &upid, p); err != nil {
+	if err := c.client.Create(ctx, configPath(c.node, vmid), &upid, p); err != nil {
 		return "", err
 	}
 

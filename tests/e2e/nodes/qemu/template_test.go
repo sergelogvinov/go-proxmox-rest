@@ -24,6 +24,6 @@ func TestQemuTemplateAbsent(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().Qemu().Template(ctx, cfg.Node, nonexistentVMID, "")
+	_, err := client.Nodes(cfg.Node).Qemu().Template(ctx, nonexistentVMID, "")
 	e2e.RequireError(t, "template absent guest", err)
 }

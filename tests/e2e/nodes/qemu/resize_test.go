@@ -23,12 +23,12 @@ func TestQemuResizeValidation(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().Qemu().Resize(ctx, cfg.Node, nonexistentVMID, nil)
+	_, err := client.Nodes(cfg.Node).Qemu().Resize(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "resize with nil options", err)
 
-	_, err = client.Nodes().Qemu().Resize(ctx, cfg.Node, nonexistentVMID, &qemu.ResizeOptions{})
+	_, err = client.Nodes(cfg.Node).Qemu().Resize(ctx, nonexistentVMID, &qemu.ResizeOptions{})
 	e2e.RequireError(t, "resize without disk or size", err)
 
-	_, err = client.Nodes().Qemu().Resize(ctx, cfg.Node, nonexistentVMID, &qemu.ResizeOptions{Disk: "scsi0"})
+	_, err = client.Nodes(cfg.Node).Qemu().Resize(ctx, nonexistentVMID, &qemu.ResizeOptions{Disk: "scsi0"})
 	e2e.RequireError(t, "resize without size", err)
 }

@@ -24,7 +24,7 @@ func TestQemuCloudInitPendingAbsent(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().Qemu().CloudInitPending(ctx, cfg.Node, nonexistentVMID)
+	_, err := client.Nodes(cfg.Node).Qemu().CloudInitPending(ctx, nonexistentVMID)
 	e2e.RequireError(t, "cloudinit pending of absent guest", err)
 }
 
@@ -60,7 +60,7 @@ func TestQemuCloudInitPendingOpportunistic(t *testing.T) {
 	// A guest without any cloud-init drive configured simply returns an
 	// empty list here — no error either way, so this only confirms the
 	// response decodes without error.
-	_, err = client.Nodes().Qemu().CloudInitPending(ctx, cfg.Node, vmid)
+	_, err = client.Nodes(cfg.Node).Qemu().CloudInitPending(ctx, vmid)
 	e2e.RequireNoError(t, "cloudinit pending of real guest", err)
 }
 
@@ -82,6 +82,6 @@ func TestQemuCloudInitUpdateAbsent(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	err := client.Nodes().Qemu().CloudInitUpdate(ctx, cfg.Node, nonexistentVMID)
+	err := client.Nodes(cfg.Node).Qemu().CloudInitUpdate(ctx, nonexistentVMID)
 	e2e.RequireError(t, "cloudinit update of absent guest", err)
 }

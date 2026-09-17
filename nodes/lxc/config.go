@@ -32,7 +32,7 @@ func configPath(node string, vmid int) string {
 // Config retrieves a container's configuration via
 // GET /nodes/{node}/lxc/{vmid}/config. opts may be nil to request the
 // configuration with pending changes applied.
-func (c *Client) Config(ctx context.Context, node string, vmid int, opts *ConfigOptions) (*Config, error) {
+func (c *Client) Config(ctx context.Context, vmid int, opts *ConfigOptions) (*Config, error) {
 	var p map[string]string
 	if opts != nil {
 		var err error
@@ -43,7 +43,7 @@ func (c *Client) Config(ctx context.Context, node string, vmid int, opts *Config
 	}
 
 	var raw map[string]json.RawMessage
-	if err := c.client.Get(ctx, configPath(node, vmid), &raw, p); err != nil {
+	if err := c.client.Get(ctx, configPath(c.node, vmid), &raw, p); err != nil {
 		return nil, err
 	}
 
@@ -52,13 +52,13 @@ func (c *Client) Config(ctx context.Context, node string, vmid int, opts *Config
 
 // UpdateConfig sets a container's configuration via
 // PUT /nodes/{node}/lxc/{vmid}/config.
-func (c *Client) UpdateConfig(ctx context.Context, node string, vmid int, cfg *Config) error {
+func (c *Client) UpdateConfig(ctx context.Context, vmid int, cfg *Config) error {
 	p, err := encodeConfig(cfg)
 	if err != nil {
 		return err
 	}
 
-	return c.client.Update(ctx, configPath(node, vmid), nil, p)
+	return c.client.Update(ctx, configPath(c.node, vmid), nil, p)
 }
 
 // decodeConfig splits raw's numerically-suffixed hardware keys into

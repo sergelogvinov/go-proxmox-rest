@@ -25,7 +25,7 @@ func TestQemuConfigAbsent(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().Qemu().Config(ctx, cfg.Node, nonexistentVMID, nil)
+	_, err := client.Nodes(cfg.Node).Qemu().Config(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "config of absent guest", err)
 }
 
@@ -60,7 +60,7 @@ func TestQemuConfigOpportunistic(t *testing.T) {
 		t.Skip("no QEMU guest found on PVE_E2E_NODE; skipping opportunistic config check")
 	}
 
-	config, err := client.Nodes().Qemu().Config(ctx, cfg.Node, vmid, nil)
+	config, err := client.Nodes(cfg.Node).Qemu().Config(ctx, vmid, nil)
 	e2e.RequireNoError(t, "get real guest config", err)
 	if config.Digest == "" {
 		t.Errorf("config: Digest is empty for a real guest")
@@ -80,15 +80,15 @@ func TestQemuUpdateConfigAbsent(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	qc := client.Nodes().Qemu()
+	qc := client.Nodes(cfg.Node).Qemu()
 	ctx := t.Context()
 
-	err := qc.UpdateConfig(ctx, cfg.Node, nonexistentVMID, nil)
+	err := qc.UpdateConfig(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "update config with nil options", err)
 
-	_, err = qc.UpdateConfigAsync(ctx, cfg.Node, nonexistentVMID, nil)
+	_, err = qc.UpdateConfigAsync(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "update config async with nil options", err)
 
-	err = qc.UpdateConfig(ctx, cfg.Node, nonexistentVMID, &qemu.Config{Description: "e2e"})
+	err = qc.UpdateConfig(ctx, nonexistentVMID, &qemu.Config{Description: "e2e"})
 	e2e.RequireError(t, "update config of absent guest", err)
 }

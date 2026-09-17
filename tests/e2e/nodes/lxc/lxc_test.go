@@ -53,7 +53,7 @@ func TestLXCStatusCurrentAbsent(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().LXC().Status(ctx, cfg.Node, nonexistentVMID)
+	_, err := client.Nodes(cfg.Node).LXC().Status(ctx, nonexistentVMID)
 	e2e.RequireError(t, "current status of absent container", err)
 }
 
@@ -71,19 +71,19 @@ func TestLXCStatusActionsAbsentSynchronousCheck(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	lc := client.Nodes().LXC()
+	lc := client.Nodes(cfg.Node).LXC()
 	ctx := t.Context()
 
-	_, err := lc.Stop(ctx, cfg.Node, nonexistentVMID, nil)
+	_, err := lc.Stop(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "stop absent container", err)
 
-	_, err = lc.Shutdown(ctx, cfg.Node, nonexistentVMID, nil)
+	_, err = lc.Shutdown(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "shutdown absent container", err)
 
-	_, err = lc.Suspend(ctx, cfg.Node, nonexistentVMID)
+	_, err = lc.Suspend(ctx, nonexistentVMID)
 	e2e.RequireError(t, "suspend absent container", err)
 
-	_, err = lc.Reboot(ctx, cfg.Node, nonexistentVMID, nil)
+	_, err = lc.Reboot(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "reboot absent container", err)
 }
 
@@ -100,16 +100,16 @@ func TestLXCStatusActionsAbsentAsyncTask(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	lc := client.Nodes().LXC()
+	lc := client.Nodes(cfg.Node).LXC()
 	ctx := t.Context()
 
-	upid, err := lc.Start(ctx, cfg.Node, nonexistentVMID, nil)
+	upid, err := lc.Start(ctx, nonexistentVMID, nil)
 	e2e.RequireNoError(t, "start absent container", err)
 	if upid == "" {
 		t.Errorf("start absent container: got empty UPID")
 	}
 
-	upid, err = lc.Resume(ctx, cfg.Node, nonexistentVMID)
+	upid, err = lc.Resume(ctx, nonexistentVMID)
 	e2e.RequireNoError(t, "resume absent container", err)
 	if upid == "" {
 		t.Errorf("resume absent container: got empty UPID")

@@ -57,6 +57,7 @@ type CreateSnapshotOptions struct {
 // /nodes/{node}/qemu/{vmid}/snapshot.
 type snapshotResource struct {
 	client Getter
+	node   string
 }
 
 // snapshotPath builds the .../snapshot[/{snapname}[/{sub}]] URL for the
@@ -76,9 +77,9 @@ func snapshotPath(node string, vmid int, snapname, sub string) string {
 // List retrieves every snapshot via
 // GET /nodes/{node}/qemu/{vmid}/snapshot, including the "current"
 // live-state pseudo-entry.
-func (r *snapshotResource) List(ctx context.Context, node string, vmid int) ([]Snapshot, error) {
+func (r *snapshotResource) List(ctx context.Context, vmid int) ([]Snapshot, error) {
 	var snapshots []Snapshot
-	if err := r.client.Get(ctx, snapshotPath(node, vmid, "", ""), &snapshots, nil); err != nil {
+	if err := r.client.Get(ctx, snapshotPath(r.node, vmid, "", ""), &snapshots, nil); err != nil {
 		return nil, err
 	}
 
@@ -88,7 +89,7 @@ func (r *snapshotResource) List(ctx context.Context, node string, vmid int) ([]S
 // Create takes a new snapshot via
 // POST /nodes/{node}/qemu/{vmid}/snapshot. Returns the snapshot task's
 // UPID.
-func (r *snapshotResource) Create(ctx context.Context, node string, vmid int, opts *CreateSnapshotOptions) (string, error) {
+func (r *snapshotResource) Create(ctx context.Context, vmid int, opts *CreateSnapshotOptions) (string, error) {
 	if opts == nil {
 		return "", fmt.Errorf("qemu: snapshot create options are required")
 	}
@@ -102,7 +103,7 @@ func (r *snapshotResource) Create(ctx context.Context, node string, vmid int, op
 	}
 
 	var upid string
-	if err := r.client.Create(ctx, snapshotPath(node, vmid, "", ""), &upid, p); err != nil {
+	if err := r.client.Create(ctx, snapshotPath(r.node, vmid, "", ""), &upid, p); err != nil {
 		return "", err
 	}
 
@@ -113,9 +114,9 @@ func (r *snapshotResource) Create(ctx context.Context, node string, vmid int, op
 // snapshot via GET /nodes/{node}/qemu/{vmid}/snapshot/{snapname}/config.
 // This is the same Config shape returned by Client.Config, since
 // Proxmox stores a full configuration copy inside each snapshot.
-func (r *snapshotResource) GetConfig(ctx context.Context, node string, vmid int, snapname string) (*Config, error) {
+func (r *snapshotResource) GetConfig(ctx context.Context, vmid int, snapname string) (*Config, error) {
 	var raw map[string]json.RawMessage
-	if err := r.client.Get(ctx, snapshotPath(node, vmid, snapname, "config"), &raw, nil); err != nil {
+	if err := r.client.Get(ctx, snapshotPath(r.node, vmid, snapname, "config"), &raw, nil); err != nil {
 		return nil, err
 	}
 
@@ -125,10 +126,10 @@ func (r *snapshotResource) GetConfig(ctx context.Context, node string, vmid int,
 // UpdateConfig replaces a snapshot's description via
 // PUT /nodes/{node}/qemu/{vmid}/snapshot/{snapname}/config — the only
 // snapshot metadata field Proxmox allows changing after the fact.
-func (r *snapshotResource) UpdateConfig(ctx context.Context, node string, vmid int, snapname, description string) error {
+func (r *snapshotResource) UpdateConfig(ctx context.Context, vmid int, snapname, description string) error {
 	p := map[string]string{"description": description}
 
-	return r.client.Update(ctx, snapshotPath(node, vmid, snapname, "config"), nil, p)
+	return r.client.Update(ctx, snapshotPath(r.node, vmid, snapname, "config"), nil, p)
 }
 
 // Rollback restores the guest to a snapshot's state via
@@ -136,14 +137,14 @@ func (r *snapshotResource) UpdateConfig(ctx context.Context, node string, vmid i
 // requests the guest be started afterwards if it wasn't already
 // (Proxmox always starts it automatically when the snapshot includes
 // RAM). Returns the rollback task's UPID.
-func (r *snapshotResource) Rollback(ctx context.Context, node string, vmid int, snapname string, start bool) (string, error) {
+func (r *snapshotResource) Rollback(ctx context.Context, vmid int, snapname string, start bool) (string, error) {
 	var p map[string]string
 	if start {
 		p = map[string]string{"start": "1"}
 	}
 
 	var upid string
-	if err := r.client.Create(ctx, snapshotPath(node, vmid, snapname, "rollback"), &upid, p); err != nil {
+	if err := r.client.Create(ctx, snapshotPath(r.node, vmid, snapname, "rollback"), &upid, p); err != nil {
 		return "", err
 	}
 
@@ -154,14 +155,14 @@ func (r *snapshotResource) Rollback(ctx context.Context, node string, vmid int, 
 // DELETE /nodes/{node}/qemu/{vmid}/snapshot/{snapname}. force removes
 // the snapshot from the configuration even if deleting its underlying
 // disk snapshots fails. Returns the deletion task's UPID.
-func (r *snapshotResource) Delete(ctx context.Context, node string, vmid int, snapname string, force bool) (string, error) {
+func (r *snapshotResource) Delete(ctx context.Context, vmid int, snapname string, force bool) (string, error) {
 	var p map[string]string
 	if force {
 		p = map[string]string{"force": "1"}
 	}
 
 	var upid string
-	if err := r.client.Delete(ctx, snapshotPath(node, vmid, snapname, ""), &upid, p); err != nil {
+	if err := r.client.Delete(ctx, snapshotPath(r.node, vmid, snapname, ""), &upid, p); err != nil {
 		return "", err
 	}
 

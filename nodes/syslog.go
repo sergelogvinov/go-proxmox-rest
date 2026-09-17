@@ -34,10 +34,10 @@ type SyslogOptions struct {
 	Service string `url:"service,omitempty"`
 }
 
-// Syslog retrieves system log lines for the given node via
-// GET /nodes/{node}/syslog. opts may be nil to request Proxmox's default
-// window (its most recent lines).
-func (c *Client) Syslog(ctx context.Context, node string, opts *SyslogOptions) ([]SyslogEntry, error) {
+// Syslog retrieves system log lines for the node via GET /nodes/{node}/syslog.
+// opts may be nil to request Proxmox's default window (its most recent
+// lines).
+func (c *Client) Syslog(ctx context.Context, opts *SyslogOptions) ([]SyslogEntry, error) {
 	var p map[string]string
 	if opts != nil {
 		var err error
@@ -48,7 +48,7 @@ func (c *Client) Syslog(ctx context.Context, node string, opts *SyslogOptions) (
 	}
 
 	var entries []SyslogEntry
-	if err := c.client.Get(ctx, "/nodes/"+node+"/syslog", &entries, p); err != nil {
+	if err := c.client.Get(ctx, "/nodes/"+c.node+"/syslog", &entries, p); err != nil {
 		return nil, err
 	}
 

@@ -15,20 +15,21 @@ type Getter interface {
 	Get(ctx context.Context, path string, out any, params map[string]string) error
 }
 
-// Client provides access to the /nodes/{node}/capabilities resource tree.
-// Every resource method takes the target node's name as a call argument,
-// since this package has no persistent per-node scope of its own.
+// Client provides access to the /nodes/{node}/capabilities resource tree,
+// scoped to the node given to New.
 type Client struct {
 	client Getter
+	node   string
 }
 
-// New returns a new capabilities client backed by the given root client.
-func New(c Getter) *Client {
-	return &Client{client: c}
+// New returns a new capabilities client backed by the given root client,
+// scoped to node.
+func New(c Getter, node string) *Client {
+	return &Client{client: c, node: node}
 }
 
 // Qemu returns an accessor for the /nodes/{node}/capabilities/qemu
 // resource tree.
 func (c *Client) Qemu() *qemuResource {
-	return &qemuResource{client: c.client}
+	return &qemuResource{client: c.client, node: c.node}
 }

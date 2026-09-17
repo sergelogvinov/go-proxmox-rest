@@ -14,26 +14,27 @@ type Getter interface {
 	Get(ctx context.Context, path string, out any, params map[string]string) error
 }
 
-// Client provides access to the /nodes/{node}/hardware resource tree. Every
-// resource method takes the target node's name as a call argument, since
-// this package has no persistent per-node scope of its own.
+// Client provides access to the /nodes/{node}/hardware resource tree,
+// scoped to the node given to New.
 type Client struct {
 	client Getter
+	node   string
 }
 
-// New returns a new hardware client backed by the given root client.
-func New(c Getter) *Client {
-	return &Client{client: c}
+// New returns a new hardware client backed by the given root client,
+// scoped to node.
+func New(c Getter, node string) *Client {
+	return &Client{client: c, node: node}
 }
 
 // PCI returns an accessor for the /nodes/{node}/hardware/pci resource tree,
 // the node's local PCI device inventory.
 func (c *Client) PCI() *pciResource {
-	return &pciResource{client: c.client}
+	return &pciResource{client: c.client, node: c.node}
 }
 
 // USB returns an accessor for the /nodes/{node}/hardware/usb resource tree,
 // the node's local USB device inventory.
 func (c *Client) USB() *usbResource {
-	return &usbResource{client: c.client}
+	return &usbResource{client: c.client, node: c.node}
 }

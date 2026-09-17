@@ -57,14 +57,14 @@ type NotAllowedNode struct {
 // MigratePrecondition retrieves whether/where a container can currently
 // be migrated via GET /nodes/{node}/lxc/{vmid}/migrate. target may be
 // empty to check every node.
-func (c *Client) MigratePrecondition(ctx context.Context, node string, vmid int, target string) (*MigratePrecondition, error) {
+func (c *Client) MigratePrecondition(ctx context.Context, vmid int, target string) (*MigratePrecondition, error) {
 	var p map[string]string
 	if target != "" {
 		p = map[string]string{"target": target}
 	}
 
 	pre := &MigratePrecondition{}
-	if err := c.client.Get(ctx, "/nodes/"+node+"/lxc/"+strconv.Itoa(vmid)+"/migrate", pre, p); err != nil {
+	if err := c.client.Get(ctx, "/nodes/"+c.node+"/lxc/"+strconv.Itoa(vmid)+"/migrate", pre, p); err != nil {
 		return nil, err
 	}
 
@@ -97,7 +97,7 @@ type MigrateOptions struct {
 // Migrate starts a container migration via
 // POST /nodes/{node}/lxc/{vmid}/migrate. Returns the migration task's
 // UPID.
-func (c *Client) Migrate(ctx context.Context, node string, vmid int, opts *MigrateOptions) (string, error) {
+func (c *Client) Migrate(ctx context.Context, vmid int, opts *MigrateOptions) (string, error) {
 	if opts == nil {
 		return "", fmt.Errorf("lxc: migrate options are required")
 	}
@@ -111,7 +111,7 @@ func (c *Client) Migrate(ctx context.Context, node string, vmid int, opts *Migra
 	}
 
 	var upid string
-	if err := c.client.Create(ctx, "/nodes/"+node+"/lxc/"+strconv.Itoa(vmid)+"/migrate", &upid, p); err != nil {
+	if err := c.client.Create(ctx, "/nodes/"+c.node+"/lxc/"+strconv.Itoa(vmid)+"/migrate", &upid, p); err != nil {
 		return "", err
 	}
 

@@ -28,22 +28,24 @@ type Getter interface {
 	Delete(ctx context.Context, path string, out any, params map[string]string) error
 }
 
-// Client provides access to the /nodes/{node}/lxc/{vmid} resource tree.
-// Every method takes the target node's name and container's VMID as call
-// arguments, since this package has no persistent per-container scope of
-// its own.
+// Client provides access to the /nodes/{node}/lxc/{vmid} resource tree,
+// scoped to the node given to New. Every method takes the container's
+// VMID as a call argument, since this package has no persistent
+// per-container scope of its own.
 type Client struct {
 	client Getter
+	node   string
 }
 
-// New returns a new lxc client backed by the given root client.
-func New(c Getter) *Client {
-	return &Client{client: c}
+// New returns a new lxc client backed by the given root client, scoped
+// to node.
+func New(c Getter, node string) *Client {
+	return &Client{client: c, node: node}
 }
 
 // Firewall returns an accessor for the
 // /nodes/{node}/lxc/{vmid}/firewall resource tree: rules, aliases, IP
 // sets, options, the firewall log, and reference lookups.
 func (c *Client) Firewall() *firewall.Client {
-	return firewall.New(c.client)
+	return firewall.New(c.client, c.node)
 }

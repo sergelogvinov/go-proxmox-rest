@@ -22,7 +22,7 @@ type SetUserPasswordOptions struct {
 // SetUserPassword sets a guest user's password via
 // POST /nodes/{node}/qemu/{vmid}/agent/set-user-password
 // (guest-set-user-password).
-func (c *Client) SetUserPassword(ctx context.Context, node string, vmid int, opts *SetUserPasswordOptions) error {
+func (c *Client) SetUserPassword(ctx context.Context, vmid int, opts *SetUserPasswordOptions) error {
 	if opts == nil {
 		return fmt.Errorf("agent: set-user-password options are required")
 	}
@@ -35,7 +35,7 @@ func (c *Client) SetUserPassword(ctx context.Context, node string, vmid int, opt
 		return err
 	}
 
-	_, err = postResult[any](ctx, c.client, path(node, vmid, "set-user-password"), p)
+	_, err = postResult[any](ctx, c.client, path(c.node, vmid, "set-user-password"), p)
 
 	return err
 }
@@ -59,7 +59,7 @@ type ExecResult struct {
 // Exec runs a command inside the guest via
 // POST /nodes/{node}/qemu/{vmid}/agent/exec (guest-exec). Returns the
 // started process's PID; poll its outcome with Client.ExecStatus.
-func (c *Client) Exec(ctx context.Context, node string, vmid int, opts *ExecOptions) (*ExecResult, error) {
+func (c *Client) Exec(ctx context.Context, vmid int, opts *ExecOptions) (*ExecResult, error) {
 	if opts == nil {
 		return nil, fmt.Errorf("agent: exec options are required")
 	}
@@ -73,7 +73,7 @@ func (c *Client) Exec(ctx context.Context, node string, vmid int, opts *ExecOpti
 	}
 
 	res := &ExecResult{}
-	if err := c.client.Create(ctx, path(node, vmid, "exec"), res, p); err != nil {
+	if err := c.client.Create(ctx, path(c.node, vmid, "exec"), res, p); err != nil {
 		return nil, err
 	}
 
@@ -104,11 +104,11 @@ type ExecStatus struct {
 // ExecStatus retrieves a process started by Client.Exec's status via
 // GET /nodes/{node}/qemu/{vmid}/agent/exec-status
 // (guest-exec-status).
-func (c *Client) ExecStatus(ctx context.Context, node string, vmid, pid int) (*ExecStatus, error) {
+func (c *Client) ExecStatus(ctx context.Context, vmid, pid int) (*ExecStatus, error) {
 	p := map[string]string{"pid": fmt.Sprintf("%d", pid)}
 
 	status := &ExecStatus{}
-	if err := c.client.Get(ctx, path(node, vmid, "exec-status"), status, p); err != nil {
+	if err := c.client.Get(ctx, path(c.node, vmid, "exec-status"), status, p); err != nil {
 		return nil, err
 	}
 
@@ -145,7 +145,7 @@ type FileReadResult struct {
 
 // FileRead reads a file from inside the guest via
 // GET /nodes/{node}/qemu/{vmid}/agent/file-read, capped at 16 MiB.
-func (c *Client) FileRead(ctx context.Context, node string, vmid int, opts *FileReadOptions) (*FileReadResult, error) {
+func (c *Client) FileRead(ctx context.Context, vmid int, opts *FileReadOptions) (*FileReadResult, error) {
 	if opts == nil {
 		return nil, fmt.Errorf("agent: file-read options are required")
 	}
@@ -159,7 +159,7 @@ func (c *Client) FileRead(ctx context.Context, node string, vmid int, opts *File
 	}
 
 	result := &FileReadResult{}
-	if err := c.client.Get(ctx, path(node, vmid, "file-read"), result, p); err != nil {
+	if err := c.client.Get(ctx, path(c.node, vmid, "file-read"), result, p); err != nil {
 		return nil, err
 	}
 
@@ -184,7 +184,7 @@ type FileWriteOptions struct {
 
 // FileWrite writes a file inside the guest via
 // POST /nodes/{node}/qemu/{vmid}/agent/file-write.
-func (c *Client) FileWrite(ctx context.Context, node string, vmid int, opts *FileWriteOptions) error {
+func (c *Client) FileWrite(ctx context.Context, vmid int, opts *FileWriteOptions) error {
 	if opts == nil {
 		return fmt.Errorf("agent: file-write options are required")
 	}
@@ -197,5 +197,5 @@ func (c *Client) FileWrite(ctx context.Context, node string, vmid int, opts *Fil
 		return err
 	}
 
-	return c.client.Create(ctx, path(node, vmid, "file-write"), nil, p)
+	return c.client.Create(ctx, path(c.node, vmid, "file-write"), nil, p)
 }

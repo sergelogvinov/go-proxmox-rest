@@ -23,10 +23,10 @@ func TestLXCCloneValidation(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().LXC().Clone(ctx, cfg.Node, nonexistentVMID, nil)
+	_, err := client.Nodes(cfg.Node).LXC().Clone(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "clone with nil options", err)
 
-	_, err = client.Nodes().LXC().Clone(ctx, cfg.Node, nonexistentVMID, &lxc.CloneOptions{})
+	_, err = client.Nodes(cfg.Node).LXC().Clone(ctx, nonexistentVMID, &lxc.CloneOptions{})
 	e2e.RequireError(t, "clone without newid", err)
 }
 
@@ -46,7 +46,7 @@ func TestLXCCloneAbsentSource(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().LXC().Clone(ctx, cfg.Node, nonexistentVMID, &lxc.CloneOptions{
+	_, err := client.Nodes(cfg.Node).LXC().Clone(ctx, nonexistentVMID, &lxc.CloneOptions{
 		NewID: nonexistentVMID - 1,
 	})
 	e2e.RequireError(t, "clone absent source container", err)

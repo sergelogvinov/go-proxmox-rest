@@ -23,12 +23,12 @@ func TestLXCResizeValidation(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().LXC().Resize(ctx, cfg.Node, nonexistentVMID, nil)
+	_, err := client.Nodes(cfg.Node).LXC().Resize(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "resize with nil options", err)
 
-	_, err = client.Nodes().LXC().Resize(ctx, cfg.Node, nonexistentVMID, &lxc.ResizeOptions{})
+	_, err = client.Nodes(cfg.Node).LXC().Resize(ctx, nonexistentVMID, &lxc.ResizeOptions{})
 	e2e.RequireError(t, "resize without disk or size", err)
 
-	_, err = client.Nodes().LXC().Resize(ctx, cfg.Node, nonexistentVMID, &lxc.ResizeOptions{Disk: "rootfs"})
+	_, err = client.Nodes(cfg.Node).LXC().Resize(ctx, nonexistentVMID, &lxc.ResizeOptions{Disk: "rootfs"})
 	e2e.RequireError(t, "resize without size", err)
 }

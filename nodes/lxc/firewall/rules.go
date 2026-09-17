@@ -7,7 +7,7 @@ import (
 
 // ruleResource provides access to a guest's firewall rule list:
 // GET/POST {base} and GET/PUT/DELETE {base}/{pos}. base is
-// .../firewall/rules for the guest identified by the node/vmid Client.Rules
+// .../firewall/rules for the guest identified by the guest Client.Rules
 // was called with.
 type ruleResource struct {
 	client Getter

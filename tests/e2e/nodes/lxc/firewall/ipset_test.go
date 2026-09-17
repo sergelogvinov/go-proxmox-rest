@@ -27,7 +27,7 @@ func TestFirewallIPSetLifecycle(t *testing.T) {
 
 	client := e2e.NewE2EClient(t, cfg)
 	vmid := uniqueVMID()
-	is := client.Nodes().LXC().Firewall().IPSet(cfg.Node, vmid)
+	is := client.Nodes(cfg.Node).LXC().Firewall().IPSet(vmid)
 	ctx := t.Context()
 
 	name := e2e.UniqueName(cfg.Prefix)
@@ -113,7 +113,7 @@ func TestFirewallIPSetEntriesLifecycle(t *testing.T) {
 
 	client := e2e.NewE2EClient(t, cfg)
 	vmid := uniqueVMID()
-	is := client.Nodes().LXC().Firewall().IPSet(cfg.Node, vmid)
+	is := client.Nodes(cfg.Node).LXC().Firewall().IPSet(vmid)
 	ctx := t.Context()
 
 	setName := e2e.UniqueName(cfg.Prefix)
@@ -216,7 +216,7 @@ func TestFirewallIPSetValidation(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	is := client.Nodes().LXC().Firewall().IPSet(cfg.Node, uniqueVMID())
+	is := client.Nodes(cfg.Node).LXC().Firewall().IPSet(uniqueVMID())
 	ctx := t.Context()
 
 	err := is.Create(ctx, nil)

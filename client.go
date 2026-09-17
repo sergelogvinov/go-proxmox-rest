@@ -389,9 +389,10 @@ func (c *Client) Cluster() *cluster.Client {
 	return cluster.New(c)
 }
 
-// Nodes returns a client for the per-node API section (/nodes/{node}).
-func (c *Client) Nodes() *nodes.Client {
-	return nodes.New(c)
+// Nodes returns a client scoped to the given node's API section
+// (/nodes/{node}).
+func (c *Client) Nodes(node string) *nodes.Client {
+	return nodes.New(c, node)
 }
 
 // Pools returns a client for the pools API section (/pools).

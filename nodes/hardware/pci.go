@@ -9,12 +9,13 @@ import (
 // pciResource provides access to /nodes/{node}/hardware/pci.
 type pciResource struct {
 	client Getter
+	node   string
 }
 
-// List retrieves the given node's local PCI devices via
+// List retrieves the node's local PCI devices via
 // GET /nodes/{node}/hardware/pci. opts may be nil to request Proxmox's
 // default class blacklist and verbose output.
-func (r *pciResource) List(ctx context.Context, node string, opts *PCIScanOptions) ([]PCIDevice, error) {
+func (r *pciResource) List(ctx context.Context, opts *PCIScanOptions) ([]PCIDevice, error) {
 	var p map[string]string
 	if opts != nil {
 		var err error
@@ -25,7 +26,7 @@ func (r *pciResource) List(ctx context.Context, node string, opts *PCIScanOption
 	}
 
 	var devices []PCIDevice
-	if err := r.client.Get(ctx, "/nodes/"+node+"/hardware/pci", &devices, p); err != nil {
+	if err := r.client.Get(ctx, "/nodes/"+r.node+"/hardware/pci", &devices, p); err != nil {
 		return nil, err
 	}
 
@@ -38,9 +39,9 @@ func (r *pciResource) List(ctx context.Context, node string, opts *PCIScanOption
 //
 // pciIDOrMapping is either a raw PCI ID (e.g. "0000:01:00.0") or the name
 // of a cluster.Mapping().PCI() resource mapping.
-func (r *pciResource) MdevTypes(ctx context.Context, node, pciIDOrMapping string) ([]MdevType, error) {
+func (r *pciResource) MdevTypes(ctx context.Context, pciIDOrMapping string) ([]MdevType, error) {
 	var types []MdevType
-	if err := r.client.Get(ctx, "/nodes/"+node+"/hardware/pci/"+pciIDOrMapping+"/mdev", &types, nil); err != nil {
+	if err := r.client.Get(ctx, "/nodes/"+r.node+"/hardware/pci/"+pciIDOrMapping+"/mdev", &types, nil); err != nil {
 		return nil, err
 	}
 

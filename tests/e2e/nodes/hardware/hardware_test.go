@@ -24,10 +24,10 @@ func TestHardwarePCI(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	pci := client.Nodes().Hardware().PCI()
+	pci := client.Nodes(cfg.Node).Hardware().PCI()
 	ctx := t.Context()
 
-	devices, err := pci.List(ctx, cfg.Node, nil)
+	devices, err := pci.List(ctx, nil)
 	e2e.RequireNoError(t, "list PCI devices", err)
 	if len(devices) == 0 {
 		t.Fatalf("list PCI devices: got no entries, want at least one device")
@@ -44,7 +44,7 @@ func TestHardwarePCI(t *testing.T) {
 	}
 
 	if mdevCapable != "" {
-		_, err := pci.MdevTypes(ctx, cfg.Node, mdevCapable)
+		_, err := pci.MdevTypes(ctx, mdevCapable)
 		e2e.RequireNoError(t, "mdev types", err)
 	}
 }
@@ -64,7 +64,7 @@ func TestHardwareUSB(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	devices, err := client.Nodes().Hardware().USB().List(ctx, cfg.Node)
+	devices, err := client.Nodes(cfg.Node).Hardware().USB().List(ctx)
 	e2e.RequireNoError(t, "list USB devices", err)
 
 	for _, d := range devices {

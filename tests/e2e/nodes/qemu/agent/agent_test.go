@@ -39,59 +39,59 @@ func TestAgentCommandsAbsent(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	ac := client.Nodes().Qemu().Agent()
+	ac := client.Nodes(cfg.Node).Qemu().Agent()
 	ctx := t.Context()
 
-	e2e.RequireError(t, "ping", ac.Ping(ctx, cfg.Node, nonexistentVMID))
+	e2e.RequireError(t, "ping", ac.Ping(ctx, nonexistentVMID))
 
-	_, err := ac.GetTime(ctx, cfg.Node, nonexistentVMID)
+	_, err := ac.GetTime(ctx, nonexistentVMID)
 	e2e.RequireError(t, "get-time", err)
 
-	_, err = ac.Info(ctx, cfg.Node, nonexistentVMID)
+	_, err = ac.Info(ctx, nonexistentVMID)
 	e2e.RequireError(t, "info", err)
 
-	_, err = ac.FSFreezeStatus(ctx, cfg.Node, nonexistentVMID)
+	_, err = ac.FSFreezeStatus(ctx, nonexistentVMID)
 	e2e.RequireError(t, "fsfreeze-status", err)
 
-	_, err = ac.FSFreezeFreeze(ctx, cfg.Node, nonexistentVMID)
+	_, err = ac.FSFreezeFreeze(ctx, nonexistentVMID)
 	e2e.RequireError(t, "fsfreeze-freeze", err)
 
-	_, err = ac.FSFreezeThaw(ctx, cfg.Node, nonexistentVMID)
+	_, err = ac.FSFreezeThaw(ctx, nonexistentVMID)
 	e2e.RequireError(t, "fsfreeze-thaw", err)
 
-	_, err = ac.FSTrim(ctx, cfg.Node, nonexistentVMID)
+	_, err = ac.FSTrim(ctx, nonexistentVMID)
 	e2e.RequireError(t, "fstrim", err)
 
-	_, err = ac.NetworkGetInterfaces(ctx, cfg.Node, nonexistentVMID)
+	_, err = ac.NetworkGetInterfaces(ctx, nonexistentVMID)
 	e2e.RequireError(t, "network-get-interfaces", err)
 
-	_, err = ac.GetVCPUs(ctx, cfg.Node, nonexistentVMID)
+	_, err = ac.GetVCPUs(ctx, nonexistentVMID)
 	e2e.RequireError(t, "get-vcpus", err)
 
-	_, err = ac.GetFSInfo(ctx, cfg.Node, nonexistentVMID)
+	_, err = ac.GetFSInfo(ctx, nonexistentVMID)
 	e2e.RequireError(t, "get-fsinfo", err)
 
-	_, err = ac.GetMemoryBlocks(ctx, cfg.Node, nonexistentVMID)
+	_, err = ac.GetMemoryBlocks(ctx, nonexistentVMID)
 	e2e.RequireError(t, "get-memory-blocks", err)
 
-	_, err = ac.GetMemoryBlockInfo(ctx, cfg.Node, nonexistentVMID)
+	_, err = ac.GetMemoryBlockInfo(ctx, nonexistentVMID)
 	e2e.RequireError(t, "get-memory-block-info", err)
 
-	e2e.RequireError(t, "suspend-hybrid", ac.SuspendHybrid(ctx, cfg.Node, nonexistentVMID))
-	e2e.RequireError(t, "suspend-ram", ac.SuspendRAM(ctx, cfg.Node, nonexistentVMID))
-	e2e.RequireError(t, "suspend-disk", ac.SuspendDisk(ctx, cfg.Node, nonexistentVMID))
-	e2e.RequireError(t, "shutdown", ac.Shutdown(ctx, cfg.Node, nonexistentVMID))
+	e2e.RequireError(t, "suspend-hybrid", ac.SuspendHybrid(ctx, nonexistentVMID))
+	e2e.RequireError(t, "suspend-ram", ac.SuspendRAM(ctx, nonexistentVMID))
+	e2e.RequireError(t, "suspend-disk", ac.SuspendDisk(ctx, nonexistentVMID))
+	e2e.RequireError(t, "shutdown", ac.Shutdown(ctx, nonexistentVMID))
 
-	_, err = ac.GetHostname(ctx, cfg.Node, nonexistentVMID)
+	_, err = ac.GetHostname(ctx, nonexistentVMID)
 	e2e.RequireError(t, "get-host-name", err)
 
-	_, err = ac.GetOSInfo(ctx, cfg.Node, nonexistentVMID)
+	_, err = ac.GetOSInfo(ctx, nonexistentVMID)
 	e2e.RequireError(t, "get-osinfo", err)
 
-	_, err = ac.GetUsers(ctx, cfg.Node, nonexistentVMID)
+	_, err = ac.GetUsers(ctx, nonexistentVMID)
 	e2e.RequireError(t, "get-users", err)
 
-	_, err = ac.GetTimezone(ctx, cfg.Node, nonexistentVMID)
+	_, err = ac.GetTimezone(ctx, nonexistentVMID)
 	e2e.RequireError(t, "get-timezone", err)
 }
 
@@ -107,16 +107,16 @@ func TestAgentSetUserPassword(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	ac := client.Nodes().Qemu().Agent()
+	ac := client.Nodes(cfg.Node).Qemu().Agent()
 	ctx := t.Context()
 
-	err := ac.SetUserPassword(ctx, cfg.Node, nonexistentVMID, nil)
+	err := ac.SetUserPassword(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "set-user-password with nil options", err)
 
-	err = ac.SetUserPassword(ctx, cfg.Node, nonexistentVMID, &agent.SetUserPasswordOptions{})
+	err = ac.SetUserPassword(ctx, nonexistentVMID, &agent.SetUserPasswordOptions{})
 	e2e.RequireError(t, "set-user-password without username", err)
 
-	err = ac.SetUserPassword(ctx, cfg.Node, nonexistentVMID, &agent.SetUserPasswordOptions{
+	err = ac.SetUserPassword(ctx, nonexistentVMID, &agent.SetUserPasswordOptions{
 		Username: "e2e", Password: "hunter22",
 	})
 	e2e.RequireError(t, "set-user-password on absent guest", err)
@@ -134,19 +134,19 @@ func TestAgentExec(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	ac := client.Nodes().Qemu().Agent()
+	ac := client.Nodes(cfg.Node).Qemu().Agent()
 	ctx := t.Context()
 
-	_, err := ac.Exec(ctx, cfg.Node, nonexistentVMID, nil)
+	_, err := ac.Exec(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "exec with nil options", err)
 
-	_, err = ac.Exec(ctx, cfg.Node, nonexistentVMID, &agent.ExecOptions{})
+	_, err = ac.Exec(ctx, nonexistentVMID, &agent.ExecOptions{})
 	e2e.RequireError(t, "exec without command", err)
 
-	_, err = ac.Exec(ctx, cfg.Node, nonexistentVMID, &agent.ExecOptions{Command: []string{"/bin/true"}})
+	_, err = ac.Exec(ctx, nonexistentVMID, &agent.ExecOptions{Command: []string{"/bin/true"}})
 	e2e.RequireError(t, "exec on absent guest", err)
 
-	_, err = ac.ExecStatus(ctx, cfg.Node, nonexistentVMID, 1)
+	_, err = ac.ExecStatus(ctx, nonexistentVMID, 1)
 	e2e.RequireError(t, "exec-status on absent guest", err)
 }
 
@@ -162,24 +162,24 @@ func TestAgentFile(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	ac := client.Nodes().Qemu().Agent()
+	ac := client.Nodes(cfg.Node).Qemu().Agent()
 	ctx := t.Context()
 
-	_, err := ac.FileRead(ctx, cfg.Node, nonexistentVMID, nil)
+	_, err := ac.FileRead(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "file-read with nil options", err)
 
-	_, err = ac.FileRead(ctx, cfg.Node, nonexistentVMID, &agent.FileReadOptions{})
+	_, err = ac.FileRead(ctx, nonexistentVMID, &agent.FileReadOptions{})
 	e2e.RequireError(t, "file-read without file", err)
 
-	_, err = ac.FileRead(ctx, cfg.Node, nonexistentVMID, &agent.FileReadOptions{File: "/etc/hostname"})
+	_, err = ac.FileRead(ctx, nonexistentVMID, &agent.FileReadOptions{File: "/etc/hostname"})
 	e2e.RequireError(t, "file-read on absent guest", err)
 
-	err = ac.FileWrite(ctx, cfg.Node, nonexistentVMID, nil)
+	err = ac.FileWrite(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "file-write with nil options", err)
 
-	err = ac.FileWrite(ctx, cfg.Node, nonexistentVMID, &agent.FileWriteOptions{})
+	err = ac.FileWrite(ctx, nonexistentVMID, &agent.FileWriteOptions{})
 	e2e.RequireError(t, "file-write without file", err)
 
-	err = ac.FileWrite(ctx, cfg.Node, nonexistentVMID, &agent.FileWriteOptions{File: "/tmp/e2e", Content: "e2e"})
+	err = ac.FileWrite(ctx, nonexistentVMID, &agent.FileWriteOptions{File: "/tmp/e2e", Content: "e2e"})
 	e2e.RequireError(t, "file-write on absent guest", err)
 }

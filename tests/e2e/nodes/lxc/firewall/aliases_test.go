@@ -25,7 +25,7 @@ func TestFirewallAliasesLifecycle(t *testing.T) {
 
 	client := e2e.NewE2EClient(t, cfg)
 	vmid := uniqueVMID()
-	ac := client.Nodes().LXC().Firewall().Aliases(cfg.Node, vmid)
+	ac := client.Nodes(cfg.Node).LXC().Firewall().Aliases(vmid)
 	ctx := t.Context()
 
 	name := e2e.UniqueName(cfg.Prefix)
@@ -113,7 +113,7 @@ func TestFirewallAliasesValidation(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	ac := client.Nodes().LXC().Firewall().Aliases(cfg.Node, uniqueVMID())
+	ac := client.Nodes(cfg.Node).LXC().Firewall().Aliases(uniqueVMID())
 	ctx := t.Context()
 
 	err := ac.Create(ctx, nil)

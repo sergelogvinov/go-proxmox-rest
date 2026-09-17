@@ -5,7 +5,7 @@ import (
 )
 
 // optionsResource provides access to GET/PUT {path}, a guest's
-// firewall configuration. Obtain it via Client.Options(node, vmid).
+// firewall configuration. Obtain it via Client.Options(vmid).
 type optionsResource struct {
 	client Getter
 	path   string

@@ -7,7 +7,7 @@ import (
 
 // ipsetResource provides access to GET/POST {base} and
 // DELETE {base}/{name}, a guest's IP set index. A given set's members
-// are reached via Entries(name). Obtain it via Client.IPSet(node, vmid).
+// are reached via Entries(name). Obtain it via Client.IPSet(vmid).
 type ipsetResource struct {
 	client Getter
 	base   string

@@ -100,11 +100,10 @@ type RootFS struct {
 	Avail int64 `json:"avail,omitempty" url:"avail,omitempty"`
 }
 
-// Status retrieves the given node's runtime status via
-// GET /nodes/{node}/status.
-func (c *Client) Status(ctx context.Context, node string) (*Status, error) {
+// Status retrieves the node's runtime status via GET /nodes/{node}/status.
+func (c *Client) Status(ctx context.Context) (*Status, error) {
 	s := &Status{}
-	if err := c.client.Get(ctx, "/nodes/"+node+"/status", s, nil); err != nil {
+	if err := c.client.Get(ctx, "/nodes/"+c.node+"/status", s, nil); err != nil {
 		return nil, err
 	}
 

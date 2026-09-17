@@ -18,11 +18,11 @@ type Version struct {
 	Repoid string `json:"repoid,omitempty" url:"repoid,omitempty"`
 }
 
-// Version retrieves the API version details of the given node via
+// Version retrieves the API version details of the node via
 // GET /nodes/{node}/version.
-func (c *Client) Version(ctx context.Context, node string) (*Version, error) {
+func (c *Client) Version(ctx context.Context) (*Version, error) {
 	v := &Version{}
-	if err := c.client.Get(ctx, "/nodes/"+node+"/version", v, nil); err != nil {
+	if err := c.client.Get(ctx, "/nodes/"+c.node+"/version", v, nil); err != nil {
 		return nil, err
 	}
 

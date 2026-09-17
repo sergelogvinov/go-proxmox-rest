@@ -9,7 +9,7 @@ resource-chaining API** in the style of the Kubernetes client-go pattern:
 
 ```go
 client.Cluster().Options().Get(ctx)
-client.Nodes().Get(ctx, "pve")
+client.Nodes("pve").Status(ctx)
 ```
 
 ---
@@ -60,8 +60,8 @@ go-proxmox-rest
 │   │   └── types.go
 │   └── ...
 ├── nodes/
-│   ├── client.go              // Nodes().Get(ctx, "node")
-│   ├── qemu.go                // Nodes().<node> .Qemu().Vm(id)... (future)
+│   ├── client.go              // Nodes(node).Status(ctx)
+│   ├── qemu.go                // Nodes(node).Qemu().Status(ctx, vmid)... (future)
 │   ├── ...
 ├── pools/
 ├── storage/
@@ -357,7 +357,7 @@ down the resource tree, then invoke an **HTTP verb method** that takes
 ```go
 // root entry points
 func (c *Client) Cluster() *cluster.Client
-func (c *Client) Nodes()   *nodes.Client
+func (c *Client) Nodes(node string) *nodes.Client
 func (c *Client) Access()  *access.Client
 func (c *Client) Pools()   *pools.Client
 func (c *Client) Storage() *storage.Client
@@ -387,10 +387,10 @@ All verb methods accept `ctx context.Context` **first**:
 
 | Method | Meaning                                   | Example                                   |
 |--------|-------------------------------------------|-------------------------------------------|
-| `Get`  | `GET <path>` (also returns created/derived data) | `c.Nodes().Get(ctx, "pve")`        |
+| `Get`  | `GET <path>` (also returns created/derived data) | `c.Nodes("pve").Status(ctx)`        |
 | `Create` | `POST <path>` (with body)              | `c.Pools().Create(ctx, pool)`       |
 | `Update` | `PUT <path>` (with body)              | `c.Cluster().Options().Update(ctx, opts)` |
-| `Delete` | `DELETE <path>`                        | `c.Nodes().Delete(ctx, "pve")`      |
+| `Delete` | `DELETE <path>`                        | `c.Pools().Delete(ctx, "my-pool")`      |
 | `Patch` | `PATCH <path>` (partial)              | `c.Cluster().Options().Patch(ctx, ...)` |
 
 Signature pattern:
@@ -417,8 +417,8 @@ if err != nil { log.Fatal(err) }
 
 ctx := context.Background()
 
-// read a node
-node, err := c.Nodes().Get(ctx, "pve")
+// read a node's runtime status
+status, err := c.Nodes("pve").Status(ctx)
 if err != nil { log.Fatal(err) }
 
 // list cluster resources (opt-in type filter passed to Get; "" is unfiltered)
@@ -454,7 +454,7 @@ c, err = proxmox.New(
 )
 
 // resource semantics are identical whichever target strategy is chosen
-node, err = c.Nodes().Get(ctx, "pve")
+status, err = c.Nodes("pve").Status(ctx)
 if err != nil { log.Fatal(err) }
 ```
 
@@ -579,16 +579,19 @@ so new sections can be added without touching existing code:
 
 ```go
 package nodes
-type Client struct { *proxmox.Client }
-func New(c *proxmox.Client) *Client { return &Client{c} }
+type Client struct {
+    client *proxmox.Client
+    node   string
+}
+func New(c *proxmox.Client, node string) *Client { return &Client{client: c, node: node} }
 
-func (c *Client) Get(ctx context.Context, node string) (*Node, error) { ... }
+func (c *Client) Status(ctx context.Context) (*Status, error) { ... }
 ```
 
-The root `Client` lazily constructs them:
+The root `Client` lazily constructs them, threading the node through:
 
 ```go
-func (c *Client) Nodes() *nodes.Client { return nodes.New(c) }
+func (c *Client) Nodes(node string) *nodes.Client { return nodes.New(c, node) }
 ```
 
 This keeps the root package small and lets each API section grow independently.

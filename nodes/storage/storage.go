@@ -30,22 +30,23 @@ type Getter interface {
 	Delete(ctx context.Context, path string, out any, params map[string]string) error
 }
 
-// Client provides access to the /nodes/{node}/storage resource tree.
-// Every method/accessor takes the target node's name as a call argument,
-// since this package has no persistent per-node scope of its own.
+// Client provides access to the /nodes/{node}/storage resource tree,
+// scoped to the node given to New.
 type Client struct {
 	client Getter
+	node   string
 }
 
-// New returns a new storage client backed by the given root client.
-func New(c Getter) *Client {
-	return &Client{client: c}
+// New returns a new storage client backed by the given root client,
+// scoped to node.
+func New(c Getter, node string) *Client {
+	return &Client{client: c, node: node}
 }
 
-// List retrieves the given node's view of every storage via
+// List retrieves the node's view of every storage via
 // GET /nodes/{node}/storage. opts may be nil to request every storage
 // the caller has access to, unfiltered.
-func (c *Client) List(ctx context.Context, node string, opts *ListOptions) ([]Storage, error) {
+func (c *Client) List(ctx context.Context, opts *ListOptions) ([]Storage, error) {
 	var p map[string]string
 	if opts != nil {
 		var err error
@@ -56,20 +57,20 @@ func (c *Client) List(ctx context.Context, node string, opts *ListOptions) ([]St
 	}
 
 	var storages []Storage
-	if err := c.client.Get(ctx, "/nodes/"+node+"/storage", &storages, p); err != nil {
+	if err := c.client.Get(ctx, "/nodes/"+c.node+"/storage", &storages, p); err != nil {
 		return nil, err
 	}
 
 	return storages, nil
 }
 
-// Status retrieves a single storage's status on the given node via
+// Status retrieves a single storage's status on the node via
 // GET /nodes/{node}/storage/{storage}/status. The response omits the
 // storage id (it's already the URL path segment), so Status fills it in
 // manually.
-func (c *Client) Status(ctx context.Context, node, storageID string) (*Storage, error) {
+func (c *Client) Status(ctx context.Context, storageID string) (*Storage, error) {
 	s := &Storage{}
-	if err := c.client.Get(ctx, "/nodes/"+node+"/storage/"+storageID+"/status", s, nil); err != nil {
+	if err := c.client.Get(ctx, "/nodes/"+c.node+"/storage/"+storageID+"/status", s, nil); err != nil {
 		return nil, err
 	}
 	s.Storage = storageID
@@ -81,12 +82,12 @@ func (c *Client) Status(ctx context.Context, node, storageID string) (*Storage, 
 // /nodes/{node}/storage/{storage}/content resource tree, a storage's
 // volumes.
 func (c *Client) Content() *contentResource {
-	return &contentResource{client: c.client}
+	return &contentResource{client: c.client, node: c.node}
 }
 
 // PruneBackups returns an accessor for the
 // /nodes/{node}/storage/{storage}/prunebackups resource tree, backup
 // retention pruning.
 func (c *Client) PruneBackups() *pruneBackupsResource {
-	return &pruneBackupsResource{client: c.client}
+	return &pruneBackupsResource{client: c.client, node: c.node}
 }

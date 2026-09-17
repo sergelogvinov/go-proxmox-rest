@@ -25,7 +25,7 @@ func TestQemuSnapshotListAbsent(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().Qemu().Snapshot().List(ctx, cfg.Node, nonexistentVMID)
+	_, err := client.Nodes(cfg.Node).Qemu().Snapshot().List(ctx, nonexistentVMID)
 	e2e.RequireError(t, "list snapshots of absent guest", err)
 }
 
@@ -59,7 +59,7 @@ func TestQemuSnapshotListOpportunistic(t *testing.T) {
 		t.Skip("no QEMU guest found on PVE_E2E_NODE; skipping opportunistic snapshot check")
 	}
 
-	snapshots, err := client.Nodes().Qemu().Snapshot().List(ctx, cfg.Node, vmid)
+	snapshots, err := client.Nodes(cfg.Node).Qemu().Snapshot().List(ctx, vmid)
 	e2e.RequireNoError(t, "list snapshots of real guest", err)
 
 	var sawCurrent bool
@@ -87,9 +87,9 @@ func TestQemuSnapshotCreateValidation(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().Qemu().Snapshot().Create(ctx, cfg.Node, nonexistentVMID, nil)
+	_, err := client.Nodes(cfg.Node).Qemu().Snapshot().Create(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "create snapshot with nil options", err)
 
-	_, err = client.Nodes().Qemu().Snapshot().Create(ctx, cfg.Node, nonexistentVMID, &qemu.CreateSnapshotOptions{})
+	_, err = client.Nodes(cfg.Node).Qemu().Snapshot().Create(ctx, nonexistentVMID, &qemu.CreateSnapshotOptions{})
 	e2e.RequireError(t, "create snapshot without snapname", err)
 }

@@ -7,7 +7,7 @@ import (
 
 // aliasesResource is the accessor for a guest's
 // .../firewall/aliases resource, its IP/network aliases. Obtain it via
-// Client.Aliases(node, vmid).
+// Client.Aliases(vmid).
 type aliasesResource struct {
 	client Getter
 	base   string

@@ -28,9 +28,9 @@ type CloudInitPendingEntry struct {
 // CloudInitPending retrieves the guest's cloud-init configuration, with
 // both its current (applied) and pending (queued but not yet
 // regenerated) values, via GET /nodes/{node}/qemu/{vmid}/cloudinit.
-func (c *Client) CloudInitPending(ctx context.Context, node string, vmid int) ([]CloudInitPendingEntry, error) {
+func (c *Client) CloudInitPending(ctx context.Context, vmid int) ([]CloudInitPendingEntry, error) {
 	var entries []CloudInitPendingEntry
-	if err := c.client.Get(ctx, "/nodes/"+node+"/qemu/"+strconv.Itoa(vmid)+"/cloudinit", &entries, nil); err != nil {
+	if err := c.client.Get(ctx, "/nodes/"+c.node+"/qemu/"+strconv.Itoa(vmid)+"/cloudinit", &entries, nil); err != nil {
 		return nil, err
 	}
 
@@ -40,6 +40,6 @@ func (c *Client) CloudInitPending(ctx context.Context, node string, vmid int) ([
 // CloudInitUpdate regenerates the guest's cloud-init config drive via
 // PUT /nodes/{node}/qemu/{vmid}/cloudinit, applying every pending
 // cloud-init value reported by CloudInitPending.
-func (c *Client) CloudInitUpdate(ctx context.Context, node string, vmid int) error {
-	return c.client.Update(ctx, "/nodes/"+node+"/qemu/"+strconv.Itoa(vmid)+"/cloudinit", nil, nil)
+func (c *Client) CloudInitUpdate(ctx context.Context, vmid int) error {
+	return c.client.Update(ctx, "/nodes/"+c.node+"/qemu/"+strconv.Itoa(vmid)+"/cloudinit", nil, nil)
 }

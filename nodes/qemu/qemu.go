@@ -30,17 +30,19 @@ type Getter interface {
 	Delete(ctx context.Context, path string, out any, params map[string]string) error
 }
 
-// Client provides access to the /nodes/{node}/qemu/{vmid} resource tree.
-// Every method takes the target node's name and guest's VMID as call
-// arguments, since this package has no persistent per-guest scope of its
-// own.
+// Client provides access to the /nodes/{node}/qemu/{vmid} resource tree,
+// scoped to the node given to New. Every method takes the guest's VMID as
+// a call argument, since this package has no persistent per-guest scope
+// of its own.
 type Client struct {
 	client Getter
+	node   string
 }
 
-// New returns a new qemu client backed by the given root client.
-func New(c Getter) *Client {
-	return &Client{client: c}
+// New returns a new qemu client backed by the given root client, scoped
+// to node.
+func New(c Getter, node string) *Client {
+	return &Client{client: c, node: node}
 }
 
 // Agent returns an accessor for the
@@ -48,7 +50,7 @@ func New(c Getter) *Client {
 // command surface (filesystem freeze/trim, network/user/OS info,
 // exec, file read/write, ...).
 func (c *Client) Agent() *agent.Client {
-	return agent.New(c.client)
+	return agent.New(c.client, c.node)
 }
 
 // Snapshot returns an accessor for the
@@ -56,12 +58,12 @@ func (c *Client) Agent() *agent.Client {
 // and deleting snapshots, reading/updating a snapshot's metadata, and
 // rolling back to one.
 func (c *Client) Snapshot() *snapshotResource {
-	return &snapshotResource{client: c.client}
+	return &snapshotResource{client: c.client, node: c.node}
 }
 
 // Firewall returns an accessor for the
 // /nodes/{node}/qemu/{vmid}/firewall resource tree: rules, aliases, IP
 // sets, options, the firewall log, and reference lookups.
 func (c *Client) Firewall() *firewall.Client {
-	return firewall.New(c.client)
+	return firewall.New(c.client, c.node)
 }

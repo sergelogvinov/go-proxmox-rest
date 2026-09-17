@@ -23,10 +23,10 @@ func TestCapabilitiesQemu(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	qemu := client.Nodes().Capabilities().Qemu()
+	qemu := client.Nodes(cfg.Node).Capabilities().Qemu()
 	ctx := t.Context()
 
-	models, err := qemu.CPUModels(ctx, cfg.Node, "")
+	models, err := qemu.CPUModels(ctx, "")
 	e2e.RequireNoError(t, "cpu models", err)
 	if len(models) == 0 {
 		t.Errorf("cpu models: got no entries, want at least the built-in models")
@@ -39,10 +39,10 @@ func TestCapabilitiesQemu(t *testing.T) {
 
 	// The host's own architecture may report zero flags (e.g.
 	// aarch64), so only check that decoding succeeds.
-	_, err = qemu.CPUFlags(ctx, cfg.Node, "", "")
+	_, err = qemu.CPUFlags(ctx, "", "")
 	e2e.RequireNoError(t, "cpu flags", err)
 
-	machines, err := qemu.Machines(ctx, cfg.Node, "")
+	machines, err := qemu.Machines(ctx, "")
 	e2e.RequireNoError(t, "machines", err)
 	for _, m := range machines {
 		if m.ID == "" {
@@ -50,6 +50,6 @@ func TestCapabilitiesQemu(t *testing.T) {
 		}
 	}
 
-	_, err = qemu.Migration(ctx, cfg.Node)
+	_, err = qemu.Migration(ctx)
 	e2e.RequireNoError(t, "migration capabilities", err)
 }

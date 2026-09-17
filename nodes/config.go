@@ -72,25 +72,25 @@ func (cfg *Config) encode() (map[string]string, error) {
 	return params.Encode(cfg)
 }
 
-// Config retrieves the given node's persistent configuration via
+// Config retrieves the node's persistent configuration via
 // GET /nodes/{node}/config.
-func (c *Client) Config(ctx context.Context, node string) (*Config, error) {
+func (c *Client) Config(ctx context.Context) (*Config, error) {
 	cfg := &Config{}
-	if err := c.client.Get(ctx, "/nodes/"+node+"/config", cfg, nil); err != nil {
+	if err := c.client.Get(ctx, "/nodes/"+c.node+"/config", cfg, nil); err != nil {
 		return nil, err
 	}
 
 	return cfg, nil
 }
 
-// UpdateConfig applies cfg to the given node's persistent configuration via
+// UpdateConfig applies cfg to the node's persistent configuration via
 // PUT /nodes/{node}/config. Only non-zero fields are sent; use
 // Config.Delete to explicitly reset a field to its default.
-func (c *Client) UpdateConfig(ctx context.Context, node string, cfg *Config) error {
+func (c *Client) UpdateConfig(ctx context.Context, cfg *Config) error {
 	p, err := cfg.encode()
 	if err != nil {
 		return err
 	}
 
-	return c.client.Update(ctx, "/nodes/"+node+"/config", nil, p)
+	return c.client.Update(ctx, "/nodes/"+c.node+"/config", nil, p)
 }

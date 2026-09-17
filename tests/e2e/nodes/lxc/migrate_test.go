@@ -25,7 +25,7 @@ func TestLXCMigratePreconditionAbsent(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().LXC().MigratePrecondition(ctx, cfg.Node, nonexistentVMID, "")
+	_, err := client.Nodes(cfg.Node).LXC().MigratePrecondition(ctx, nonexistentVMID, "")
 	e2e.RequireError(t, "migrate precondition of absent container", err)
 }
 
@@ -62,7 +62,7 @@ func TestLXCMigratePreconditionOpportunistic(t *testing.T) {
 	// single-node cluster (nothing else to check migration targets
 	// against), so this only confirms the response decodes without
 	// error rather than asserting on cluster topology.
-	_, err = client.Nodes().LXC().MigratePrecondition(ctx, cfg.Node, vmid, "")
+	_, err = client.Nodes(cfg.Node).LXC().MigratePrecondition(ctx, vmid, "")
 	e2e.RequireNoError(t, "migrate precondition of real container", err)
 }
 
@@ -80,10 +80,10 @@ func TestLXCMigrateValidation(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().LXC().Migrate(ctx, cfg.Node, nonexistentVMID, nil)
+	_, err := client.Nodes(cfg.Node).LXC().Migrate(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "migrate with nil options", err)
 
-	_, err = client.Nodes().LXC().Migrate(ctx, cfg.Node, nonexistentVMID, &lxc.MigrateOptions{})
+	_, err = client.Nodes(cfg.Node).LXC().Migrate(ctx, nonexistentVMID, &lxc.MigrateOptions{})
 	e2e.RequireError(t, "migrate without target", err)
 }
 
@@ -104,7 +104,7 @@ func TestLXCMigrateInvalidTarget(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().LXC().Migrate(ctx, cfg.Node, nonexistentVMID, &lxc.MigrateOptions{
+	_, err := client.Nodes(cfg.Node).LXC().Migrate(ctx, nonexistentVMID, &lxc.MigrateOptions{
 		Target: "e2e-nonexistent-node",
 	})
 	e2e.RequireError(t, "migrate to nonexistent target node", err)

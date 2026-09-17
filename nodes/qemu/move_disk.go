@@ -44,7 +44,7 @@ type MoveDiskOptions struct {
 // different guest entirely, via
 // POST /nodes/{node}/qemu/{vmid}/move_disk. Returns the move task's
 // UPID.
-func (c *Client) MoveDisk(ctx context.Context, node string, vmid int, opts *MoveDiskOptions) (string, error) {
+func (c *Client) MoveDisk(ctx context.Context, vmid int, opts *MoveDiskOptions) (string, error) {
 	if opts == nil {
 		return "", fmt.Errorf("qemu: move disk options are required")
 	}
@@ -58,7 +58,7 @@ func (c *Client) MoveDisk(ctx context.Context, node string, vmid int, opts *Move
 	}
 
 	var upid string
-	if err := c.client.Create(ctx, "/nodes/"+node+"/qemu/"+strconv.Itoa(vmid)+"/move_disk", &upid, p); err != nil {
+	if err := c.client.Create(ctx, "/nodes/"+c.node+"/qemu/"+strconv.Itoa(vmid)+"/move_disk", &upid, p); err != nil {
 		return "", err
 	}
 

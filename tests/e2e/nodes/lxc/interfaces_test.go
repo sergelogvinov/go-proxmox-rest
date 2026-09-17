@@ -24,7 +24,7 @@ func TestLXCInterfacesAbsent(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().LXC().Interfaces(ctx, cfg.Node, nonexistentVMID)
+	_, err := client.Nodes(cfg.Node).LXC().Interfaces(ctx, nonexistentVMID)
 	e2e.RequireError(t, "interfaces of absent container", err)
 }
 
@@ -58,7 +58,7 @@ func TestLXCInterfacesOpportunistic(t *testing.T) {
 		t.Skip("no running LXC container found on PVE_E2E_NODE; skipping opportunistic interfaces check")
 	}
 
-	ifaces, err := client.Nodes().LXC().Interfaces(ctx, cfg.Node, vmid)
+	ifaces, err := client.Nodes(cfg.Node).LXC().Interfaces(ctx, vmid)
 	e2e.RequireNoError(t, "get real container interfaces", err)
 	if len(ifaces) == 0 {
 		t.Errorf("interfaces: got none for a running container")

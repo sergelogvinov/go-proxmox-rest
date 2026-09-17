@@ -25,7 +25,7 @@ func TestLXCFeatureAbsent(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().LXC().Feature(ctx, cfg.Node, nonexistentVMID, lxc.FeatureClone, "")
+	_, err := client.Nodes(cfg.Node).LXC().Feature(ctx, nonexistentVMID, lxc.FeatureClone, "")
 	e2e.RequireError(t, "feature check of absent container", err)
 }
 
@@ -58,14 +58,14 @@ func TestLXCFeatureOpportunistic(t *testing.T) {
 		t.Skip("no LXC container found on PVE_E2E_NODE; skipping opportunistic feature check")
 	}
 
-	lc := client.Nodes().LXC()
+	lc := client.Nodes(cfg.Node).LXC()
 
-	_, err = lc.Feature(ctx, cfg.Node, vmid, lxc.FeatureClone, "")
+	_, err = lc.Feature(ctx, vmid, lxc.FeatureClone, "")
 	e2e.RequireNoError(t, "feature check (clone) of real container", err)
 
-	_, err = lc.Feature(ctx, cfg.Node, vmid, lxc.FeatureSnapshot, "")
+	_, err = lc.Feature(ctx, vmid, lxc.FeatureSnapshot, "")
 	e2e.RequireNoError(t, "feature check (snapshot) of real container", err)
 
-	_, err = lc.Feature(ctx, cfg.Node, vmid, lxc.FeatureCopy, "")
+	_, err = lc.Feature(ctx, vmid, lxc.FeatureCopy, "")
 	e2e.RequireNoError(t, "feature check (copy) of real container", err)
 }

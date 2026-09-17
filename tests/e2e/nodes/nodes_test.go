@@ -26,7 +26,7 @@ func TestNodeVersion(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	v, err := client.Nodes().Version(ctx, cfg.Node)
+	v, err := client.Nodes(cfg.Node).Version(ctx)
 	e2e.RequireNoError(t, "node version", err)
 
 	if v.Version == "" {
@@ -48,7 +48,7 @@ func TestNodeStatus(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	status, err := client.Nodes().Status(ctx, cfg.Node)
+	status, err := client.Nodes(cfg.Node).Status(ctx)
 	e2e.RequireNoError(t, "node status", err)
 
 	if status.Uptime <= 0 {
@@ -74,10 +74,10 @@ func TestNodeSyslog(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	nc := client.Nodes()
+	nc := client.Nodes(cfg.Node)
 	ctx := t.Context()
 
-	entries, err := nc.Syslog(ctx, cfg.Node, nil)
+	entries, err := nc.Syslog(ctx, nil)
 	e2e.RequireNoError(t, "syslog (unfiltered)", err)
 	for _, e := range entries {
 		if e.N == 0 || e.T == "" {
@@ -85,7 +85,7 @@ func TestNodeSyslog(t *testing.T) {
 		}
 	}
 
-	limited, err := nc.Syslog(ctx, cfg.Node, &nodes.SyslogOptions{Limit: 1})
+	limited, err := nc.Syslog(ctx, &nodes.SyslogOptions{Limit: 1})
 	e2e.RequireNoError(t, "syslog (limit=1)", err)
 	if len(limited) > 1 {
 		t.Errorf("syslog (limit=1): got %d entries, want at most 1", len(limited))
@@ -106,11 +106,11 @@ func TestNodeConfigLifecycle(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	nc := client.Nodes()
+	nc := client.Nodes(cfg.Node)
 	ctx := t.Context()
 
 	// 1. get — baseline, to restore afterwards.
-	before, err := nc.Config(ctx, cfg.Node)
+	before, err := nc.Config(ctx)
 	e2e.RequireNoError(t, "get node config", err)
 
 	if cfg.CleanupOnFailure {
@@ -124,21 +124,21 @@ func TestNodeConfigLifecycle(t *testing.T) {
 			}
 
 			e2e.RetryCleanup(t, "restore node config", func() error {
-				return nc.UpdateConfig(cleanupCtx, cfg.Node, restore)
+				return nc.UpdateConfig(cleanupCtx, restore)
 			})
 		})
 	}
 
 	// 2. update — set a uniquely-named description.
 	description := "go-proxmox-rest " + e2e.UniqueName(cfg.Prefix)
-	err = nc.UpdateConfig(ctx, cfg.Node, &nodes.Config{Description: description})
+	err = nc.UpdateConfig(ctx, &nodes.Config{Description: description})
 	e2e.RequireNoError(t, "update node config", err)
 
 	// 3. get — verify the description was applied. Proxmox stores
 	// Description as "#"-prefixed comment lines and always appends a
 	// trailing "\n" when reassembling them (PVE::JSONSchema::parse_config),
 	// so a single-line description round-trips with one trailing newline.
-	after, err := nc.Config(ctx, cfg.Node)
+	after, err := nc.Config(ctx)
 	e2e.RequireNoError(t, "get node config after update", err)
 
 	want := description + "\n"

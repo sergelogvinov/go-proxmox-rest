@@ -31,16 +31,18 @@ type Getter interface {
 }
 
 // Client provides access to the /nodes/{node}/lxc/{vmid}/firewall
-// resource tree. Every method/accessor takes the target node's name
-// and container's VMID as call arguments, since this package has no
-// persistent per-guest scope of its own.
+// resource tree, scoped to the node given to New. Every method/accessor
+// takes the container's VMID as a call argument, since this package has
+// no persistent per-guest scope of its own.
 type Client struct {
 	client Getter
+	node   string
 }
 
-// New returns a new firewall client backed by the given root client.
-func New(c Getter) *Client {
-	return &Client{client: c}
+// New returns a new firewall client backed by the given root client,
+// scoped to node.
+func New(c Getter, node string) *Client {
+	return &Client{client: c, node: node}
 }
 
 // path builds the .../firewall/{sub} URL for the given node and vmid.
@@ -56,27 +58,27 @@ func path(node string, vmid int, sub string) string {
 // Options returns an accessor for
 // GET/PUT /nodes/{node}/lxc/{vmid}/firewall/options, the guest's
 // firewall configuration.
-func (c *Client) Options(node string, vmid int) *optionsResource {
-	return &optionsResource{client: c.client, path: path(node, vmid, "options")}
+func (c *Client) Options(vmid int) *optionsResource {
+	return &optionsResource{client: c.client, path: path(c.node, vmid, "options")}
 }
 
 // Rules returns an accessor for the guest's firewall rules under
 // /nodes/{node}/lxc/{vmid}/firewall/rules.
-func (c *Client) Rules(node string, vmid int) *ruleResource {
-	return &ruleResource{client: c.client, base: path(node, vmid, "rules")}
+func (c *Client) Rules(vmid int) *ruleResource {
+	return &ruleResource{client: c.client, base: path(c.node, vmid, "rules")}
 }
 
 // Aliases returns an accessor for
 // /nodes/{node}/lxc/{vmid}/firewall/aliases, the guest's IP/network
 // aliases.
-func (c *Client) Aliases(node string, vmid int) *aliasesResource {
-	return &aliasesResource{client: c.client, base: path(node, vmid, "aliases")}
+func (c *Client) Aliases(vmid int) *aliasesResource {
+	return &aliasesResource{client: c.client, base: path(c.node, vmid, "aliases")}
 }
 
 // IPSet returns an accessor for
 // /nodes/{node}/lxc/{vmid}/firewall/ipset, the guest's IP sets.
-func (c *Client) IPSet(node string, vmid int) *ipsetResource {
-	return &ipsetResource{client: c.client, base: path(node, vmid, "ipset")}
+func (c *Client) IPSet(vmid int) *ipsetResource {
+	return &ipsetResource{client: c.client, base: path(c.node, vmid, "ipset")}
 }
 
 // Refs retrieves the aliases and/or IP sets that may be referenced from
@@ -84,14 +86,14 @@ func (c *Client) IPSet(node string, vmid int) *ipsetResource {
 // GET /nodes/{node}/lxc/{vmid}/firewall/refs. An empty refType returns
 // both kinds; refType narrows the result to just aliases or just IP
 // sets.
-func (c *Client) Refs(ctx context.Context, node string, vmid int, refType RefType) ([]Ref, error) {
+func (c *Client) Refs(ctx context.Context, vmid int, refType RefType) ([]Ref, error) {
 	var p map[string]string
 	if refType != "" {
 		p = map[string]string{"type": string(refType)}
 	}
 
 	var refs []Ref
-	if err := c.client.Get(ctx, path(node, vmid, "refs"), &refs, p); err != nil {
+	if err := c.client.Get(ctx, path(c.node, vmid, "refs"), &refs, p); err != nil {
 		return nil, err
 	}
 
@@ -102,7 +104,7 @@ func (c *Client) Refs(ctx context.Context, node string, vmid int, refType RefTyp
 // /var/log/pve-firewall.log matching this guest's vmid) via
 // GET /nodes/{node}/lxc/{vmid}/firewall/log. opts may be nil to
 // request Proxmox's default window.
-func (c *Client) Log(ctx context.Context, node string, vmid int, opts *LogOptions) ([]LogEntry, error) {
+func (c *Client) Log(ctx context.Context, vmid int, opts *LogOptions) ([]LogEntry, error) {
 	var p map[string]string
 	if opts != nil {
 		var err error
@@ -113,7 +115,7 @@ func (c *Client) Log(ctx context.Context, node string, vmid int, opts *LogOption
 	}
 
 	var entries []LogEntry
-	if err := c.client.Get(ctx, path(node, vmid, "log"), &entries, p); err != nil {
+	if err := c.client.Get(ctx, path(c.node, vmid, "log"), &entries, p); err != nil {
 		return nil, err
 	}
 

@@ -25,7 +25,7 @@ func TestQemuMigratePreconditionAbsent(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().Qemu().MigratePrecondition(ctx, cfg.Node, nonexistentVMID, "")
+	_, err := client.Nodes(cfg.Node).Qemu().MigratePrecondition(ctx, nonexistentVMID, "")
 	e2e.RequireError(t, "migrate precondition of absent guest", err)
 }
 
@@ -62,7 +62,7 @@ func TestQemuMigratePreconditionOpportunistic(t *testing.T) {
 	// single-node cluster (nothing else to check migration targets
 	// against), so this only confirms the response decodes without
 	// error rather than asserting on cluster topology.
-	_, err = client.Nodes().Qemu().MigratePrecondition(ctx, cfg.Node, vmid, "")
+	_, err = client.Nodes(cfg.Node).Qemu().MigratePrecondition(ctx, vmid, "")
 	e2e.RequireNoError(t, "migrate precondition of real guest", err)
 }
 
@@ -80,10 +80,10 @@ func TestQemuMigrateValidation(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().Qemu().Migrate(ctx, cfg.Node, nonexistentVMID, nil)
+	_, err := client.Nodes(cfg.Node).Qemu().Migrate(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "migrate with nil options", err)
 
-	_, err = client.Nodes().Qemu().Migrate(ctx, cfg.Node, nonexistentVMID, &qemu.MigrateOptions{})
+	_, err = client.Nodes(cfg.Node).Qemu().Migrate(ctx, nonexistentVMID, &qemu.MigrateOptions{})
 	e2e.RequireError(t, "migrate without target", err)
 }
 
@@ -104,7 +104,7 @@ func TestQemuMigrateInvalidTarget(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().Qemu().Migrate(ctx, cfg.Node, nonexistentVMID, &qemu.MigrateOptions{
+	_, err := client.Nodes(cfg.Node).Qemu().Migrate(ctx, nonexistentVMID, &qemu.MigrateOptions{
 		Target: "e2e-nonexistent-node",
 	})
 	e2e.RequireError(t, "migrate to nonexistent target node", err)

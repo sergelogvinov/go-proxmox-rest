@@ -30,7 +30,7 @@ func TestFirewallRulesLifecycle(t *testing.T) {
 
 	client := e2e.NewE2EClient(t, cfg)
 	vmid := uniqueVMID()
-	rr := client.Nodes().LXC().Firewall().Rules(cfg.Node, vmid)
+	rr := client.Nodes(cfg.Node).LXC().Firewall().Rules(vmid)
 	ctx := t.Context()
 
 	comment := e2e.UniqueName(cfg.Prefix)
@@ -156,7 +156,7 @@ func TestFirewallRulesValidation(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	rr := client.Nodes().LXC().Firewall().Rules(cfg.Node, uniqueVMID())
+	rr := client.Nodes(cfg.Node).LXC().Firewall().Rules(uniqueVMID())
 	ctx := t.Context()
 
 	err := rr.Create(ctx, nil)

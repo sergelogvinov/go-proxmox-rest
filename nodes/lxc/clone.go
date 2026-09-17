@@ -38,7 +38,7 @@ type CloneOptions struct {
 
 // Clone creates a copy of a container (or template) via
 // POST /nodes/{node}/lxc/{vmid}/clone. Returns the clone task's UPID.
-func (c *Client) Clone(ctx context.Context, node string, vmid int, opts *CloneOptions) (string, error) {
+func (c *Client) Clone(ctx context.Context, vmid int, opts *CloneOptions) (string, error) {
 	if opts == nil {
 		return "", fmt.Errorf("lxc: clone options are required")
 	}
@@ -52,7 +52,7 @@ func (c *Client) Clone(ctx context.Context, node string, vmid int, opts *CloneOp
 	}
 
 	var upid string
-	if err := c.client.Create(ctx, "/nodes/"+node+"/lxc/"+strconv.Itoa(vmid)+"/clone", &upid, p); err != nil {
+	if err := c.client.Create(ctx, "/nodes/"+c.node+"/lxc/"+strconv.Itoa(vmid)+"/clone", &upid, p); err != nil {
 		return "", err
 	}
 

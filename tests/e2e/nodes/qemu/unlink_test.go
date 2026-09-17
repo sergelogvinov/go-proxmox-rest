@@ -23,10 +23,10 @@ func TestQemuUnlinkValidation(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	err := client.Nodes().Qemu().Unlink(ctx, cfg.Node, nonexistentVMID, nil)
+	err := client.Nodes(cfg.Node).Qemu().Unlink(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "unlink with nil options", err)
 
-	err = client.Nodes().Qemu().Unlink(ctx, cfg.Node, nonexistentVMID, &qemu.UnlinkOptions{})
+	err = client.Nodes(cfg.Node).Qemu().Unlink(ctx, nonexistentVMID, &qemu.UnlinkOptions{})
 	e2e.RequireError(t, "unlink without idlist", err)
 }
 
@@ -47,7 +47,7 @@ func TestQemuUnlinkAbsentSource(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	err := client.Nodes().Qemu().Unlink(ctx, cfg.Node, nonexistentVMID, &qemu.UnlinkOptions{
+	err := client.Nodes(cfg.Node).Qemu().Unlink(ctx, nonexistentVMID, &qemu.UnlinkOptions{
 		IDList: []string{"unused0"},
 	})
 	e2e.RequireError(t, "unlink of absent guest", err)

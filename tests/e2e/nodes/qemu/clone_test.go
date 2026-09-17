@@ -23,10 +23,10 @@ func TestQemuCloneValidation(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().Qemu().Clone(ctx, cfg.Node, nonexistentVMID, nil)
+	_, err := client.Nodes(cfg.Node).Qemu().Clone(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "clone with nil options", err)
 
-	_, err = client.Nodes().Qemu().Clone(ctx, cfg.Node, nonexistentVMID, &qemu.CloneOptions{})
+	_, err = client.Nodes(cfg.Node).Qemu().Clone(ctx, nonexistentVMID, &qemu.CloneOptions{})
 	e2e.RequireError(t, "clone without newid", err)
 }
 
@@ -46,7 +46,7 @@ func TestQemuCloneAbsentSource(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().Qemu().Clone(ctx, cfg.Node, nonexistentVMID, &qemu.CloneOptions{
+	_, err := client.Nodes(cfg.Node).Qemu().Clone(ctx, nonexistentVMID, &qemu.CloneOptions{
 		NewID: nonexistentVMID - 1,
 	})
 	e2e.RequireError(t, "clone absent source guest", err)

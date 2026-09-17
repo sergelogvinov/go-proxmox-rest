@@ -48,7 +48,7 @@ func TestFirewallOptionsGetUpdate(t *testing.T) {
 	ctx := t.Context()
 	vmid := uniqueVMID()
 
-	oc := client.Nodes().Qemu().Firewall().Options(cfg.Node, vmid)
+	oc := client.Nodes(cfg.Node).Qemu().Firewall().Options(vmid)
 
 	before, err := oc.Get(ctx)
 	e2e.RequireNoError(t, "options get (before)", err)
@@ -83,7 +83,7 @@ func TestFirewallOptionsValidation(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	err := client.Nodes().Qemu().Firewall().Options(cfg.Node, uniqueVMID()).Update(ctx, nil)
+	err := client.Nodes(cfg.Node).Qemu().Firewall().Options(uniqueVMID()).Update(ctx, nil)
 	e2e.RequireError(t, "options update (nil)", err)
 }
 
@@ -102,14 +102,14 @@ func TestFirewallRefs(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	fw := client.Nodes().Qemu().Firewall()
+	fw := client.Nodes(cfg.Node).Qemu().Firewall()
 	ctx := t.Context()
 	vmid := uniqueVMID()
 
-	_, err := fw.Refs(ctx, cfg.Node, vmid, "")
+	_, err := fw.Refs(ctx, vmid, "")
 	e2e.RequireNoError(t, "refs (unfiltered)", err)
 
-	aliases, err := fw.Refs(ctx, cfg.Node, vmid, firewall.RefTypeAlias)
+	aliases, err := fw.Refs(ctx, vmid, firewall.RefTypeAlias)
 	e2e.RequireNoError(t, "refs (type=alias)", err)
 	for _, r := range aliases {
 		if r.Type != "alias" {
@@ -117,7 +117,7 @@ func TestFirewallRefs(t *testing.T) {
 		}
 	}
 
-	ipsets, err := fw.Refs(ctx, cfg.Node, vmid, firewall.RefTypeIPSet)
+	ipsets, err := fw.Refs(ctx, vmid, firewall.RefTypeIPSet)
 	e2e.RequireNoError(t, "refs (type=ipset)", err)
 	for _, r := range ipsets {
 		if r.Type != "ipset" {
@@ -142,6 +142,6 @@ func TestFirewallLog(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().Qemu().Firewall().Log(ctx, cfg.Node, uniqueVMID(), &firewall.LogOptions{Limit: 5})
+	_, err := client.Nodes(cfg.Node).Qemu().Firewall().Log(ctx, uniqueVMID(), &firewall.LogOptions{Limit: 5})
 	e2e.RequireNoError(t, "firewall log", err)
 }

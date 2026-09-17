@@ -35,10 +35,10 @@ func TestTasksList(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	tc := client.Nodes().Tasks()
+	tc := client.Nodes(cfg.Node).Tasks()
 	ctx := t.Context()
 
-	list, err := tc.List(ctx, cfg.Node, &tasks.ListOptions{Source: tasks.SourceAll})
+	list, err := tc.List(ctx, &tasks.ListOptions{Source: tasks.SourceAll})
 	e2e.RequireNoError(t, "list tasks", err)
 	for _, task := range list {
 		if task.UPID == "" || task.Type == "" {
@@ -60,23 +60,23 @@ func TestTaskStatusAndLog(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	tc := client.Nodes().Tasks()
+	tc := client.Nodes(cfg.Node).Tasks()
 	ctx := t.Context()
 
-	list, err := tc.List(ctx, cfg.Node, &tasks.ListOptions{Source: tasks.SourceAll, Limit: 1})
+	list, err := tc.List(ctx, &tasks.ListOptions{Source: tasks.SourceAll, Limit: 1})
 	e2e.RequireNoError(t, "list tasks", err)
 	if len(list) == 0 {
 		t.Skip("node has no task history; skipping status/log checks")
 	}
 	upid := list[0].UPID
 
-	status, err := tc.Status(ctx, cfg.Node, upid)
+	status, err := tc.Status(ctx, upid)
 	e2e.RequireNoError(t, "task status", err)
 	if status.UPID != upid {
 		t.Errorf("task status: UPID = %q, want %q", status.UPID, upid)
 	}
 
-	_, err = tc.Log(ctx, cfg.Node, upid, &tasks.LogOptions{Limit: 1})
+	_, err = tc.Log(ctx, upid, &tasks.LogOptions{Limit: 1})
 	e2e.RequireNoError(t, "task log", err)
 }
 
@@ -94,6 +94,6 @@ func TestTaskStopAbsent(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	err := client.Nodes().Tasks().Stop(ctx, cfg.Node, nonexistentUPID)
+	err := client.Nodes(cfg.Node).Tasks().Stop(ctx, nonexistentUPID)
 	e2e.RequireError(t, "stop absent task", err)
 }

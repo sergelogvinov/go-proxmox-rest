@@ -26,7 +26,7 @@ type ResizeOptions struct {
 
 // Resize extends a container mount point's size via
 // PUT /nodes/{node}/lxc/{vmid}/resize. Returns the resize task's UPID.
-func (c *Client) Resize(ctx context.Context, node string, vmid int, opts *ResizeOptions) (string, error) {
+func (c *Client) Resize(ctx context.Context, vmid int, opts *ResizeOptions) (string, error) {
 	if opts == nil {
 		return "", fmt.Errorf("lxc: resize options are required")
 	}
@@ -43,7 +43,7 @@ func (c *Client) Resize(ctx context.Context, node string, vmid int, opts *Resize
 	}
 
 	var upid string
-	if err := c.client.Update(ctx, "/nodes/"+node+"/lxc/"+strconv.Itoa(vmid)+"/resize", &upid, p); err != nil {
+	if err := c.client.Update(ctx, "/nodes/"+c.node+"/lxc/"+strconv.Itoa(vmid)+"/resize", &upid, p); err != nil {
 		return "", err
 	}
 

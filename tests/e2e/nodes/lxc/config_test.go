@@ -25,7 +25,7 @@ func TestLXCConfigAbsent(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes().LXC().Config(ctx, cfg.Node, nonexistentVMID, nil)
+	_, err := client.Nodes(cfg.Node).LXC().Config(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "config of absent container", err)
 }
 
@@ -60,7 +60,7 @@ func TestLXCConfigOpportunistic(t *testing.T) {
 		t.Skip("no LXC container found on PVE_E2E_NODE; skipping opportunistic config check")
 	}
 
-	config, err := client.Nodes().LXC().Config(ctx, cfg.Node, vmid, nil)
+	config, err := client.Nodes(cfg.Node).LXC().Config(ctx, vmid, nil)
 	e2e.RequireNoError(t, "get real container config", err)
 	if config.Digest == "" {
 		t.Errorf("config: Digest is empty for a real container")
@@ -82,12 +82,12 @@ func TestLXCUpdateConfigAbsent(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	lc := client.Nodes().LXC()
+	lc := client.Nodes(cfg.Node).LXC()
 	ctx := t.Context()
 
-	err := lc.UpdateConfig(ctx, cfg.Node, nonexistentVMID, nil)
+	err := lc.UpdateConfig(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "update config with nil options", err)
 
-	err = lc.UpdateConfig(ctx, cfg.Node, nonexistentVMID, &lxc.Config{Description: "e2e"})
+	err = lc.UpdateConfig(ctx, nonexistentVMID, &lxc.Config{Description: "e2e"})
 	e2e.RequireError(t, "update config of absent container", err)
 }

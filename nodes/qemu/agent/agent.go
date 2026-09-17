@@ -29,16 +29,18 @@ type Getter interface {
 }
 
 // Client provides access to the /nodes/{node}/qemu/{vmid}/agent
-// resource tree. Every method takes the target node's name and guest's
-// VMID as call arguments, since this package has no persistent
+// resource tree, scoped to the node given to New. Every method takes the
+// guest's VMID as a call argument, since this package has no persistent
 // per-guest scope of its own.
 type Client struct {
 	client Getter
+	node   string
 }
 
-// New returns a new agent client backed by the given root client.
-func New(c Getter) *Client {
-	return &Client{client: c}
+// New returns a new agent client backed by the given root client, scoped
+// to node.
+func New(c Getter, node string) *Client {
+	return &Client{client: c, node: node}
 }
 
 // path builds the .../agent/{command} URL for the given node and vmid.

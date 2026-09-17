@@ -75,7 +75,7 @@ func TestNodeStorageList(t *testing.T) {
 	name := newDirStorage(t, cfg, client, []string{"iso"})
 	ctx := t.Context()
 
-	list, err := client.Nodes().Storage().List(ctx, cfg.Node, nil)
+	list, err := client.Nodes(cfg.Node).Storage().List(ctx, nil)
 	e2e.RequireNoError(t, "list node storages", err)
 
 	idx := slices.IndexFunc(list, func(s storage.Storage) bool { return s.Storage == name })
@@ -94,7 +94,7 @@ func TestNodeStorageList(t *testing.T) {
 	}
 
 	// The storage filter must narrow the result to just this storage.
-	filtered, err := client.Nodes().Storage().List(ctx, cfg.Node, &storage.ListOptions{Storage: name})
+	filtered, err := client.Nodes(cfg.Node).Storage().List(ctx, &storage.ListOptions{Storage: name})
 	e2e.RequireNoError(t, "list node storages filtered by storage", err)
 	if len(filtered) != 1 || filtered[0].Storage != name {
 		t.Errorf("list filtered by storage=%q: got %+v", name, filtered)
@@ -117,7 +117,7 @@ func TestNodeStorageStatus(t *testing.T) {
 	name := newDirStorage(t, cfg, client, []string{"iso"})
 	ctx := t.Context()
 
-	st, err := client.Nodes().Storage().Status(ctx, cfg.Node, name)
+	st, err := client.Nodes(cfg.Node).Storage().Status(ctx, name)
 	e2e.RequireNoError(t, "storage status", err)
 	if st.Storage != name {
 		t.Errorf("status: Storage = %q, want %q", st.Storage, name)
@@ -153,19 +153,19 @@ func TestNodeStorageContentLifecycle(t *testing.T) {
 	name := newDirStorage(t, cfg, client, []string{"images"})
 	ctx := t.Context()
 
-	nc := client.Nodes().Storage()
+	nc := client.Nodes(cfg.Node).Storage()
 	const vmid = 999999999
 	filename := "vm-999999999-disk-0.raw"
 
 	// 1. list — baseline: no volumes yet.
-	volumes, err := nc.Content().List(ctx, cfg.Node, name, nil)
+	volumes, err := nc.Content().List(ctx, name, nil)
 	e2e.RequireNoError(t, "list content (baseline)", err)
 	if len(volumes) != 0 {
 		t.Fatalf("list (baseline): got %d volumes, want 0: %+v", len(volumes), volumes)
 	}
 
 	// 2. create — allocate a small raw disk image.
-	volid, err := nc.Content().Create(ctx, cfg.Node, name, &storage.CreateVolumeOptions{
+	volid, err := nc.Content().Create(ctx, name, &storage.CreateVolumeOptions{
 		Filename: filename,
 		VMID:     vmid,
 		Size:     "1024",
@@ -182,14 +182,14 @@ func TestNodeStorageContentLifecycle(t *testing.T) {
 			defer cancel()
 
 			e2e.RetryCleanup(t, "delete volume", func() error {
-				_, delErr := nc.Content().Delete(cleanupCtx, cfg.Node, name, volume, 0)
+				_, delErr := nc.Content().Delete(cleanupCtx, name, volume, 0)
 				return delErr
 			})
 		})
 	}
 
 	// 3. list — verify the create.
-	volumes, err = nc.Content().List(ctx, cfg.Node, name, nil)
+	volumes, err = nc.Content().List(ctx, name, nil)
 	e2e.RequireNoError(t, "list content after create", err)
 	idx := slices.IndexFunc(volumes, func(v storage.Volume) bool { return v.VolID == volid })
 	if idx < 0 {
@@ -203,7 +203,7 @@ func TestNodeStorageContentLifecycle(t *testing.T) {
 	}
 
 	// 4. get — verify the create from the single-volume view.
-	got, err := nc.Content().Get(ctx, cfg.Node, name, volume)
+	got, err := nc.Content().Get(ctx, name, volume)
 	e2e.RequireNoError(t, "get volume after create", err)
 	if got.Format != "raw" {
 		t.Errorf("get: Format = %q, want %q", got.Format, "raw")
@@ -217,19 +217,19 @@ func TestNodeStorageContentLifecycle(t *testing.T) {
 	// notes"/"only backups support attribute 'protected'" for anything
 	// else), so a disk image must reject both.
 	notes := "e2e " + name
-	err = nc.Content().Update(ctx, cfg.Node, name, volume, &storage.UpdateVolumeOptions{Notes: &notes})
+	err = nc.Content().Update(ctx, name, volume, &storage.UpdateVolumeOptions{Notes: &notes})
 	e2e.RequireError(t, "update notes on a non-backup volume", err)
 
 	protectedTrue := true
-	err = nc.Content().Update(ctx, cfg.Node, name, volume, &storage.UpdateVolumeOptions{Protected: &protectedTrue})
+	err = nc.Content().Update(ctx, name, volume, &storage.UpdateVolumeOptions{Protected: &protectedTrue})
 	e2e.RequireError(t, "update protected on a non-backup volume", err)
 
 	// 6. delete.
-	_, err = nc.Content().Delete(ctx, cfg.Node, name, volume, 0)
+	_, err = nc.Content().Delete(ctx, name, volume, 0)
 	e2e.RequireNoError(t, "delete volume", err)
 
 	// 7. list — verify the delete.
-	volumes, err = nc.Content().List(ctx, cfg.Node, name, nil)
+	volumes, err = nc.Content().List(ctx, name, nil)
 	e2e.RequireNoError(t, "list content after delete", err)
 	if slices.ContainsFunc(volumes, func(v storage.Volume) bool { return v.VolID == volid }) {
 		t.Errorf("list after delete: volume %q still present", volid)
@@ -259,8 +259,8 @@ func TestNodeStoragePruneBackupsDryRun(t *testing.T) {
 	name := newDirStorage(t, cfg, client, []string{"backup"})
 	ctx := t.Context()
 
-	entries, err := client.Nodes().Storage().PruneBackups().DryRun(
-		ctx, cfg.Node, name, &storage.PruneOptions{PruneBackups: "keep-all=1"},
+	entries, err := client.Nodes(cfg.Node).Storage().PruneBackups().DryRun(
+		ctx, name, &storage.PruneOptions{PruneBackups: "keep-all=1"},
 	)
 	e2e.RequireNoError(t, "prune backups dry run", err)
 	if len(entries) != 0 {
@@ -270,12 +270,12 @@ func TestNodeStoragePruneBackupsDryRun(t *testing.T) {
 	// nil (no explicit retention, and the storage has none configured)
 	// must fail server-side with the "no prune-backups options
 	// configured" error above.
-	_, err = client.Nodes().Storage().PruneBackups().DryRun(ctx, cfg.Node, name, nil)
+	_, err = client.Nodes(cfg.Node).Storage().PruneBackups().DryRun(ctx, name, nil)
 	e2e.RequireError(t, "prune backups dry run without any retention configured", err)
 
-	_, err = client.Nodes().Storage().PruneBackups().Delete(ctx, cfg.Node, name, nil)
+	_, err = client.Nodes(cfg.Node).Storage().PruneBackups().Delete(ctx, name, nil)
 	e2e.RequireError(t, "prune backups with nil options", err)
 
-	_, err = client.Nodes().Storage().PruneBackups().Delete(ctx, cfg.Node, name, &storage.PruneOptions{})
+	_, err = client.Nodes(cfg.Node).Storage().PruneBackups().Delete(ctx, name, &storage.PruneOptions{})
 	e2e.RequireError(t, "prune backups without retention", err)
 }

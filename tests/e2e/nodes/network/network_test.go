@@ -33,10 +33,10 @@ func TestNetworkList(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	nc := client.Nodes().Network()
+	nc := client.Nodes(cfg.Node).Network()
 	ctx := t.Context()
 
-	all, err := nc.List(ctx, cfg.Node, "")
+	all, err := nc.List(ctx, "")
 	e2e.RequireNoError(t, "list interfaces (unfiltered)", err)
 	for _, ifc := range all {
 		if ifc.Iface == "" || ifc.Type == "" {
@@ -46,7 +46,7 @@ func TestNetworkList(t *testing.T) {
 
 	// The node may have zero bridges configured, so only assert that
 	// whatever comes back is actually a bridge entry.
-	bridges, err := nc.List(ctx, cfg.Node, network.TypeBridge)
+	bridges, err := nc.List(ctx, network.TypeBridge)
 	e2e.RequireNoError(t, "list interfaces (type=bridge)", err)
 	for _, ifc := range bridges {
 		if ifc.Type != network.TypeBridge {
@@ -69,7 +69,7 @@ func TestNetworkLifecycle(t *testing.T) {
 	}
 
 	client := e2e.NewE2EClient(t, cfg)
-	nc := client.Nodes().Network()
+	nc := client.Nodes(cfg.Node).Network()
 	ctx := t.Context()
 
 	// Proxmox's pve-iface format requires an alias suffix to be purely
@@ -83,18 +83,18 @@ func TestNetworkLifecycle(t *testing.T) {
 			defer cancel()
 
 			e2e.RetryCleanup(t, "delete network interface", func() error {
-				return nc.Delete(cleanupCtx, cfg.Node, iface)
+				return nc.Delete(cleanupCtx, iface)
 			})
 		})
 	}
 
 	// 1. get (absent) — a non-existent interface must return an error.
-	_, err := nc.Get(ctx, cfg.Node, iface)
+	_, err := nc.Get(ctx, iface)
 	e2e.RequireError(t, "get absent interface", err)
 
 	// 2. create.
 	comment := "go-proxmox-rest " + e2e.UniqueName(cfg.Prefix)
-	err = nc.Create(ctx, cfg.Node, iface, &network.InterfaceOptions{
+	err = nc.Create(ctx, iface, &network.InterfaceOptions{
 		Type:     network.TypeAlias,
 		Comments: &comment,
 	})
@@ -105,7 +105,7 @@ func TestNetworkLifecycle(t *testing.T) {
 	// trailing "\n" when reassembling them
 	// (PVE::Network::Interfaces), so a single-line comment round-trips
 	// with one trailing newline.
-	got, err := nc.Get(ctx, cfg.Node, iface)
+	got, err := nc.Get(ctx, iface)
 	e2e.RequireNoError(t, "get network interface", err)
 	if got.Type != network.TypeAlias {
 		t.Errorf("get: Type = %q, want %q", got.Type, network.TypeAlias)
@@ -117,14 +117,14 @@ func TestNetworkLifecycle(t *testing.T) {
 
 	// 4. update.
 	updatedComment := comment + "-updated"
-	err = nc.Update(ctx, cfg.Node, iface, &network.InterfaceOptions{
+	err = nc.Update(ctx, iface, &network.InterfaceOptions{
 		Type:     network.TypeAlias,
 		Comments: &updatedComment,
 	})
 	e2e.RequireNoError(t, "update network interface", err)
 
 	// 5. get — verify the update was applied.
-	got, err = nc.Get(ctx, cfg.Node, iface)
+	got, err = nc.Get(ctx, iface)
 	e2e.RequireNoError(t, "get network interface after update", err)
 	wantUpdatedComment := updatedComment + "\n"
 	if got.Comments != wantUpdatedComment {
@@ -132,10 +132,10 @@ func TestNetworkLifecycle(t *testing.T) {
 	}
 
 	// 6. delete.
-	err = nc.Delete(ctx, cfg.Node, iface)
+	err = nc.Delete(ctx, iface)
 	e2e.RequireNoError(t, "delete network interface", err)
 
 	// 7. get (absent) — must be gone.
-	_, err = nc.Get(ctx, cfg.Node, iface)
+	_, err = nc.Get(ctx, iface)
 	e2e.RequireError(t, "get deleted interface", err)
 }
