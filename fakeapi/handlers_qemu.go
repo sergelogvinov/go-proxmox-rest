@@ -1,0 +1,163 @@
+/*
+Copyright 2026 Proxmox Community.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package fakeapi
+
+import (
+	"net/http"
+	"strconv"
+	"time"
+
+	"github.com/sergelogvinov/go-proxmox-rest/nodes/qemu"
+)
+
+// qemuActionTaskType names the fake task backing each status action,
+// mirroring real Proxmox's qmstart/qmstop/... task types.
+var qemuActionTaskType = map[string]string{
+	"start": "qmstart", "stop": "qmstop", "shutdown": "qmshutdown",
+	"reset": "qmreset", "reboot": "qmreboot",
+	"suspend": "qmsuspend", "resume": "qmresume",
+}
+
+// handleQemuConfig backs GET/PUT/POST
+// /nodes/{node}/qemu/{vmid}/config — Config, UpdateConfig, and
+// UpdateConfigAsync all hit this one path, distinguished only by HTTP
+// method, so one handler dispatches on r.Method rather than three routes
+// fighting over the same pattern.
+func handleQemuConfig(w http.ResponseWriter, r *http.Request, n *nodeState) {
+	vmid, ok := pathVMID(w, r)
+	if !ok {
+		return
+	}
+
+	n.cs.mu.Lock()
+	vm := n.guests[vmid]
+	n.cs.mu.Unlock()
+	if vm == nil {
+		notFound(w, "vm")
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		n.cs.mu.Lock()
+		cfg := cloneStringMap(vm.cfg)
+		n.cs.mu.Unlock()
+		writeData(w, cfg)
+
+	case http.MethodPut:
+		n.cs.mu.Lock()
+		applyConfigUpdate(vm.cfg, r.URL.Query())
+		n.cs.mu.Unlock()
+		writeData(w, nil)
+
+	case http.MethodPost:
+		query := r.URL.Query()
+		upid := n.cs.startTask(n.name, "qmconfig", strconv.Itoa(vmid), func() error {
+			n.cs.mu.Lock()
+			applyConfigUpdate(vm.cfg, query)
+			n.cs.mu.Unlock()
+			return nil
+		})
+		writeData(w, upid)
+
+	default:
+		methodNotAllowed(w)
+	}
+}
+
+// handleQemuStatusCurrent backs GET /nodes/{node}/qemu/{vmid}/status/current.
+func handleQemuStatusCurrent(w http.ResponseWriter, r *http.Request, n *nodeState) {
+	vmid, ok := pathVMID(w, r)
+	if !ok {
+		return
+	}
+
+	n.cs.mu.Lock()
+	defer n.cs.mu.Unlock()
+
+	vm := n.guests[vmid]
+	if vm == nil {
+		notFound(w, "vm")
+		return
+	}
+
+	running := vm.status == qemu.VMStatusRunning
+	status := &qemu.Status{
+		VMID:   vmid,
+		Status: vm.status,
+		Name:   vm.cfg["name"],
+		CPUs:   float64(parseIntDefault(vm.cfg["cores"], 1)),
+		MaxMem: memoryMBToBytes(parseIntDefault(vm.cfg["memory"], 512)),
+	}
+	if running {
+		status.QMPStatus = "running"
+		status.PID = fakePID(vmid)
+		status.Uptime = int64(guestUptime(true, vm.startedAt).Seconds())
+	}
+
+	writeData(w, status)
+}
+
+// handleQemuAction backs POST /nodes/{node}/qemu/{vmid}/status/{action}
+// for start/stop/reset/shutdown/reboot/suspend/resume, all of which are
+// task-backed in real Proxmox — see docs/fakeapi.md §7.
+func handleQemuAction(w http.ResponseWriter, r *http.Request, n *nodeState) {
+	vmid, ok := pathVMID(w, r)
+	if !ok {
+		return
+	}
+
+	action := r.PathValue("action")
+	taskType, known := qemuActionTaskType[action]
+	if !known {
+		notFound(w, "action")
+		return
+	}
+
+	n.cs.mu.Lock()
+	vm := n.guests[vmid]
+	n.cs.mu.Unlock()
+	if vm == nil {
+		notFound(w, "vm")
+		return
+	}
+
+	upid := n.cs.startTask(n.name, taskType, strconv.Itoa(vmid), func() error {
+		n.cs.mu.Lock()
+		defer n.cs.mu.Unlock()
+
+		switch action {
+		case "start":
+			vm.status = qemu.VMStatusRunning
+			vm.startedAt = time.Now()
+		case "stop", "shutdown":
+			vm.status = qemu.VMStatusStopped
+			vm.startedAt = time.Time{}
+		case "reboot", "reset":
+			if vm.status == qemu.VMStatusRunning {
+				vm.startedAt = time.Now()
+			}
+		}
+		// suspend/resume: this repo's qemu.VMStatus only models
+		// stopped/running (no "paused"), so there's no additional state
+		// to flip for them beyond the task itself completing.
+
+		return nil
+	})
+
+	writeData(w, upid)
+}
