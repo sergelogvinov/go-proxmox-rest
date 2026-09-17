@@ -6,34 +6,13 @@ import (
 	"reflect"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/property"
+	"github.com/sergelogvinov/go-proxmox-rest/types"
 )
 
-// Startup describes the VM startup and shutdown ordering. Proxmox accepts the
-// order either as a bare first number or as order=<number>, followed by
-// optional up/down delays in seconds.
-type Startup struct {
-	Order *int `cfg:"order,omitempty,default"`
-	Up    *int `cfg:"up,omitempty"`
-	Down  *int `cfg:"down,omitempty"`
-}
-
-// String converts the startup configuration to Proxmox's property-string
-// format.
-func (s Startup) String() string {
-	value, _ := property.Marshal(s)
-	return value
-}
-
-// UnmarshalJSON converts Proxmox's startup property string into Startup.
-func (s *Startup) UnmarshalJSON(data []byte) error {
-	var value string
-	if err := json.Unmarshal(data, &value); err != nil {
-		return fmt.Errorf("qemu: startup must be a property string: %w", err)
-	}
-
-	*s = Startup{}
-	return property.Unmarshal(value, s)
-}
+// Startup is identical between this package and nodes/lxc — it lives in
+// the shared types package and is re-exported here as an alias so call
+// sites read as qemu.Startup.
+type Startup = types.Startup
 
 // SMBios1 describes the SMBIOS type 1 property string used by Proxmox.
 // String fields contain the values in the form expected by Proxmox. When
@@ -291,6 +270,8 @@ type Config struct {
 	// OSType selects guest-OS-specific optimizations, e.g. "l26"
 	// (Linux 2.6+), "win10", "other".
 	OSType *string `json:"ostype,omitempty" url:"ostype,omitempty"`
+	// Arch is the guest CPU architecture, e.g. "x86_64", "aarch64".
+	Arch *string `json:"arch,omitempty" url:"arch,omitempty"`
 	// Template marks the guest as a template (see also Client.Template,
 	// which performs the conversion).
 	Template *bool `json:"template,omitempty" url:"template,omitempty"`
@@ -318,8 +299,6 @@ type Config struct {
 	// Machine is the QEMU machine type, e.g. "q35" or
 	// "pc-i440fx-9.0+pve0,viommu=virtio".
 	Machine *Machine `json:"machine,omitempty" url:"machine,omitempty"`
-	// Arch is the guest CPU architecture, e.g. "x86_64", "aarch64".
-	Arch *string `json:"arch,omitempty" url:"arch,omitempty"`
 	// SMBios1 holds SMBIOS type 1 fields (UUID, serial, ...) as a
 	// property string.
 	SMBios1 *SMBios1 `json:"smbios1,omitempty" url:"smbios1,omitempty"`

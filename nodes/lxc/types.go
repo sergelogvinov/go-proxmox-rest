@@ -1,6 +1,71 @@
 package lxc
 
-import "github.com/sergelogvinov/go-proxmox-rest/types"
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/sergelogvinov/go-proxmox-rest/internal/property"
+	"github.com/sergelogvinov/go-proxmox-rest/types"
+)
+
+// Features describes a container's advanced feature flags (nesting,
+// keyctl, mount types, ...), as used by the "features" config option.
+type Features struct {
+	Nesting *bool `cfg:"nesting,omitempty"`
+	KeyCtl  *bool `cfg:"keyctl,omitempty"`
+	Mknod   *bool `cfg:"mknod,omitempty"`
+	NFS     *bool `cfg:"nfs,omitempty"`
+	CIFS    *bool `cfg:"cifs,omitempty"`
+	Fuse    *bool `cfg:"fuse,omitempty"`
+	RoX     *bool `cfg:"rox,omitempty"`
+}
+
+// String converts the feature flags to Proxmox's property-string format.
+func (f Features) String() string {
+	value, _ := property.Marshal(f)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's features property string into Features.
+func (f *Features) UnmarshalJSON(data []byte) error {
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return fmt.Errorf("lxc: features must be a property string: %w", err)
+	}
+
+	*f = Features{}
+	return property.Unmarshal(value, f)
+}
+
+// RootFS describes the container's root mount point. Proxmox accepts the
+// backing volume either as a bare first value or as volume=<volume>.
+type RootFS struct {
+	Volume       string   `cfg:"volume,omitempty,default"`
+	ACL          *bool    `cfg:"acl,omitempty"`
+	Backup       *bool    `cfg:"backup,omitempty"`
+	MountOptions []string `cfg:"mountoptions,omitempty"`
+	Quota        *bool    `cfg:"quota,omitempty"`
+	ReadOnly     *bool    `cfg:"ro,omitempty"`
+	Shared       *bool    `cfg:"shared,omitempty"`
+	Size         string   `cfg:"size,omitempty"`
+}
+
+// String converts the root mount point to Proxmox's property-string format.
+func (r RootFS) String() string {
+	value, _ := property.Marshal(r)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's rootfs property string into RootFS.
+func (r *RootFS) UnmarshalJSON(data []byte) error {
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return fmt.Errorf("lxc: rootfs must be a property string: %w", err)
+	}
+
+	*r = RootFS{}
+	return property.Unmarshal(value, r)
+}
 
 // Config describes an LXC container's configuration, as returned by
 // GET /nodes/{node}/lxc/{vmid}/config and accepted by
@@ -30,18 +95,17 @@ type Config struct {
 	// UI's summary panel and saved as a comment inside the config file.
 	Description string `json:"description,omitempty" url:"description,omitempty"`
 	// Tags is the container's tag list (meta information only).
-	Tags string `json:"tags,omitempty" url:"tags,omitempty"`
+	Tags []string `json:"tags,omitempty" url:"tags,omitempty"`
 	// OSType is the guest OS type, used to select lxc setup scripts,
 	// e.g. "debian", "alpine", "unmanaged".
-	OSType string `json:"ostype,omitempty" url:"ostype,omitempty"`
+	OSType *string `json:"ostype,omitempty" url:"ostype,omitempty"`
 	// Arch is the OS architecture, e.g. "amd64", "arm64".
-	Arch string `json:"arch,omitempty" url:"arch,omitempty"`
+	Arch *string `json:"arch,omitempty" url:"arch,omitempty"`
 	// Template marks the container as a template (see also
 	// Client.Template, which performs the conversion).
-	Template bool `json:"template,omitempty" url:"template,omitempty"`
-	// Protection prevents CT/disk remove and update operations when
-	// set.
-	Protection bool `json:"protection,omitempty" url:"protection,omitempty"`
+	Template *bool `json:"template,omitempty" url:"template,omitempty"`
+	// Protection prevents CT/disk remove and update operations when set.
+	Protection *bool `json:"protection,omitempty" url:"protection,omitempty"`
 	// Lock is the current lock holder, if any (e.g. "backup",
 	// "migrate", "mounted"). Include "lock" in Delete to force-unlock a
 	// stuck container.
@@ -50,6 +114,7 @@ type Config struct {
 	// to abort if the configuration changed concurrently since the
 	// value was read.
 	Digest string `json:"digest,omitempty" url:"digest,omitempty"`
+
 	// LXC holds the container's raw low-level lxc.conf entries as
 	// [key, value] pairs. GET-only diagnostic information.
 	LXC [][]string `json:"lxc,omitempty" url:"lxc,omitempty,readonly"`
@@ -57,10 +122,10 @@ type Config struct {
 	// -- boot / lifecycle behavior --
 
 	// OnBoot starts the container automatically at host boot.
-	OnBoot bool `json:"onboot,omitempty" url:"onboot,omitempty"`
+	OnBoot *bool `json:"onboot,omitempty" url:"onboot,omitempty"`
 	// Startup is the container's startup/shutdown ordering, e.g.
 	// "order=2,up=30,down=60".
-	Startup string `json:"startup,omitempty" url:"startup,omitempty"`
+	Startup *types.Startup `json:"startup,omitempty" url:"startup,omitempty"`
 	// Console attaches a console device (/dev/console) to the
 	// container.
 	Console bool `json:"console,omitempty" url:"console,omitempty"`
@@ -76,22 +141,22 @@ type Config struct {
 	Debug bool `json:"debug,omitempty" url:"debug,omitempty"`
 	// HookScript is the volume id of a script run at various points in
 	// the container's lifetime.
-	HookScript string `json:"hookscript,omitempty" url:"hookscript,omitempty"`
+	HookScript *string `json:"hookscript,omitempty" url:"hookscript,omitempty"`
 
 	// -- CPU / memory --
 
 	// Cores is the number of cores assigned to the container. Zero
 	// (unset) allows using all available cores.
-	Cores int `json:"cores,omitempty" url:"cores,omitempty"`
+	Cores *int `json:"cores,omitempty" url:"cores,omitempty"`
 	// CPULimit caps CPU usage (in host CPUs); 0 means unlimited.
-	CPULimit float64 `json:"cpulimit,omitempty" url:"cpulimit,omitempty"`
+	CPULimit *float64 `json:"cpulimit,omitempty" url:"cpulimit,omitempty"`
 	// CPUUnits is the container's CPU scheduling weight, relative to
 	// other running guests.
-	CPUUnits int `json:"cpuunits,omitempty" url:"cpuunits,omitempty"`
+	CPUUnits *int `json:"cpuunits,omitempty" url:"cpuunits,omitempty"`
 	// Memory is the container's RAM in MB.
-	Memory int `json:"memory,omitempty" url:"memory,omitempty"`
+	Memory *int `json:"memory,omitempty" url:"memory,omitempty"`
 	// Swap is the container's swap space in MB.
-	Swap int `json:"swap,omitempty" url:"swap,omitempty"`
+	Swap *int `json:"swap,omitempty" url:"swap,omitempty"`
 
 	// -- networking --
 
@@ -102,17 +167,17 @@ type Config struct {
 
 	// -- storage / platform --
 
-	// RootFS is the container's root mount point as a property string,
-	// e.g. "local-lvm:vm-100-disk-0,size=8G".
-	RootFS string `json:"rootfs,omitempty" url:"rootfs,omitempty"`
+	// RootFS is the container's root mount point, e.g.
+	// "local-lvm:vm-100-disk-0,size=8G".
+	RootFS *RootFS `json:"rootfs,omitempty" url:"rootfs,omitempty"`
 	// TimeZone is the container's time zone, e.g. "host" or a zoneinfo
 	// name.
 	TimeZone string `json:"timezone,omitempty" url:"timezone,omitempty"`
 	// Unprivileged runs the container as an unprivileged user.
-	Unprivileged bool `json:"unprivileged,omitempty" url:"unprivileged,omitempty"`
+	Unprivileged *bool `json:"unprivileged,omitempty" url:"unprivileged,omitempty"`
 	// Features configures advanced container features (nesting,
-	// keyctl, mount types, ...) as a property string.
-	Features string `json:"features,omitempty" url:"features,omitempty"`
+	// keyctl, mount types, ...).
+	Features *Features `json:"features,omitempty" url:"features,omitempty"`
 	// Env is the container runtime environment as a NUL-separated
 	// "KEY=value" list.
 	Env string `json:"env,omitempty" url:"env,omitempty"`

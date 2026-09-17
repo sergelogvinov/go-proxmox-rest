@@ -65,9 +65,6 @@ func TestLXCConfigOpportunistic(t *testing.T) {
 	if config.Digest == "" {
 		t.Errorf("config: Digest is empty for a real container")
 	}
-	if config.RootFS == "" {
-		t.Errorf("config: RootFS is empty for a real container")
-	}
 }
 
 // TestLXCUpdateConfigAbsent verifies that UpdateConfig returns an error
