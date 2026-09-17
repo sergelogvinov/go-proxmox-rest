@@ -125,6 +125,17 @@ func decodeStruct(raw json.RawMessage, rv reflect.Value) error {
 			continue
 		}
 		if name == "" {
+			if f.Anonymous {
+				// An embedded field with no explicit wire name (a bare
+				// `,inline` tag, e.g. cluster.statusEntry's NodeStatus) is
+				// flattened: decode the same object into it, mirroring
+				// encoding/json's own embedding behavior, instead of
+				// looking it up under its Go type name as a nested key.
+				if err := decodeValue(raw, rv.Field(i)); err != nil {
+					return fmt.Errorf("field %s: %w", f.Name, err)
+				}
+				continue
+			}
 			name = f.Name
 		}
 
