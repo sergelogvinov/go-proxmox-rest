@@ -1,5 +1,7 @@
 package lxc
 
+import "github.com/sergelogvinov/go-proxmox-rest/types"
+
 // Config describes an LXC container's configuration, as returned by
 // GET /nodes/{node}/lxc/{vmid}/config and accepted by
 // Client.UpdateConfig (PUT to the same path).
@@ -228,19 +230,36 @@ type Status struct {
 // Interface describes one of a container's network interfaces, as
 // returned by Client.Interfaces. Proxmox reads these directly from the
 // container's network namespace, so — unlike nodes/qemu/agent's
-// NetworkInterface — no guest agent is required.
+// NetworkInterface — no guest agent is required. Proxmox's own schema
+// declares both a legacy hwaddr/inet/inet6 triple and a
+// hardware-address/ip-addresses pair mirroring the guest-agent response
+// shape; both are populated on the same response, so this models all
+// five fields rather than picking one representation.
 type Interface struct {
 	// Name is the interface name, e.g. "eth0".
 	Name string `json:"name,omitempty" url:"name,omitempty"`
-	// HardwareAddress is the interface's MAC address.
-	HardwareAddress string `json:"hwaddr,omitempty" url:"hwaddr,omitempty"`
+	// HWAddr is the interface's MAC address (legacy field name).
+	HWAddr string `json:"hwaddr,omitempty" url:"hwaddr,omitempty"`
+	// HardwareAddress is the interface's MAC address, identical to
+	// HWAddr — Proxmox reports both under separate keys.
+	HardwareAddress string `json:"hardware-address,omitempty" url:"hardware-address,omitempty"`
 	// Inet is the interface's IPv4 address and subnet, e.g.
 	// "10.0.3.2/24".
 	Inet string `json:"inet,omitempty" url:"inet,omitempty"`
 	// Inet6 is the interface's IPv6 address and subnet, e.g.
 	// "fe80::be24:11ff:fe6f:0a35/64".
 	Inet6 string `json:"inet6,omitempty" url:"inet6,omitempty"`
+	// IPAddresses lists the interface's configured addresses in the
+	// guest-agent-style representation (same information as
+	// Inet/Inet6, split into typed entries).
+	IPAddresses []IPAddress `json:"ip-addresses,omitempty" url:"ip-addresses,omitempty"`
 }
+
+// IPAddress is identical between this package and nodes/qemu/agent (see
+// types/network.go's doc comment). It lives in the shared types package
+// and is re-exported here as an alias so call sites read as
+// lxc.IPAddress.
+type IPAddress = types.IPAddress
 
 // StartOptions holds the parameters for Client.Start
 // (POST .../status/start).

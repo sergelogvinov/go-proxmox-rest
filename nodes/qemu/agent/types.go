@@ -1,5 +1,13 @@
 package agent
 
+import "github.com/sergelogvinov/go-proxmox-rest/types"
+
+// IPAddress is identical between this package and nodes/lxc (see
+// types/network.go's doc comment). It lives in the shared types package
+// and is re-exported here as an alias so call sites keep reading as
+// agent.IPAddress.
+type IPAddress = types.IPAddress
+
 // Info describes the guest agent's own version and the commands it
 // supports, as returned by Client.Info (guest-info).
 type Info struct {
@@ -62,16 +70,6 @@ type NetworkInterface struct {
 	// Statistics holds the interface's traffic counters, when the
 	// guest agent reports them.
 	Statistics *NetworkInterfaceStats `json:"statistics,omitempty" url:"statistics,omitempty"`
-}
-
-// IPAddress is a single address bound to a guest network interface.
-type IPAddress struct {
-	// IPAddressType is "ipv4" or "ipv6".
-	IPAddressType string `json:"ip-address-type,omitempty" url:"ip-address-type,omitempty"`
-	// IPAddress is the address itself, e.g. "192.0.2.10".
-	IPAddress string `json:"ip-address,omitempty" url:"ip-address,omitempty"`
-	// Prefix is the address's subnet prefix length.
-	Prefix int `json:"prefix,omitempty" url:"prefix,omitempty"`
 }
 
 // NetworkInterfaceStats holds a guest network interface's traffic

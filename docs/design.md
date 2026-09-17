@@ -155,6 +155,12 @@ difference between the two `PVE::API2::{Qemu,LXC}` migrate-precondition
 handlers. Only the innermost blocking-HA-resource shape (`sid`, `cause`)
 is identical field-for-field and worth sharing.
 
+`types/network.go` shares `IPAddress` (`ip-address`/`ip-address-type`/
+`prefix`) between `nodes/qemu/agent`'s `NetworkInterface.IPAddresses`
+(guest-agent sourced) and `nodes/lxc`'s `Interface.IPAddresses` (read
+directly from the container's network namespace, no agent needed) — same
+per-address shape, different collection source.
+
 ### Two levels of nesting
 
 Proxmox nests some API sections one level deeper than the top-level resource tree
