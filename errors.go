@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"resty.dev/v3"
 )
@@ -40,12 +41,34 @@ func newAPIError(res *resty.Response) error {
 	return e
 }
 
-// IsNotFound reports whether the error is a 404 from the Proxmox API.
+// IsNotFound reports whether the error indicates that the requested resource
+// or required Proxmox binary was not found.
 func IsNotFound(err error) bool {
 	var apiErr *APIError
 	if asAPIError(err, &apiErr) {
-		return apiErr.StatusCode == http.StatusNotFound
+		if apiErr.StatusCode == http.StatusNotFound {
+			return true
+		}
+
+		if apiErr.StatusCode == http.StatusInternalServerError {
+			if containsErrorMessage(apiErr.Message, apiErr.Errors) {
+				return true
+			}
+		}
 	}
+	return false
+}
+
+func containsErrorMessage(message string, _ map[string]string) bool {
+	message = strings.ToLower(message)
+	if strings.Contains(message, "does not exist") ||
+		strings.Contains(message, "no such resource") ||
+		strings.Contains(message, "no such ha") ||
+		strings.Contains(message, "no such file or directory") ||
+		strings.Contains(message, "binary not installed:") {
+		return true
+	}
+
 	return false
 }
 
