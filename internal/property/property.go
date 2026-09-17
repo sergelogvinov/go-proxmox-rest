@@ -5,6 +5,7 @@ package property
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -68,7 +69,7 @@ func Unmarshal(s string, v any) error {
 	}
 
 	rv = rv.Elem()
-	for _, item := range strings.Split(s, ",") {
+	for item := range strings.SplitSeq(s, ",") {
 		item = strings.TrimSpace(item)
 		if item == "" {
 			continue
@@ -103,10 +104,8 @@ func cfgName(tag string) string {
 
 func fieldTag(field reflect.StructField) (string, bool) {
 	name := cfgName(field.Tag.Get("cfg"))
-	for _, part := range strings.Split(field.Tag.Get("cfg"), ",")[1:] {
-		if part == "default" {
-			return name, true
-		}
+	if slices.Contains(strings.Split(field.Tag.Get("cfg"), ",")[1:], "default") {
+		return name, true
 	}
 	return name, false
 }

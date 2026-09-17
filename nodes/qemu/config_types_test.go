@@ -199,6 +199,176 @@ func TestMemory(t *testing.T) {
 	}
 }
 
+func TestAgent(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "bare enabled",
+			input: `"1"`,
+			want:  "1",
+		},
+		{
+			name:  "enabled with options",
+			input: `"1,fstrim_cloned_disks=1,type=virtio"`,
+			want:  "1,fstrim_cloned_disks=1,type=virtio",
+		},
+		{
+			name:  "named enabled disabled",
+			input: `"enabled=0,freeze-fs=1"`,
+			want:  "0,freeze-fs=1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got Agent
+			if err := got.UnmarshalJSON([]byte(tt.input)); err != nil {
+				t.Fatalf("UnmarshalJSON() error = %v", err)
+			}
+			if got.String() != tt.want {
+				t.Fatalf("UnmarshalJSON() = %q, want %q", got.String(), tt.want)
+			}
+		})
+	}
+}
+
+func TestVGA(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "bare type",
+			input: `"std"`,
+			want:  "std",
+		},
+		{
+			name:  "type with memory",
+			input: `"qxl,memory=32"`,
+			want:  "qxl,memory=32",
+		},
+		{
+			name:  "named type with clipboard",
+			input: `"type=virtio-gl,clipboard=vnc"`,
+			want:  "virtio-gl,clipboard=vnc",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got VGA
+			if err := got.UnmarshalJSON([]byte(tt.input)); err != nil {
+				t.Fatalf("UnmarshalJSON() error = %v", err)
+			}
+			if got.String() != tt.want {
+				t.Fatalf("UnmarshalJSON() = %q, want %q", got.String(), tt.want)
+			}
+		})
+	}
+}
+
+func TestSpiceEnhancements(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "folder sharing",
+			input: `"foldersharing=1"`,
+			want:  "foldersharing=1",
+		},
+		{
+			name:  "all options",
+			input: `"foldersharing=1,videostreaming=all"`,
+			want:  "foldersharing=1,videostreaming=all",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got SpiceEnhancements
+			if err := got.UnmarshalJSON([]byte(tt.input)); err != nil {
+				t.Fatalf("UnmarshalJSON() error = %v", err)
+			}
+			if got.String() != tt.want {
+				t.Fatalf("UnmarshalJSON() = %q, want %q", got.String(), tt.want)
+			}
+		})
+	}
+}
+
+func TestRNG0(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "bare source",
+			input: `"/dev/urandom"`,
+			want:  "/dev/urandom",
+		},
+		{
+			name:  "named source with limits",
+			input: `"source=/dev/random,max_bytes=512,period=2000"`,
+			want:  "/dev/random,max_bytes=512,period=2000",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got RNG0
+			if err := got.UnmarshalJSON([]byte(tt.input)); err != nil {
+				t.Fatalf("UnmarshalJSON() error = %v", err)
+			}
+			if got.String() != tt.want {
+				t.Fatalf("UnmarshalJSON() = %q, want %q", got.String(), tt.want)
+			}
+		})
+	}
+}
+
+func TestMachine(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "bare type",
+			input: `"q35"`,
+			want:  "q35",
+		},
+		{
+			name:  "type with viommu",
+			input: `"q35,viommu=virtio"`,
+			want:  "q35,viommu=virtio",
+		},
+		{
+			name:  "full options",
+			input: `"type=pc,aw-bits=39,enable-s3=1,enable-s4=0"`,
+			want:  "pc,aw-bits=39,enable-s3=1,enable-s4=0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got Machine
+			if err := got.UnmarshalJSON([]byte(tt.input)); err != nil {
+				t.Fatalf("UnmarshalJSON() error = %v", err)
+			}
+			if got.String() != tt.want {
+				t.Fatalf("UnmarshalJSON() = %q, want %q", got.String(), tt.want)
+			}
+		})
+	}
+}
+
 func sameIntPtr(left, right *int) bool {
 	if left == nil || right == nil {
 		return left == right

@@ -113,6 +113,104 @@ func (s *Memory) UnmarshalJSON(data []byte) error {
 	return unmarshalPropertyJSON(data, s, "memory")
 }
 
+// Agent describes the QEMU Guest Agent configuration. Proxmox accepts the
+// enabled flag either as a bare first value or as enabled=<1|0>.
+type Agent struct {
+	Enabled           *bool  `cfg:"enabled,omitempty,default"`
+	FreezeFs          *bool  `cfg:"freeze-fs,omitempty"`
+	FsTrimClonedDisks *bool  `cfg:"fstrim_cloned_disks,omitempty"`
+	Type              string `cfg:"type,omitempty"`
+}
+
+// String converts agent settings to Proxmox's property-string format.
+func (s Agent) String() string {
+	value, _ := property.Marshal(s)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's agent property string into Agent.
+func (s *Agent) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, s, "agent")
+}
+
+// VGA describes the VGA hardware configuration. Proxmox accepts the
+// display type either as a bare first value or as type=<enum>.
+type VGA struct {
+	Type      string `cfg:"type,omitempty,default"`
+	Clipboard string `cfg:"clipboard,omitempty"`
+	Memory    *int   `cfg:"memory,omitempty"`
+}
+
+// String converts VGA settings to Proxmox's property-string format.
+func (s VGA) String() string {
+	value, _ := property.Marshal(s)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's VGA property string into VGA.
+func (s *VGA) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, s, "vga")
+}
+
+// SpiceEnhancements describes additional SPICE features.
+type SpiceEnhancements struct {
+	FolderSharing  *bool  `cfg:"foldersharing,omitempty"`
+	VideoStreaming string `cfg:"videostreaming,omitempty"`
+}
+
+// String converts SPICE enhancement settings to Proxmox's property-string
+// format.
+func (s SpiceEnhancements) String() string {
+	value, _ := property.Marshal(s)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's SPICE enhancement property string into
+// SpiceEnhancements.
+func (s *SpiceEnhancements) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, s, "spice_enhancements")
+}
+
+// RNG0 describes a VirtIO random number generator device. Proxmox accepts
+// the source either as a bare first value or as source=<path>.
+type RNG0 struct {
+	Source   string `cfg:"source,omitempty,default"`
+	MaxBytes *int   `cfg:"max_bytes,omitempty"`
+	Period   *int   `cfg:"period,omitempty"`
+}
+
+// String converts RNG settings to Proxmox's property-string format.
+func (s RNG0) String() string {
+	value, _ := property.Marshal(s)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's RNG property string into RNG0.
+func (s *RNG0) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, s, "rng0")
+}
+
+// Machine describes the QEMU machine configuration. Proxmox accepts the
+// machine type either as a bare first value or as type=<machine type>.
+type Machine struct {
+	Type     string `cfg:"type,omitempty,default"`
+	AwBits   *int   `cfg:"aw-bits,omitempty"`
+	EnableS3 *bool  `cfg:"enable-s3,omitempty"`
+	EnableS4 *bool  `cfg:"enable-s4,omitempty"`
+	VIOMMU   string `cfg:"viommu,omitempty"`
+}
+
+// String converts machine settings to Proxmox's property-string format.
+func (s Machine) String() string {
+	value, _ := property.Marshal(s)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's machine property string into Machine.
+func (s *Machine) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, s, "machine")
+}
+
 // IntelTDX describes Intel Trust Domain Extensions settings.
 type IntelTDX struct {
 	Type        string `cfg:"type,omitempty,default"`
@@ -218,8 +316,8 @@ type Config struct {
 	// "ovmf" (UEFI).
 	BIOS *string `json:"bios,omitempty" url:"bios,omitempty"`
 	// Machine is the QEMU machine type, e.g. "q35" or
-	// "pc-i440fx-9.0+pve0".
-	Machine *string `json:"machine,omitempty" url:"machine,omitempty"`
+	// "pc-i440fx-9.0+pve0,viommu=virtio".
+	Machine *Machine `json:"machine,omitempty" url:"machine,omitempty"`
 	// Arch is the guest CPU architecture, e.g. "x86_64", "aarch64".
 	Arch *string `json:"arch,omitempty" url:"arch,omitempty"`
 	// SMBios1 holds SMBIOS type 1 fields (UUID, serial, ...) as a
@@ -304,15 +402,14 @@ type Config struct {
 	TDF *bool `json:"tdf,omitempty" url:"tdf,omitempty"`
 	// LocalTime sets the RTC to local time instead of UTC.
 	LocalTime *bool `json:"localtime,omitempty" url:"localtime,omitempty"`
-	// Agent configures the QEMU Guest Agent as a property string, e.g.
-	// "1" or "1,fstrim_cloned_disks=1".
-	Agent string `json:"agent,omitempty" url:"agent,omitempty"`
+	// Agent configures the QEMU Guest Agent, e.g. "1" or
+	// "1,fstrim_cloned_disks=1".
+	Agent *Agent `json:"agent,omitempty" url:"agent,omitempty"`
 	// Watchdog configures a virtual hardware watchdog device as a
 	// property string.
 	Watchdog string `json:"watchdog,omitempty" url:"watchdog,omitempty"`
-	// VGA configures the VGA hardware as a property string, e.g.
-	// "std" or "qxl,memory=32".
-	VGA string `json:"vga,omitempty" url:"vga,omitempty"`
+	// VGA configures the VGA hardware, e.g. "std" or "qxl,memory=32".
+	VGA *VGA `json:"vga,omitempty" url:"vga,omitempty"`
 	// Tablet enables/disables the USB tablet device (absolute mouse
 	// positioning for VNC).
 	Tablet *bool `json:"tablet,omitempty" url:"tablet,omitempty"`
@@ -324,17 +421,17 @@ type Config struct {
 	IVSHMem string `json:"ivshmem,omitempty" url:"ivshmem,omitempty"`
 	// Audio0 configures an audio device as a property string.
 	Audio0 string `json:"audio0,omitempty" url:"audio0,omitempty"`
-	// SpiceEnhancements configures additional SPICE features as a
-	// property string.
-	SpiceEnhancements string `json:"spice_enhancements,omitempty" url:"spice_enhancements,omitempty"`
-	// RNG0 configures a VirtIO random number generator as a property
-	// string.
-	RNG0 string `json:"rng0,omitempty" url:"rng0,omitempty"`
+	// SpiceEnhancements configures additional SPICE features, e.g.
+	// "foldersharing=1,videostreaming=all".
+	SpiceEnhancements *SpiceEnhancements `json:"spice_enhancements,omitempty" url:"spice_enhancements,omitempty"`
+	// RNG0 configures a VirtIO random number generator, e.g.
+	// "/dev/urandom,max_bytes=1024,period=1000".
+	RNG0 *RNG0 `json:"rng0,omitempty" url:"rng0,omitempty"`
 	// CDROM is an alias for the ide2 drive.
 	CDROM string `json:"cdrom,omitempty" url:"cdrom,omitempty"`
 	// HotPlug selectively enables hotplug features, e.g.
 	// "network,disk,usb"; "0" disables hotplug entirely.
-	HotPlug string `json:"hotplug,omitempty" url:"hotplug,omitempty"`
+	HotPlug []string `json:"hotplug,omitempty" url:"hotplug,omitempty"`
 
 	// -- migration --
 
@@ -414,9 +511,6 @@ type Config struct {
 	HostPCI map[int]string `json:"-" url:"-"`
 	// Serial holds serialN entries (serial devices), N in 0-3.
 	Serial map[int]string `json:"-" url:"-"`
-	// Parallel holds parallelN entries (parallel ports, deprecated), N
-	// in 0-2.
-	Parallel map[int]string `json:"-" url:"-"`
 	// IPConfig holds ipconfigN entries (cloud-init per-NIC IP
 	// configuration), N in 0-31.
 	IPConfig map[int]string `json:"-" url:"-"`

@@ -63,7 +63,7 @@ func decodeValue(raw json.RawMessage, rv reflect.Value) error {
 	}
 
 	if rv.CanAddr() {
-		if unmarshaler, ok := rv.Addr().Interface().(json.Unmarshaler); ok {
+		if unmarshaler, ok := reflect.TypeAssert[json.Unmarshaler](rv.Addr()); ok {
 			return unmarshaler.UnmarshalJSON(raw)
 		}
 	}

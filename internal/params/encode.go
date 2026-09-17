@@ -76,7 +76,7 @@ func Encode(v any) (map[string]string, error) {
 // encodeField encodes a single (already dereferenced) field value.
 func encodeField(params map[string]string, name string, fv reflect.Value, isPtr bool) error {
 	if fv.CanInterface() {
-		if stringer, ok := fv.Interface().(fmt.Stringer); ok {
+		if stringer, ok := reflect.TypeAssert[fmt.Stringer](fv); ok {
 			value := stringer.String()
 			if value == "" && !isPtr {
 				return nil
@@ -86,7 +86,7 @@ func encodeField(params map[string]string, name string, fv reflect.Value, isPtr 
 		}
 	}
 	if fv.CanAddr() && fv.Addr().CanInterface() {
-		if stringer, ok := fv.Addr().Interface().(fmt.Stringer); ok {
+		if stringer, ok := reflect.TypeAssert[fmt.Stringer](fv.Addr()); ok {
 			value := stringer.String()
 			if value == "" && !isPtr {
 				return nil

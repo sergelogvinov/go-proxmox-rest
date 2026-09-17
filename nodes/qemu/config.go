@@ -149,7 +149,6 @@ func encodeConfig(cfg *Config) (map[string]string, error) {
 	addIndexed(p, "usb", cfg.USB)
 	addIndexed(p, "hostpci", cfg.HostPCI)
 	addIndexed(p, "serial", cfg.Serial)
-	addIndexed(p, "parallel", cfg.Parallel)
 	addIndexed(p, "ipconfig", cfg.IPConfig)
 	addIndexed(p, "numa", cfg.NUMA)
 
@@ -197,8 +196,6 @@ func setIndexedField(cfg *Config, prefix string, index int, v string) {
 		setIndexed(&cfg.HostPCI, index, v)
 	case "serial":
 		setIndexed(&cfg.Serial, index, v)
-	case "parallel":
-		setIndexed(&cfg.Parallel, index, v)
 	case "ipconfig":
 		setIndexed(&cfg.IPConfig, index, v)
 	case "numa":
