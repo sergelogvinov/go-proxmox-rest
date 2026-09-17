@@ -67,6 +67,79 @@ func (r *RootFS) UnmarshalJSON(data []byte) error {
 	return property.Unmarshal(value, r)
 }
 
+// Net describes a container network interface entry (netN), following
+// the PVE::LXC::Config netN property grammar. Proxmox accepts the
+// interface name either as a bare first value or as name=<ifname>.
+type Net struct {
+	Name        string   `cfg:"name,omitempty,default"`
+	Bridge      string   `cfg:"bridge,omitempty"`
+	Firewall    *bool    `cfg:"firewall,omitempty"`
+	GatewayIPv4 string   `cfg:"gw,omitempty"`
+	GatewayIPv6 string   `cfg:"gw6,omitempty"`
+	HWAddr      string   `cfg:"hwaddr,omitempty"`
+	IPv4        string   `cfg:"ip,omitempty"`
+	IPv6        string   `cfg:"ip6,omitempty"`
+	MTU         *int     `cfg:"mtu,omitempty"`
+	Rate        *int     `cfg:"rate,omitempty"`
+	Tag         *int     `cfg:"tag,omitempty"`
+	Trunks      []string `cfg:"trunks,omitempty"`
+	Type        string   `cfg:"type,omitempty"`
+	VLANIDs     []string `cfg:"vlanids,omitempty"`
+}
+
+// String converts the network interface settings to Proxmox's
+// property-string format.
+func (n Net) String() string {
+	value, _ := property.Marshal(n)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's netN property string into Net.
+func (n *Net) UnmarshalJSON(data []byte) error {
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return fmt.Errorf("lxc: net must be a property string: %w", err)
+	}
+
+	*n = Net{}
+	return property.Unmarshal(value, n)
+}
+
+// MountPoint describes an additional container mount point entry
+// (mpN), following the same property grammar as RootFS plus the
+// container-internal mount path. Proxmox accepts the backing volume
+// either as a bare first value or as volume=<volume>.
+type MountPoint struct {
+	Volume       string   `cfg:"volume,omitempty,default"`
+	MountPoint   string   `cfg:"mp,omitempty"`
+	ACL          *bool    `cfg:"acl,omitempty"`
+	Backup       *bool    `cfg:"backup,omitempty"`
+	MountOptions []string `cfg:"mountoptions,omitempty"`
+	Quota        *bool    `cfg:"quota,omitempty"`
+	ReadOnly     *bool    `cfg:"ro,omitempty"`
+	Replicate    *bool    `cfg:"replicate,omitempty"`
+	Shared       *bool    `cfg:"shared,omitempty"`
+	Size         string   `cfg:"size,omitempty"`
+}
+
+// String converts the mount point settings to Proxmox's property-string
+// format.
+func (m MountPoint) String() string {
+	value, _ := property.Marshal(m)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's mpN property string into MountPoint.
+func (m *MountPoint) UnmarshalJSON(data []byte) error {
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return fmt.Errorf("lxc: mp must be a property string: %w", err)
+	}
+
+	*m = MountPoint{}
+	return property.Unmarshal(value, m)
+}
+
 // Config describes an LXC container's configuration, as returned by
 // GET /nodes/{node}/lxc/{vmid}/config and accepted by
 // Client.UpdateConfig (PUT to the same path).
@@ -192,9 +265,9 @@ type Config struct {
 	// -- numerically-indexed hardware families, keyed by index --
 
 	// Net holds netN entries (network interfaces), N in 0-31.
-	Net map[int]string `json:"-" url:"-"`
+	Net map[int]Net `json:"-" url:"-"`
 	// MP holds mpN entries (additional mount points), N in 0-255.
-	MP map[int]string `json:"-" url:"-"`
+	MP map[int]MountPoint `json:"-" url:"-"`
 	// Unused holds unusedN entries (mount points detached from the
 	// config but not deleted), N in 0-255.
 	Unused map[int]string `json:"-" url:"-"`

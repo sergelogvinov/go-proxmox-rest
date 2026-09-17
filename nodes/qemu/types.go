@@ -398,6 +398,87 @@ func (n *Net) UnmarshalJSON(data []byte) error {
 	return unmarshalPropertyJSON(data, n, "net")
 }
 
+// Watchdog describes a virtual hardware watchdog device. Proxmox
+// accepts the watchdog model either as a bare first value or as
+// model=<i6300esb|ib700>.
+type Watchdog struct {
+	Model  string `cfg:"model,omitempty,default"`
+	Action string `cfg:"action,omitempty"`
+}
+
+// String converts watchdog settings to Proxmox's property-string format.
+func (w Watchdog) String() string {
+	value, _ := property.Marshal(w)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's watchdog property string into Watchdog.
+func (w *Watchdog) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, w, "watchdog")
+}
+
+// EFIDisk describes the guest's EFI disk (efidisk0). Proxmox accepts
+// the backing volume either as a bare first value or as file=<volume>.
+type EFIDisk struct {
+	File            string `cfg:"file,omitempty,default"`
+	EFIType         string `cfg:"efitype,omitempty"`
+	Format          string `cfg:"format,omitempty"`
+	PreEnrolledKeys *bool  `cfg:"pre-enrolled-keys,omitempty"`
+	Size            string `cfg:"size,omitempty"`
+}
+
+// String converts the EFI disk settings to Proxmox's property-string
+// format.
+func (e EFIDisk) String() string {
+	value, _ := property.Marshal(e)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's efidisk0 property string into EFIDisk.
+func (e *EFIDisk) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, e, "efidisk0")
+}
+
+// Audio describes a virtual audio device (audio0). Proxmox accepts
+// the audio hardware either as a bare first value or as
+// device=<intel-hda|AC97>.
+type Audio struct {
+	Device string `cfg:"device,omitempty,default"`
+	Driver string `cfg:"driver,omitempty"`
+}
+
+// String converts the audio device settings to Proxmox's property-string
+// format.
+func (a Audio) String() string {
+	value, _ := property.Marshal(a)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's audio0 property string into Audio.
+func (a *Audio) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, a, "audio0")
+}
+
+// IVSHMem describes an inter-VM shared memory device. Proxmox accepts
+// the shared memory size either as a bare first value or as
+// size=<MB>.
+type IVSHMem struct {
+	Size *int   `cfg:"size,omitempty,default"`
+	Name string `cfg:"name,omitempty"`
+}
+
+// String converts the shared memory settings to Proxmox's property-string
+// format.
+func (i IVSHMem) String() string {
+	value, _ := property.Marshal(i)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's ivshmem property string into IVSHMem.
+func (i *IVSHMem) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, i, "ivshmem")
+}
+
 // IntelTDX describes Intel Trust Domain Extensions settings.
 type IntelTDX struct {
 	Type        string `cfg:"type,omitempty,default"`
@@ -587,14 +668,16 @@ type Config struct {
 	ACPI *bool `json:"acpi,omitempty" url:"acpi,omitempty"`
 	// TDF enables/disables the time-drift fix.
 	TDF *bool `json:"tdf,omitempty" url:"tdf,omitempty"`
+	// EFIDisk configures the EFI disk for the guest.
+	EFIDisk *EFIDisk `json:"efidisk,omitempty" url:"efidisk,omitempty"`
 	// LocalTime sets the RTC to local time instead of UTC.
 	LocalTime *bool `json:"localtime,omitempty" url:"localtime,omitempty"`
 	// Agent configures the QEMU Guest Agent, e.g. "1" or
 	// "1,fstrim_cloned_disks=1".
 	Agent *Agent `json:"agent,omitempty" url:"agent,omitempty"`
-	// Watchdog configures a virtual hardware watchdog device as a
-	// property string.
-	Watchdog string `json:"watchdog,omitempty" url:"watchdog,omitempty"`
+	// Watchdog configures a virtual hardware watchdog device, e.g.
+	// "i6300esb,action=reset".
+	Watchdog *Watchdog `json:"watchdog,omitempty" url:"watchdog,omitempty"`
 	// VGA configures the VGA hardware, e.g. "std" or "qxl,memory=32".
 	VGA *VGA `json:"vga,omitempty" url:"vga,omitempty"`
 	// Tablet enables/disables the USB tablet device (absolute mouse
@@ -604,10 +687,10 @@ type Config struct {
 	Keyboard string `json:"keyboard,omitempty" url:"keyboard,omitempty"`
 	// SCSIHW is the SCSI controller model, e.g. "virtio-scsi-single".
 	SCSIHW string `json:"scsihw,omitempty" url:"scsihw,omitempty"`
-	// IVSHMem configures inter-VM shared memory as a property string.
-	IVSHMem string `json:"ivshmem,omitempty" url:"ivshmem,omitempty"`
-	// Audio0 configures an audio device as a property string.
-	Audio0 string `json:"audio0,omitempty" url:"audio0,omitempty"`
+	// IVSHMem configures inter-VM shared memory, e.g. "size=12,name=vm1".
+	IVSHMem *IVSHMem `json:"ivshmem,omitempty" url:"ivshmem,omitempty"`
+	// Audio0 configures an audio device, e.g. "device=intel-hda,driver=spice".
+	Audio0 *Audio `json:"audio0,omitempty" url:"audio0,omitempty"`
 	// SpiceEnhancements configures additional SPICE features, e.g.
 	// "foldersharing=1,videostreaming=all".
 	SpiceEnhancements *SpiceEnhancements `json:"spice_enhancements,omitempty" url:"spice_enhancements,omitempty"`

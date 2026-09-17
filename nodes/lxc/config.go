@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/internal/property"
 )
 
 // indexedPrefixes are the numerically-suffixed CT config families
@@ -106,8 +107,8 @@ func encodeConfig(cfg *Config) (map[string]string, error) {
 		return nil, err
 	}
 
-	addIndexed(p, "net", cfg.Net)
-	addIndexed(p, "mp", cfg.MP)
+	addIndexedNet(p, cfg.Net)
+	addIndexedMountPoint(p, cfg.MP)
 	addIndexed(p, "unused", cfg.Unused)
 
 	return p, nil
@@ -135,12 +136,36 @@ func splitIndexedKey(key string) (prefix string, index int, ok bool) {
 func setIndexedField(cfg *Config, prefix string, index int, v string) {
 	switch prefix {
 	case "net":
-		setIndexed(&cfg.Net, index, v)
+		setIndexedNet(&cfg.Net, index, v)
 	case "mp":
-		setIndexed(&cfg.MP, index, v)
+		setIndexedMountPoint(&cfg.MP, index, v)
 	case "unused":
 		setIndexed(&cfg.Unused, index, v)
 	}
+}
+
+// setIndexedNet parses v as a netN property string and stores it at
+// (*m)[index], allocating *m on first use.
+func setIndexedNet(m *map[int]Net, index int, v string) {
+	if *m == nil {
+		*m = map[int]Net{}
+	}
+
+	net := Net{}
+	_ = property.Unmarshal(v, &net)
+	(*m)[index] = net
+}
+
+// setIndexedMountPoint parses v as an mpN property string and stores it
+// at (*m)[index], allocating *m on first use.
+func setIndexedMountPoint(m *map[int]MountPoint, index int, v string) {
+	if *m == nil {
+		*m = map[int]MountPoint{}
+	}
+
+	mp := MountPoint{}
+	_ = property.Unmarshal(v, &mp)
+	(*m)[index] = mp
 }
 
 // setIndexed sets (*m)[index] = v, allocating *m on first use.
@@ -150,6 +175,22 @@ func setIndexed(m *map[int]string, index int, v string) {
 	}
 
 	(*m)[index] = v
+}
+
+// addIndexedNet adds one "net<index>" entry to p per key in m,
+// serializing each network interface back to its property string.
+func addIndexedNet(p map[string]string, m map[int]Net) {
+	for idx, v := range m {
+		p["net"+strconv.Itoa(idx)] = v.String()
+	}
+}
+
+// addIndexedMountPoint adds one "mp<index>" entry to p per key in m,
+// serializing each mount point back to its property string.
+func addIndexedMountPoint(p map[string]string, m map[int]MountPoint) {
+	for idx, v := range m {
+		p["mp"+strconv.Itoa(idx)] = v.String()
+	}
 }
 
 // addIndexed adds one "prefix+index" entry to p per key in m.
