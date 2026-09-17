@@ -225,6 +225,23 @@ type Status struct {
 	HA map[string]any `json:"ha,omitempty" url:"ha,omitempty"`
 }
 
+// Interface describes one of a container's network interfaces, as
+// returned by Client.Interfaces. Proxmox reads these directly from the
+// container's network namespace, so — unlike nodes/qemu/agent's
+// NetworkInterface — no guest agent is required.
+type Interface struct {
+	// Name is the interface name, e.g. "eth0".
+	Name string `json:"name,omitempty" url:"name,omitempty"`
+	// HardwareAddress is the interface's MAC address.
+	HardwareAddress string `json:"hwaddr,omitempty" url:"hwaddr,omitempty"`
+	// Inet is the interface's IPv4 address and subnet, e.g.
+	// "10.0.3.2/24".
+	Inet string `json:"inet,omitempty" url:"inet,omitempty"`
+	// Inet6 is the interface's IPv6 address and subnet, e.g.
+	// "fe80::be24:11ff:fe6f:0a35/64".
+	Inet6 string `json:"inet6,omitempty" url:"inet6,omitempty"`
+}
+
 // StartOptions holds the parameters for Client.Start
 // (POST .../status/start).
 type StartOptions struct {

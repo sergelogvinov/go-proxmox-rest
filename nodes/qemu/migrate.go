@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/types"
 )
 
 // MigrationType selects the transport used for a live migration's guest
@@ -21,12 +22,19 @@ const (
 	MigrationTypeInsecure MigrationType = "insecure"
 )
 
-// BlockingHACause explains why a HA resource blocks a migration.
-type BlockingHACause string
+// BlockingHACause and BlockingHAResource are identical between nodes/qemu
+// and nodes/lxc (see types/migrate.go's doc comment). They live in the
+// shared types package and are re-exported here as aliases so existing
+// call sites (qemu.BlockingHACause, qemu.BlockingHAResource, ...) keep
+// working unchanged.
+type (
+	BlockingHACause    = types.BlockingHACause
+	BlockingHAResource = types.BlockingHAResource
+)
 
 const (
-	BlockingHACauseNodeAffinity     BlockingHACause = "node-affinity"
-	BlockingHACauseResourceAffinity BlockingHACause = "resource-affinity"
+	BlockingHACauseNodeAffinity     = types.BlockingHACauseNodeAffinity
+	BlockingHACauseResourceAffinity = types.BlockingHACauseResourceAffinity
 )
 
 // MigratePrecondition describes whether/where a guest can currently be
@@ -78,14 +86,6 @@ type NotAllowedNode struct {
 	// BlockingHAResources lists HA resources preventing migration to
 	// this node.
 	BlockingHAResources []BlockingHAResource `json:"blocking-ha-resources,omitempty" url:"blocking-ha-resources,omitempty"`
-}
-
-// BlockingHAResource is a single HA resource blocking a migration.
-type BlockingHAResource struct {
-	// SID is the blocking HA resource's id.
-	SID string `json:"sid,omitempty" url:"sid,omitempty"`
-	// Cause is why it blocks the migration.
-	Cause BlockingHACause `json:"cause,omitempty" url:"cause,omitempty"`
 }
 
 // LocalDisk describes one guest disk backed by node-local storage, as

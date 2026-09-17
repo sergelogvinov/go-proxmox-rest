@@ -134,6 +134,27 @@ and read-only, since `nodes/replication` has no Create/Update/Delete)
 stay local, since the runtime fields make them a different shape despite
 sharing most of their config fields.
 
+`types/feature.go` shares `Feature`/`FeatureResult` between `nodes/qemu`
+and `nodes/lxc`: both `.../feature` endpoints (GET
+`/nodes/{node}/qemu/{vmid}/feature` and `/nodes/{node}/lxc/{vmid}/feature`)
+take the same `feature`/`snapname` input and return the same
+`hasFeature`/`nodes` shape, the guest-scope counterpart to the per-guest
+firewall sharing above.
+
+`types/migrate.go` shares only `BlockingHACause`/`BlockingHAResource`
+between `nodes/qemu` and `nodes/lxc`'s migrate-precondition responses —
+the narrow-slice pattern again. The surrounding shape diverges enough to
+keep `MigratePrecondition`/`NotAllowedNode` local to each package: QEMU's
+adds `local_disks`/`local_resources`/`mapped-resource-info` and
+`has-dbus-vmstate` (none of which apply to a container, whose disks are
+always node-local with no PCI/USB passthrough to report), and even the
+fields both share are spelled with underscores for QEMU
+(`allowed_nodes`, `not_allowed_nodes`) but hyphens for LXC
+(`allowed-nodes`, `not-allowed-nodes`) — a small but real wire-format
+difference between the two `PVE::API2::{Qemu,LXC}` migrate-precondition
+handlers. Only the innermost blocking-HA-resource shape (`sid`, `cause`)
+is identical field-for-field and worth sharing.
+
 ### Two levels of nesting
 
 Proxmox nests some API sections one level deeper than the top-level resource tree

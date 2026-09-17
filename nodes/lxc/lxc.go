@@ -3,11 +3,13 @@
 // the status resource tree (current status and the
 // start/stop/shutdown/reboot/suspend/resume power actions — LXC has no
 // "reset" action, unlike QEMU), config (read/update the container's
-// configuration), clone, template, and the per-guest firewall
-// (nodes/lxc/firewall, behind the Firewall() accessor) — all but the
-// latter folded directly onto Client rather than behind per-resource
-// accessors, mirroring the nodes/qemu package's shape. The larger
-// snapshot/feature/... surface is left for a future addition.
+// configuration), interfaces (the container's live network addresses),
+// feature (capability checks), migrate (precondition check and the
+// migration itself), resize (grow a mount point), clone, template, and
+// the per-guest firewall (nodes/lxc/firewall, behind the Firewall()
+// accessor) — all but the latter folded directly onto Client rather than
+// behind per-resource accessors, mirroring the nodes/qemu package's
+// shape. The larger snapshot/... surface is left for a future addition.
 package lxc
 
 import (

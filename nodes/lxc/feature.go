@@ -1,4 +1,4 @@
-package qemu
+package lxc
 
 import (
 	"context"
@@ -7,11 +7,10 @@ import (
 	"github.com/sergelogvinov/go-proxmox-rest/types"
 )
 
-// Feature and FeatureResult are identical between nodes/qemu and
-// nodes/lxc (see types/feature.go's doc comment). They live in the
-// shared types package and are re-exported here as aliases so existing
-// call sites (qemu.Feature, qemu.FeatureResult, ...) keep working
-// unchanged.
+// Feature and FeatureResult are identical between nodes/lxc and
+// nodes/qemu (see types/feature.go's doc comment). They live in the
+// shared types package and are re-exported here as aliases so call
+// sites read as lxc.Feature, lxc.FeatureResult, ... .
 type (
 	Feature       = types.Feature
 	FeatureResult = types.FeatureResult
@@ -23,9 +22,9 @@ const (
 	FeatureCopy     = types.FeatureCopy
 )
 
-// Feature checks whether a guest supports a given feature via
-// GET /nodes/{node}/qemu/{vmid}/feature. snapname checks the feature
-// against a specific snapshot's state instead of the guest's current
+// Feature checks whether a container supports a given feature via
+// GET /nodes/{node}/lxc/{vmid}/feature. snapname checks the feature
+// against a specific snapshot's state instead of the container's current
 // one; pass "" to check the current state.
 func (c *Client) Feature(ctx context.Context, node string, vmid int, feature Feature, snapname string) (*FeatureResult, error) {
 	p := map[string]string{"feature": string(feature)}
@@ -34,7 +33,7 @@ func (c *Client) Feature(ctx context.Context, node string, vmid int, feature Fea
 	}
 
 	result := &FeatureResult{}
-	if err := c.client.Get(ctx, "/nodes/"+node+"/qemu/"+strconv.Itoa(vmid)+"/feature", result, p); err != nil {
+	if err := c.client.Get(ctx, "/nodes/"+node+"/lxc/"+strconv.Itoa(vmid)+"/feature", result, p); err != nil {
 		return nil, err
 	}
 
