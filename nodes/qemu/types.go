@@ -190,6 +190,214 @@ func (s *Machine) UnmarshalJSON(data []byte) error {
 	return unmarshalPropertyJSON(data, s, "machine")
 }
 
+// NUMA describes a single per-NUMA-node CPU/memory pinning entry
+// (numaN). CPUIDs and HostNodes are ;-separated id ranges, e.g. "0-3;4-7".
+type NUMA struct {
+	CPUIDs    []string `cfg:"cpus,omitempty"`
+	HostNodes []string `cfg:"hostnodes,omitempty"`
+	Memory    *int     `cfg:"memory,omitempty"`
+	Policy    string   `cfg:"policy,omitempty"`
+}
+
+// String converts the NUMA node settings to Proxmox's property-string
+// format.
+func (n NUMA) String() string {
+	value, _ := property.Marshal(n)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's numaN property string into NUMA.
+func (n *NUMA) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, n, "numa")
+}
+
+// HostPCI describes a PCI(e) device passthrough entry (hostpciN).
+// Proxmox accepts the host device id either as a bare first value or as
+// host=<HOSTPCIID[;HOSTPCIID2...]>.
+type HostPCI struct {
+	Host        string `cfg:"host,omitempty,default"`
+	DeviceID    string `cfg:"device-id,omitempty"`
+	Driver      string `cfg:"driver,omitempty"`
+	LegacyIGD   *bool  `cfg:"legacy-igd,omitempty"`
+	Mapping     string `cfg:"mapping,omitempty"`
+	MDev        string `cfg:"mdev,omitempty"`
+	PCIe        *bool  `cfg:"pcie,omitempty"`
+	RomBar      *bool  `cfg:"rombar,omitempty"`
+	RomFile     string `cfg:"romfile,omitempty"`
+	SubDeviceID string `cfg:"sub-device-id,omitempty"`
+	SubVendorID string `cfg:"sub-vendor-id,omitempty"`
+	VendorID    string `cfg:"vendor-id,omitempty"`
+	XVGA        *bool  `cfg:"x-vga,omitempty"`
+}
+
+// String converts the PCI passthrough settings to Proxmox's property-string
+// format.
+func (h HostPCI) String() string {
+	value, _ := property.Marshal(h)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's hostpciN property string into HostPCI.
+func (h *HostPCI) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, h, "hostpci")
+}
+
+// USB describes a USB device passthrough entry (usbN). Proxmox accepts
+// the host device either as a bare first value or as
+// host=<HOSTUSBDEVICE|spice>.
+type USB struct {
+	Host    string `cfg:"host,omitempty,default"`
+	Mapping string `cfg:"mapping,omitempty"`
+	USB3    *bool  `cfg:"usb3,omitempty"`
+}
+
+// String converts the USB passthrough settings to Proxmox's property-string
+// format.
+func (u USB) String() string {
+	value, _ := property.Marshal(u)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's usbN property string into USB.
+func (u *USB) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, u, "usb")
+}
+
+// IPConfig describes a cloud-init per-NIC IP configuration entry
+// (ipconfigN).
+type IPConfig struct {
+	GatewayIPv4 string `cfg:"gw,omitempty"`
+	GatewayIPv6 string `cfg:"gw6,omitempty"`
+	IPv4        string `cfg:"ip,omitempty"`
+	IPv6        string `cfg:"ip6,omitempty"`
+}
+
+// String converts the IP configuration to Proxmox's property-string format.
+func (i IPConfig) String() string {
+	value, _ := property.Marshal(i)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's ipconfigN property string into IPConfig.
+func (i *IPConfig) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, i, "ipconfig")
+}
+
+// VirtioFS describes a virtiofs share entry (virtiofsN). Proxmox accepts
+// the directory mapping id either as a bare first value or as
+// dirid=<mapping-id>.
+type VirtioFS struct {
+	DirID       string `cfg:"dirid,omitempty,default"`
+	Cache       string `cfg:"cache,omitempty"`
+	DirectIO    *bool  `cfg:"direct-io,omitempty"`
+	ExposeACL   *bool  `cfg:"expose-acl,omitempty"`
+	ExposeXattr *bool  `cfg:"expose-xattr,omitempty"`
+}
+
+// String converts the virtiofs share settings to Proxmox's property-string
+// format.
+func (v VirtioFS) String() string {
+	value, _ := property.Marshal(v)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's virtiofsN property string into VirtioFS.
+func (v *VirtioFS) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, v, "virtiofs")
+}
+
+// Drive describes a disk/cdrom entry (ideN, sataN, scsiN, virtioN),
+// following the PVE::QemuServer::Drive property grammar. Proxmox accepts
+// the backing volume either as a bare first value or as file=<volume>.
+// Not every bus supports every option (e.g. only scsi has vendor/product);
+// Proxmox rejects unsupported keys, so fill only the relevant fields.
+type Drive struct {
+	File            string `cfg:"file,omitempty,default"`
+	AIO             string `cfg:"aio,omitempty"`
+	Backup          *bool  `cfg:"backup,omitempty"`
+	BPS             *int   `cfg:"bps,omitempty"`
+	BPSMaxLength    *int   `cfg:"bps_max_length,omitempty"`
+	BPSRD           *int   `cfg:"bps_rd,omitempty"`
+	BPSRDMaxLength  *int   `cfg:"bps_rd_max_length,omitempty"`
+	BPSWR           *int   `cfg:"bps_wr,omitempty"`
+	BPSWRMaxLength  *int   `cfg:"bps_wr_max_length,omitempty"`
+	Cache           string `cfg:"cache,omitempty"`
+	DetectZeroes    *bool  `cfg:"detect_zeroes,omitempty"`
+	Discard         string `cfg:"discard,omitempty"`
+	Format          string `cfg:"format,omitempty"`
+	IOPS            *int   `cfg:"iops,omitempty"`
+	IOPSMax         *int   `cfg:"iops_max,omitempty"`
+	IOPSMaxLength   *int   `cfg:"iops_max_length,omitempty"`
+	IOPSRD          *int   `cfg:"iops_rd,omitempty"`
+	IOPSRDMax       *int   `cfg:"iops_rd_max,omitempty"`
+	IOPSRDMaxLength *int   `cfg:"iops_rd_max_length,omitempty"`
+	IOPSWR          *int   `cfg:"iops_wr,omitempty"`
+	IOPSWRMax       *int   `cfg:"iops_wr_max,omitempty"`
+	IOPSWRMaxLength *int   `cfg:"iops_wr_max_length,omitempty"`
+	IOThread        *bool  `cfg:"iothread,omitempty"`
+	MBPS            *int   `cfg:"mbps,omitempty"`
+	MBPSMax         *int   `cfg:"mbps_max,omitempty"`
+	MBPSRD          *int   `cfg:"mbps_rd,omitempty"`
+	MBPSRDMax       *int   `cfg:"mbps_rd_max,omitempty"`
+	MBPSWR          *int   `cfg:"mbps_wr,omitempty"`
+	MBPSWRMax       *int   `cfg:"mbps_wr_max,omitempty"`
+	Media           string `cfg:"media,omitempty"`
+	Model           string `cfg:"model,omitempty"`
+	Product         string `cfg:"product,omitempty"`
+	Queues          *int   `cfg:"queues,omitempty"`
+	Replicate       *bool  `cfg:"replicate,omitempty"`
+	RError          string `cfg:"rerror,omitempty"`
+	RO              *bool  `cfg:"ro,omitempty"`
+	SCSIBlock       *bool  `cfg:"scsiblock,omitempty"`
+	Serial          string `cfg:"serial,omitempty"`
+	Shared          *bool  `cfg:"shared,omitempty"`
+	Size            string `cfg:"size,omitempty"`
+	Snapshot        *bool  `cfg:"snapshot,omitempty"`
+	SSD             *bool  `cfg:"ssd,omitempty"`
+	Vendor          string `cfg:"vendor,omitempty"`
+	WError          string `cfg:"werror,omitempty"`
+	WWN             string `cfg:"wwn,omitempty"`
+}
+
+// String converts the drive settings to Proxmox's property-string format.
+func (d Drive) String() string {
+	value, _ := property.Marshal(d)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's drive property string into Drive.
+func (d *Drive) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, d, "drive")
+}
+
+// Net describes a network interface entry (netN), following the
+// PVE::QemuServer::Network property grammar. Proxmox accepts the NIC
+// model either as a bare first value or as model=<e1000|virtio|...>.
+type Net struct {
+	Model    string   `cfg:"model,omitempty,default"`
+	Bridge   string   `cfg:"bridge,omitempty"`
+	Firewall *bool    `cfg:"firewall,omitempty"`
+	LinkDown *bool    `cfg:"link_down,omitempty"`
+	MACAddr  string   `cfg:"macaddr,omitempty"`
+	MTU      *int     `cfg:"mtu,omitempty"`
+	Queues   *int     `cfg:"queues,omitempty"`
+	Rate     *int     `cfg:"rate,omitempty"`
+	Tag      *int     `cfg:"tag,omitempty"`
+	Trunks   []string `cfg:"trunks,omitempty"`
+}
+
+// String converts the network interface settings to Proxmox's
+// property-string format.
+func (n Net) String() string {
+	value, _ := property.Marshal(n)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's netN property string into Net.
+func (n *Net) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, n, "net")
+}
+
 // IntelTDX describes Intel Trust Domain Extensions settings.
 type IntelTDX struct {
 	Type        string `cfg:"type,omitempty,default"`
@@ -469,33 +677,33 @@ type Config struct {
 	// -- numerically-indexed hardware families, keyed by index --
 
 	// Net holds netN entries (network interfaces), N in 0-31.
-	Net map[int]string `json:"-" url:"-"`
+	Net map[int]Net `json:"-" url:"-"`
 	// IDE holds ideN entries (IDE drives), N in 0-3.
-	IDE map[int]string `json:"-" url:"-"`
+	IDE map[int]Drive `json:"-" url:"-"`
 	// SATA holds sataN entries (SATA drives), N in 0-5.
-	SATA map[int]string `json:"-" url:"-"`
+	SATA map[int]Drive `json:"-" url:"-"`
 	// SCSI holds scsiN entries (SCSI drives), N in 0-30.
-	SCSI map[int]string `json:"-" url:"-"`
+	SCSI map[int]Drive `json:"-" url:"-"`
 	// VirtIO holds virtioN entries (VirtIO block drives), N in 0-15.
-	VirtIO map[int]string `json:"-" url:"-"`
+	VirtIO map[int]Drive `json:"-" url:"-"`
 	// VirtioFS holds virtiofsN entries (virtiofs shares).
-	VirtioFS map[int]string `json:"-" url:"-"`
+	VirtioFS map[int]VirtioFS `json:"-" url:"-"`
 	// Unused holds unusedN entries (disks detached from the config but
 	// not deleted), N in 0-255.
 	Unused map[int]string `json:"-" url:"-"`
 	// USB holds usbN entries (USB device passthrough), N in 0-13.
-	USB map[int]string `json:"-" url:"-"`
+	USB map[int]USB `json:"-" url:"-"`
 	// HostPCI holds hostpciN entries (PCI(e) device passthrough), N in
 	// 0-15.
-	HostPCI map[int]string `json:"-" url:"-"`
+	HostPCI map[int]HostPCI `json:"-" url:"-"`
 	// Serial holds serialN entries (serial devices), N in 0-3.
 	Serial map[int]string `json:"-" url:"-"`
 	// IPConfig holds ipconfigN entries (cloud-init per-NIC IP
 	// configuration), N in 0-31.
-	IPConfig map[int]string `json:"-" url:"-"`
+	IPConfig map[int]IPConfig `json:"-" url:"-"`
 	// NUMA holds numaN entries (per-NUMA-node CPU/memory pinning), N in
 	// 0-7. Not to be confused with NUMAEnabled above.
-	NUMA map[int]string `json:"-" url:"-"`
+	NUMA map[int]NUMA `json:"-" url:"-"`
 
 	// -- write-only (never appear in a GET response) --
 

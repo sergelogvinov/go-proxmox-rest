@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/internal/property"
 )
 
 // indexedPrefixes are the numerically-suffixed VM config families
@@ -139,18 +140,18 @@ func encodeConfig(cfg *Config) (map[string]string, error) {
 		return nil, err
 	}
 
-	addIndexed(p, "net", cfg.Net)
-	addIndexed(p, "ide", cfg.IDE)
-	addIndexed(p, "sata", cfg.SATA)
-	addIndexed(p, "scsi", cfg.SCSI)
-	addIndexed(p, "virtio", cfg.VirtIO)
-	addIndexed(p, "virtiofs", cfg.VirtioFS)
+	addIndexedNet(p, cfg.Net)
+	addIndexedDrive(p, "ide", cfg.IDE)
+	addIndexedDrive(p, "sata", cfg.SATA)
+	addIndexedDrive(p, "scsi", cfg.SCSI)
+	addIndexedDrive(p, "virtio", cfg.VirtIO)
+	addIndexedVirtioFS(p, cfg.VirtioFS)
 	addIndexed(p, "unused", cfg.Unused)
-	addIndexed(p, "usb", cfg.USB)
-	addIndexed(p, "hostpci", cfg.HostPCI)
+	addIndexedUSB(p, cfg.USB)
+	addIndexedHostPCI(p, cfg.HostPCI)
 	addIndexed(p, "serial", cfg.Serial)
-	addIndexed(p, "ipconfig", cfg.IPConfig)
-	addIndexed(p, "numa", cfg.NUMA)
+	addIndexedIPConfig(p, cfg.IPConfig)
+	addIndexedNUMA(p, cfg.NUMA)
 
 	return p, nil
 }
@@ -177,29 +178,29 @@ func splitIndexedKey(key string) (prefix string, index int, ok bool) {
 func setIndexedField(cfg *Config, prefix string, index int, v string) {
 	switch prefix {
 	case "net":
-		setIndexed(&cfg.Net, index, v)
+		setIndexedNet(&cfg.Net, index, v)
 	case "ide":
-		setIndexed(&cfg.IDE, index, v)
+		setIndexedDrive(&cfg.IDE, index, v)
 	case "sata":
-		setIndexed(&cfg.SATA, index, v)
+		setIndexedDrive(&cfg.SATA, index, v)
 	case "scsi":
-		setIndexed(&cfg.SCSI, index, v)
+		setIndexedDrive(&cfg.SCSI, index, v)
 	case "virtio":
-		setIndexed(&cfg.VirtIO, index, v)
+		setIndexedDrive(&cfg.VirtIO, index, v)
 	case "virtiofs":
-		setIndexed(&cfg.VirtioFS, index, v)
+		setIndexedVirtioFS(&cfg.VirtioFS, index, v)
 	case "unused":
 		setIndexed(&cfg.Unused, index, v)
 	case "usb":
-		setIndexed(&cfg.USB, index, v)
+		setIndexedUSB(&cfg.USB, index, v)
 	case "hostpci":
-		setIndexed(&cfg.HostPCI, index, v)
+		setIndexedHostPCI(&cfg.HostPCI, index, v)
 	case "serial":
 		setIndexed(&cfg.Serial, index, v)
 	case "ipconfig":
-		setIndexed(&cfg.IPConfig, index, v)
+		setIndexedIPConfig(&cfg.IPConfig, index, v)
 	case "numa":
-		setIndexed(&cfg.NUMA, index, v)
+		setIndexedNUMA(&cfg.NUMA, index, v)
 	}
 }
 
@@ -212,9 +213,149 @@ func setIndexed(m *map[int]string, index int, v string) {
 	(*m)[index] = v
 }
 
+// setIndexedDrive parses v as a drive property string and stores it at
+// (*m)[index], allocating *m on first use.
+func setIndexedDrive(m *map[int]Drive, index int, v string) {
+	if *m == nil {
+		*m = map[int]Drive{}
+	}
+
+	drive := Drive{}
+	_ = property.Unmarshal(v, &drive)
+	(*m)[index] = drive
+}
+
+// setIndexedNet parses v as a netN property string and stores it at
+// (*m)[index], allocating *m on first use.
+func setIndexedNet(m *map[int]Net, index int, v string) {
+	if *m == nil {
+		*m = map[int]Net{}
+	}
+
+	net := Net{}
+	_ = property.Unmarshal(v, &net)
+	(*m)[index] = net
+}
+
+// setIndexedNUMA parses v as a NUMA property string and stores it at
+// (*m)[index], allocating *m on first use.
+func setIndexedNUMA(m *map[int]NUMA, index int, v string) {
+	if *m == nil {
+		*m = map[int]NUMA{}
+	}
+
+	numa := NUMA{}
+	_ = property.Unmarshal(v, &numa)
+	(*m)[index] = numa
+}
+
+// setIndexedHostPCI parses v as a hostpciN property string and stores it
+// at (*m)[index], allocating *m on first use.
+func setIndexedHostPCI(m *map[int]HostPCI, index int, v string) {
+	if *m == nil {
+		*m = map[int]HostPCI{}
+	}
+
+	hostpci := HostPCI{}
+	_ = property.Unmarshal(v, &hostpci)
+	(*m)[index] = hostpci
+}
+
+// setIndexedUSB parses v as a usbN property string and stores it at
+// (*m)[index], allocating *m on first use.
+func setIndexedUSB(m *map[int]USB, index int, v string) {
+	if *m == nil {
+		*m = map[int]USB{}
+	}
+
+	usb := USB{}
+	_ = property.Unmarshal(v, &usb)
+	(*m)[index] = usb
+}
+
+// setIndexedIPConfig parses v as an ipconfigN property string and stores
+// it at (*m)[index], allocating *m on first use.
+func setIndexedIPConfig(m *map[int]IPConfig, index int, v string) {
+	if *m == nil {
+		*m = map[int]IPConfig{}
+	}
+
+	ipconfig := IPConfig{}
+	_ = property.Unmarshal(v, &ipconfig)
+	(*m)[index] = ipconfig
+}
+
+// setIndexedVirtioFS parses v as a virtiofsN property string and stores it
+// at (*m)[index], allocating *m on first use.
+func setIndexedVirtioFS(m *map[int]VirtioFS, index int, v string) {
+	if *m == nil {
+		*m = map[int]VirtioFS{}
+	}
+
+	virtiofs := VirtioFS{}
+	_ = property.Unmarshal(v, &virtiofs)
+	(*m)[index] = virtiofs
+}
+
 // addIndexed adds one "prefix+index" entry to p per key in m.
 func addIndexed(p map[string]string, prefix string, m map[int]string) {
 	for idx, v := range m {
 		p[prefix+strconv.Itoa(idx)] = v
+	}
+}
+
+// addIndexedDrive adds one "prefix+index" entry to p per key in m,
+// serializing each drive back to its property string.
+func addIndexedDrive(p map[string]string, prefix string, m map[int]Drive) {
+	for idx, v := range m {
+		p[prefix+strconv.Itoa(idx)] = v.String()
+	}
+}
+
+// addIndexedNet adds one "net<index>" entry to p per key in m,
+// serializing each network interface back to its property string.
+func addIndexedNet(p map[string]string, m map[int]Net) {
+	for idx, v := range m {
+		p["net"+strconv.Itoa(idx)] = v.String()
+	}
+}
+
+// addIndexedNUMA adds one "numa<index>" entry to p per key in m,
+// serializing each NUMA node back to its property string.
+func addIndexedNUMA(p map[string]string, m map[int]NUMA) {
+	for idx, v := range m {
+		p["numa"+strconv.Itoa(idx)] = v.String()
+	}
+}
+
+// addIndexedHostPCI adds one "hostpci<index>" entry to p per key in m,
+// serializing each passthrough device back to its property string.
+func addIndexedHostPCI(p map[string]string, m map[int]HostPCI) {
+	for idx, v := range m {
+		p["hostpci"+strconv.Itoa(idx)] = v.String()
+	}
+}
+
+// addIndexedUSB adds one "usb<index>" entry to p per key in m,
+// serializing each USB device back to its property string.
+func addIndexedUSB(p map[string]string, m map[int]USB) {
+	for idx, v := range m {
+		p["usb"+strconv.Itoa(idx)] = v.String()
+	}
+}
+
+// addIndexedIPConfig adds one "ipconfig<index>" entry to p per key in m,
+// serializing each per-NIC IP configuration back to its property string.
+func addIndexedIPConfig(p map[string]string, m map[int]IPConfig) {
+	for idx, v := range m {
+		p["ipconfig"+strconv.Itoa(idx)] = v.String()
+	}
+}
+
+// addIndexedVirtioFS adds one "virtiofs<index>" entry to p per key in m,
+// serializing each virtiofs share back to its property string.
+func addIndexedVirtioFS(p map[string]string, m map[int]VirtioFS) {
+	for idx, v := range m {
+		p["virtiofs"+strconv.Itoa(idx)] = v.String()
 	}
 }
