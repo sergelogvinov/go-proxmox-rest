@@ -62,6 +62,12 @@ func decodeValue(raw json.RawMessage, rv reflect.Value) error {
 		return decodeValue(raw, rv.Elem())
 	}
 
+	if rv.CanAddr() {
+		if unmarshaler, ok := rv.Addr().Interface().(json.Unmarshaler); ok {
+			return unmarshaler.UnmarshalJSON(raw)
+		}
+	}
+
 	switch {
 	case rv.Kind() == reflect.Slice && rv.Type().Elem().Kind() == reflect.String && raw[0] == '"':
 		return decodeCommaList(raw, rv)
