@@ -25,6 +25,12 @@ help: ## This help menu
 	@grep -E '^[a-zA-Z0-9%_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 ############
+
+.PHONY: schema
+schema:
+	wget https://raw.githubusercontent.com/proxmox/proxmox-rs/refs/heads/master/pve-api-types/pve-api.json -O docs/pve-api.json
+
+############
 #
 # Build Abstractions
 #
