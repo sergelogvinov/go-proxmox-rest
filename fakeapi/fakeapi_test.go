@@ -108,6 +108,67 @@ func TestQemuLifecycle(t *testing.T) {
 	}
 }
 
+func TestQemuCreate(t *testing.T) {
+	cl := fakeapi.NewCluster(t, fakeapi.WithNodes("pve1"))
+	c := cl.Client(t)
+	ctx := context.Background()
+
+	cores := 2
+	memory := 2048
+	upid, err := c.Nodes("pve1").Qemu().Create(ctx, &qemu.CreateOptions{
+		VMID: 300,
+		Config: qemu.Config{
+			Name:   "created-01",
+			Cores:  &cores,
+			Memory: &qemu.Memory{Current: &memory},
+			SCSI:   map[int]qemu.Drive{0: {File: "local-lvm:vm-300-disk-0", Size: "10G"}},
+		},
+		Start: true,
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if upid == "" {
+		t.Fatal("expected non-empty UPID")
+	}
+
+	taskStatus, err := c.Nodes("pve1").Tasks().Status(ctx, upid)
+	if err != nil {
+		t.Fatalf("task status: %v", err)
+	}
+	if taskStatus.ExitStatus != "OK" {
+		t.Fatalf("expected OK task, got %+v", taskStatus)
+	}
+
+	cfg, err := c.Nodes("pve1").Qemu().Config(ctx, 300, nil)
+	if err != nil {
+		t.Fatalf("config: %v", err)
+	}
+	if cfg.Name != "created-01" || cfg.SCSI[0].File != "local-lvm:vm-300-disk-0" {
+		t.Fatalf("unexpected config: %+v", cfg)
+	}
+
+	status, err := c.Nodes("pve1").Qemu().Status(ctx, 300)
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if status.Status != qemu.VMStatusRunning {
+		t.Fatalf("expected running (Start: true), got %s", status.Status)
+	}
+
+	resources, err := c.Cluster().Resources().List(ctx, cluster.ListFilter{Type: cluster.ResourceTypeVM, VMID: 300})
+	if err != nil {
+		t.Fatalf("cluster resources: %v", err)
+	}
+	if len(resources) != 1 || resources[0].Name != "created-01" {
+		t.Fatalf("expected the new guest in cluster resources, got %+v", resources)
+	}
+
+	if _, err := c.Nodes("pve1").Qemu().Create(ctx, &qemu.CreateOptions{VMID: 300}); err == nil {
+		t.Fatal("expected an error creating a guest with an already-used vmid")
+	}
+}
+
 func TestLXCLifecycle(t *testing.T) {
 	cl := fakeapi.NewCluster(t, fakeapi.WithNodes("pve1"))
 	cores := 1
@@ -140,6 +201,71 @@ func TestLXCLifecycle(t *testing.T) {
 		t.Fatalf("expected hostname to round-trip, got %q", status.Name)
 	}
 	_ = upid
+}
+
+func TestLXCCreate(t *testing.T) {
+	cl := fakeapi.NewCluster(t, fakeapi.WithNodes("pve1"))
+	c := cl.Client(t)
+	ctx := context.Background()
+
+	cores := 2
+	memory := 512
+	upid, err := c.Nodes("pve1").LXC().Create(ctx, &lxc.CreateOptions{
+		VMID:       300,
+		OSTemplate: "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst",
+		Config: lxc.Config{
+			Hostname: "created-01",
+			Cores:    &cores,
+			Memory:   &memory,
+			RootFS:   &lxc.RootFS{Volume: "local-lvm:vm-300-disk-0", Size: "8G"},
+		},
+		Start: true,
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if upid == "" {
+		t.Fatal("expected non-empty UPID")
+	}
+
+	taskStatus, err := c.Nodes("pve1").Tasks().Status(ctx, upid)
+	if err != nil {
+		t.Fatalf("task status: %v", err)
+	}
+	if taskStatus.ExitStatus != "OK" {
+		t.Fatalf("expected OK task, got %+v", taskStatus)
+	}
+
+	cfg, err := c.Nodes("pve1").LXC().Config(ctx, 300, nil)
+	if err != nil {
+		t.Fatalf("config: %v", err)
+	}
+	if cfg.Hostname != "created-01" || cfg.RootFS == nil || cfg.RootFS.Volume != "local-lvm:vm-300-disk-0" {
+		t.Fatalf("unexpected config: %+v", cfg)
+	}
+
+	status, err := c.Nodes("pve1").LXC().Status(ctx, 300)
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if status.Status != lxc.StateRunning {
+		t.Fatalf("expected running (Start: true), got %s", status.Status)
+	}
+
+	resources, err := c.Cluster().Resources().List(ctx, cluster.ListFilter{Type: cluster.ResourceTypeVM, VMID: 300})
+	if err != nil {
+		t.Fatalf("cluster resources: %v", err)
+	}
+	if len(resources) != 1 || resources[0].Name != "created-01" {
+		t.Fatalf("expected the new container in cluster resources, got %+v", resources)
+	}
+
+	if _, err := c.Nodes("pve1").LXC().Create(ctx, &lxc.CreateOptions{
+		VMID:       300,
+		OSTemplate: "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst",
+	}); err == nil {
+		t.Fatal("expected an error creating a container with an already-used vmid")
+	}
 }
 
 func TestStorageContentLifecycle(t *testing.T) {

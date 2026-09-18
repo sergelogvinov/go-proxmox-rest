@@ -17,6 +17,7 @@ limitations under the License.
 package fakeapi
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -30,6 +31,74 @@ var qemuActionTaskType = map[string]string{
 	"start": "qmstart", "stop": "qmstop", "shutdown": "qmshutdown",
 	"reset": "qmreset", "reboot": "qmreboot",
 	"suspend": "qmsuspend", "resume": "qmresume",
+}
+
+// qemuCreateSkipKeys are Client.Create-only meta-parameters that name the
+// request itself rather than a guest config property to store, mirroring
+// configSkipKeys' role for config updates.
+var qemuCreateSkipKeys = map[string]bool{
+	"vmid":  true,
+	"pool":  true,
+	"start": true,
+}
+
+// handleQemuCreate backs POST /nodes/{node}/qemu — Client.Create. Like
+// real Proxmox, creation is a task: the guest becomes visible (GET
+// config, GET status, cluster/resources) only once the task completes,
+// which is immediate in the fake's default instant mode.
+func handleQemuCreate(w http.ResponseWriter, r *http.Request, n *nodeState) {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w)
+		return
+	}
+
+	query := r.URL.Query()
+
+	vmid, err := strconv.Atoi(query.Get("vmid"))
+	if err != nil || vmid == 0 {
+		writeError(w, http.StatusBadRequest, "parameter verification failed", map[string]string{"vmid": "not a number"})
+		return
+	}
+
+	n.cs.mu.Lock()
+	_, exists := n.guests[vmid]
+	n.cs.mu.Unlock()
+	if exists {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("VM %d already exists", vmid), nil)
+		return
+	}
+
+	cfg := map[string]string{}
+	for k, vals := range query {
+		if qemuCreateSkipKeys[k] || len(vals) == 0 {
+			continue
+		}
+		cfg[k] = vals[0]
+	}
+
+	start := query.Get("start") == "1"
+
+	upid := n.cs.startTask(n.name, "qmcreate", strconv.Itoa(vmid), func() error {
+		n.cs.mu.Lock()
+		defer n.cs.mu.Unlock()
+
+		vm := &vmState{
+			vmid:   vmid,
+			node:   n.name,
+			cfg:    cfg,
+			status: qemu.VMStatusStopped,
+		}
+		if start {
+			vm.status = qemu.VMStatusRunning
+			vm.startedAt = time.Now()
+		}
+
+		n.guests[vmid] = vm
+
+		return nil
+	})
+
+	writeData(w, upid)
 }
 
 // handleQemuConfig backs GET/PUT/POST
