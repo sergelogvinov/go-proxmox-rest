@@ -60,6 +60,11 @@ type MoveDiskOptions struct {
 // different guest entirely, via
 // POST /nodes/{node}/qemu/{vmid}/move_disk. Returns the move task's
 // UPID.
+// Moving to storage conditionally requires Datastore.AllocateSpace there;
+// reassignment conditionally requires VM.Config.Disk on the target VM and
+// Datastore.AllocateSpace on the source volume's storage.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Disk,match=all
 func (c *Client) MoveDisk(ctx context.Context, vmid int, opts *MoveDiskOptions) (string, error) {
 	if opts == nil {
 		return "", fmt.Errorf("qemu: move disk options are required")

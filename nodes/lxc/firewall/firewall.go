@@ -102,6 +102,8 @@ func (c *Client) IPSet(vmid int) *ipsetResource {
 // GET /nodes/{node}/lxc/{vmid}/firewall/refs. An empty refType returns
 // both kinds; refType narrows the result to just aliases or just IP
 // sets.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (c *Client) Refs(ctx context.Context, vmid int, refType RefType) ([]Ref, error) {
 	var p map[string]string
 	if refType != "" {
@@ -120,6 +122,8 @@ func (c *Client) Refs(ctx context.Context, vmid int, refType RefType) ([]Ref, er
 // /var/log/pve-firewall.log matching this guest's vmid) via
 // GET /nodes/{node}/lxc/{vmid}/firewall/log. opts may be nil to
 // request Proxmox's default window.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Console,match=all
 func (c *Client) Log(ctx context.Context, vmid int, opts *LogOptions) ([]LogEntry, error) {
 	var p map[string]string
 	if opts != nil {

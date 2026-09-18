@@ -30,7 +30,9 @@ type ruleResource struct {
 	base   string
 }
 
-// List retrieves the rule list via GET {base}.
+// List retrieves rules via GET /nodes/{node}/qemu/{vmid}/firewall/rules.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (r *ruleResource) List(ctx context.Context) ([]Rule, error) {
 	var rules []Rule
 	if err := r.client.Get(ctx, r.base, &rules, nil); err != nil {
@@ -40,7 +42,9 @@ func (r *ruleResource) List(ctx context.Context) ([]Rule, error) {
 	return rules, nil
 }
 
-// Get retrieves a single rule via GET {base}/{pos}.
+// Get retrieves a rule via GET /nodes/{node}/qemu/{vmid}/firewall/rules/{pos}.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (r *ruleResource) Get(ctx context.Context, pos int) (*Rule, error) {
 	var rule Rule
 	if err := r.client.Get(ctx, fmt.Sprintf("%s/%d", r.base, pos), &rule, nil); err != nil {
@@ -56,6 +60,9 @@ func (r *ruleResource) Get(ctx context.Context, pos int) (*Rule, error) {
 // data) and does not report the position it was assigned. The new rule
 // is appended at the end of the list unless opts.Pos is set to insert
 // it elsewhere; call List afterwards to find it.
+// POST /nodes/{node}/qemu/{vmid}/firewall/rules.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Network,match=all
 func (r *ruleResource) Create(ctx context.Context, opts *RuleOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: rule options are required")
@@ -81,6 +88,9 @@ func (r *ruleResource) Create(ctx context.Context, opts *RuleOptions) error {
 // fields that are not changing. To reposition a rule instead of
 // changing its fields, set opts.MoveTo — Proxmox ignores every other
 // field in that case.
+// PUT /nodes/{node}/qemu/{vmid}/firewall/rules/{pos}.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Config.Network,match=all
 func (r *ruleResource) Update(ctx context.Context, pos int, opts *RuleOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: rule options are required")
@@ -105,6 +115,9 @@ func (r *ruleResource) Update(ctx context.Context, pos int, opts *RuleOptions) e
 // Delete removes a rule via DELETE {base}/{pos}. digest, when
 // non-empty, guards against deleting a rule that has changed since it
 // was last read.
+// DELETE /nodes/{node}/qemu/{vmid}/firewall/rules/{pos}.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=DELETE,privs=VM.Config.Network,match=all
 func (r *ruleResource) Delete(ctx context.Context, pos int, digest string) error {
 	var params map[string]string
 	if digest != "" {

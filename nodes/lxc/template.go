@@ -28,6 +28,8 @@ import (
 // `returns => { type => 'null' }`: Proxmox forks the conversion as a
 // background task internally but never returns its UPID to the caller,
 // so there is nothing for this method to hand back beyond success/error.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Allocate,match=all
 func (c *Client) Template(ctx context.Context, vmid int) error {
 	return c.client.Create(ctx, "/nodes/"+c.node+"/lxc/"+strconv.Itoa(vmid)+"/template", nil, nil)
 }

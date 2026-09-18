@@ -73,6 +73,8 @@ type NotAllowedNode struct {
 // MigratePrecondition retrieves whether/where a container can currently
 // be migrated via GET /nodes/{node}/lxc/{vmid}/migrate. target may be
 // empty to check every node.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Migrate,match=all
 func (c *Client) MigratePrecondition(ctx context.Context, vmid int, target string) (*MigratePrecondition, error) {
 	var p map[string]string
 	if target != "" {
@@ -113,6 +115,10 @@ type MigrateOptions struct {
 // Migrate starts a container migration via
 // POST /nodes/{node}/lxc/{vmid}/migrate. Returns the migration task's
 // UPID.
+// Storage remapping conditionally requires VM.Config.Disk and
+// Datastore.AllocateSpace on each target storage.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Migrate,match=all
 func (c *Client) Migrate(ctx context.Context, vmid int, opts *MigrateOptions) (string, error) {
 	if opts == nil {
 		return "", fmt.Errorf("lxc: migrate options are required")

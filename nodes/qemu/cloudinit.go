@@ -44,6 +44,8 @@ type CloudInitPendingEntry struct {
 // CloudInitPending retrieves the guest's cloud-init configuration, with
 // both its current (applied) and pending (queued but not yet
 // regenerated) values, via GET /nodes/{node}/qemu/{vmid}/cloudinit.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (c *Client) CloudInitPending(ctx context.Context, vmid int) ([]CloudInitPendingEntry, error) {
 	var entries []CloudInitPendingEntry
 	if err := c.client.Get(ctx, "/nodes/"+c.node+"/qemu/"+strconv.Itoa(vmid)+"/cloudinit", &entries, nil); err != nil {
@@ -56,6 +58,8 @@ func (c *Client) CloudInitPending(ctx context.Context, vmid int) ([]CloudInitPen
 // CloudInitUpdate regenerates the guest's cloud-init config drive via
 // PUT /nodes/{node}/qemu/{vmid}/cloudinit, applying every pending
 // cloud-init value reported by CloudInitPending.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Config.Cloudinit,match=all
 func (c *Client) CloudInitUpdate(ctx context.Context, vmid int) error {
 	return c.client.Update(ctx, "/nodes/"+c.node+"/qemu/"+strconv.Itoa(vmid)+"/cloudinit", nil, nil)
 }

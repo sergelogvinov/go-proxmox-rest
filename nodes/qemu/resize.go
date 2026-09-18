@@ -42,6 +42,9 @@ type ResizeOptions struct {
 
 // Resize extends a guest disk's size via
 // PUT /nodes/{node}/qemu/{vmid}/resize. Returns the resize task's UPID.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Config.Disk,match=all
+// +proxmox:rbac:path=/storage/{storage},method=PUT,privs=Datastore.AllocateSpace,match=all
 func (c *Client) Resize(ctx context.Context, vmid int, opts *ResizeOptions) (string, error) {
 	if opts == nil {
 		return "", fmt.Errorf("qemu: resize options are required")

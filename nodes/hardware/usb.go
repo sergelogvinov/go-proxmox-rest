@@ -28,6 +28,8 @@ type usbResource struct {
 
 // List retrieves the node's local USB devices via
 // GET /nodes/{node}/hardware/usb.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Modify,match=all
 func (r *usbResource) List(ctx context.Context) ([]USBDevice, error) {
 	var devices []USBDevice
 	if err := r.client.Get(ctx, "/nodes/"+r.node+"/hardware/usb", &devices, nil); err != nil {

@@ -36,6 +36,8 @@ type Version struct {
 
 // Version retrieves the API version details of the node via
 // GET /nodes/{node}/version.
+//
+// This user=>all endpoint has no fixed privilege.
 func (c *Client) Version(ctx context.Context) (*Version, error) {
 	v := &Version{}
 	if err := c.client.Get(ctx, "/nodes/"+c.node+"/version", v, nil); err != nil {

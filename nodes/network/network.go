@@ -50,6 +50,8 @@ func New(c Getter, node string) *Client {
 // TypeAnyBridge/TypeAnyLocalBridge/TypeIncludeSDN, Proxmox's corresponding
 // pseudo-filter); an empty typeFilter returns every interface (the
 // loopback device excluded).
+// This user=>all endpoint has no fixed privilege. Bridge, SDN vnet, and fabric
+// results are conditionally filtered by SDN access as described above.
 func (c *Client) List(ctx context.Context, typeFilter Type) ([]Interface, error) {
 	var p map[string]string
 	if typeFilter != "" {
@@ -66,6 +68,8 @@ func (c *Client) List(ctx context.Context, typeFilter Type) ([]Interface, error)
 
 // Get retrieves a single network interface's configuration via
 // GET /nodes/{node}/network/{iface}.
+//
+// +proxmox:rbac:path=/nodes/{node},method=GET,privs=Sys.Audit,match=all
 func (c *Client) Get(ctx context.Context, iface string) (*Interface, error) {
 	ifc := &Interface{}
 	if err := c.client.Get(ctx, "/nodes/"+c.node+"/network/"+iface, ifc, nil); err != nil {
@@ -86,6 +90,8 @@ func (c *Client) Get(ctx context.Context, iface string) (*Interface, error) {
 // Create creates a new network interface configuration via
 // POST /nodes/{node}/network. The interface is only applied after a
 // Reload (or a manual "ifreload -a"/reboot).
+//
+// +proxmox:rbac:path=/nodes/{node},method=POST,privs=Sys.Modify,match=all
 func (c *Client) Create(ctx context.Context, iface string, opts *InterfaceOptions) error {
 	p, err := opts.encode()
 	if err != nil {
@@ -103,6 +109,8 @@ func (c *Client) Create(ctx context.Context, iface string, opts *InterfaceOption
 // Update modifies an existing network interface configuration via
 // PUT /nodes/{node}/network/{iface}. The change is only applied after a
 // Reload (or a manual "ifreload -a"/reboot).
+//
+// +proxmox:rbac:path=/nodes/{node},method=PUT,privs=Sys.Modify,match=all
 func (c *Client) Update(ctx context.Context, iface string, opts *InterfaceOptions) error {
 	p, err := opts.encode()
 	if err != nil {
@@ -116,6 +124,8 @@ func (c *Client) Update(ctx context.Context, iface string, opts *InterfaceOption
 // Delete removes a network interface configuration via
 // DELETE /nodes/{node}/network/{iface}. The change is only applied after a
 // Reload (or a manual "ifreload -a"/reboot).
+//
+// +proxmox:rbac:path=/nodes/{node},method=DELETE,privs=Sys.Modify,match=all
 func (c *Client) Delete(ctx context.Context, iface string) error {
 	return c.client.Delete(ctx, "/nodes/"+c.node+"/network/"+iface, nil, nil)
 }
@@ -123,6 +133,8 @@ func (c *Client) Delete(ctx context.Context, iface string) error {
 // RevertChanges discards uncommitted network configuration changes via
 // DELETE /nodes/{node}/network, removing /etc/network/interfaces.new so
 // the next Get/List reflects only the currently applied configuration.
+//
+// +proxmox:rbac:path=/nodes/{node},method=DELETE,privs=Sys.Modify,match=all
 func (c *Client) RevertChanges(ctx context.Context) error {
 	return c.client.Delete(ctx, "/nodes/"+c.node+"/network", nil, nil)
 }
@@ -135,6 +147,8 @@ func (c *Client) RevertChanges(ctx context.Context) error {
 //
 // Requires ifupdown2 to be installed on the node; Proxmox returns an error
 // otherwise.
+//
+// +proxmox:rbac:path=/nodes/{node},method=PUT,privs=Sys.Modify,match=all
 func (c *Client) Reload(ctx context.Context, regenerateFRR *bool) (string, error) {
 	var p map[string]string
 	if regenerateFRR != nil {

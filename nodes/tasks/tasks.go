@@ -49,6 +49,10 @@ func New(c Getter, node string) *Client {
 // List retrieves the node's task history via GET /nodes/{node}/tasks.
 // opts may be nil to request Proxmox's defaults (the most recent 50
 // archived tasks, filtered to those the caller may see).
+// This user=>all endpoint has no fixed privilege: own tasks are visible, while
+// Sys.Audit on /nodes/{node} conditionally permits all tasks; results are filtered.
+//
+// +proxmox:rbac:path=/nodes/{node},method=GET,privs=Sys.Audit,match=any
 func (c *Client) List(ctx context.Context, opts *ListOptions) ([]Task, error) {
 	var p map[string]string
 	if opts != nil {
@@ -69,6 +73,10 @@ func (c *Client) List(ctx context.Context, opts *ListOptions) ([]Task, error) {
 
 // Status retrieves a single task's current status via
 // GET /nodes/{node}/tasks/{upid}/status.
+// This user=>all endpoint has no fixed privilege for the UPID owner; a non-owner
+// conditionally requires Sys.Audit on /nodes/{node}.
+//
+// +proxmox:rbac:path=/nodes/{node},method=GET,privs=Sys.Audit,match=any
 func (c *Client) Status(ctx context.Context, upid string) (*Status, error) {
 	status := &Status{}
 	if err := c.client.Get(ctx, "/nodes/"+c.node+"/tasks/"+upid+"/status", status, nil); err != nil {
@@ -81,6 +89,10 @@ func (c *Client) Status(ctx context.Context, upid string) (*Status, error) {
 // Log retrieves a single task's log via GET /nodes/{node}/tasks/{upid}/log.
 // opts may be nil to request Proxmox's default window (the first 50
 // lines).
+// This user=>all endpoint has no fixed privilege for the UPID owner; a non-owner
+// conditionally requires Sys.Audit on /nodes/{node}.
+//
+// +proxmox:rbac:path=/nodes/{node},method=GET,privs=Sys.Audit,match=any
 func (c *Client) Log(ctx context.Context, upid string, opts *LogOptions) ([]LogEntry, error) {
 	var p map[string]string
 	if opts != nil {
@@ -100,6 +112,10 @@ func (c *Client) Log(ctx context.Context, upid string, opts *LogOptions) ([]LogE
 }
 
 // Stop terminates a running task via DELETE /nodes/{node}/tasks/{upid}.
+// This user=>all endpoint has no fixed privilege for the UPID owner; a non-owner
+// conditionally requires Sys.Modify on /nodes/{node}.
+//
+// +proxmox:rbac:path=/nodes/{node},method=DELETE,privs=Sys.Modify,match=any
 func (c *Client) Stop(ctx context.Context, upid string) error {
 	return c.client.Delete(ctx, "/nodes/"+c.node+"/tasks/"+upid, nil, nil)
 }

@@ -117,6 +117,8 @@ type RootFS struct {
 }
 
 // Status retrieves the node's runtime status via GET /nodes/{node}/status.
+//
+// +proxmox:rbac:path=/nodes/{node},method=GET,privs=Sys.Audit,match=all
 func (c *Client) Status(ctx context.Context) (*Status, error) {
 	s := &Status{}
 	if err := c.client.Get(ctx, "/nodes/"+c.node+"/status", s, nil); err != nil {

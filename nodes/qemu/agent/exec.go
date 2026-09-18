@@ -38,6 +38,8 @@ type SetUserPasswordOptions struct {
 // SetUserPassword sets a guest user's password via
 // POST /nodes/{node}/qemu/{vmid}/agent/set-user-password
 // (guest-set-user-password).
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.GuestAgent.Unrestricted,match=all
 func (c *Client) SetUserPassword(ctx context.Context, vmid int, opts *SetUserPasswordOptions) error {
 	if opts == nil {
 		return fmt.Errorf("agent: set-user-password options are required")
@@ -75,6 +77,8 @@ type ExecResult struct {
 // Exec runs a command inside the guest via
 // POST /nodes/{node}/qemu/{vmid}/agent/exec (guest-exec). Returns the
 // started process's PID; poll its outcome with Client.ExecStatus.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.GuestAgent.Unrestricted,match=all
 func (c *Client) Exec(ctx context.Context, vmid int, opts *ExecOptions) (*ExecResult, error) {
 	if opts == nil {
 		return nil, fmt.Errorf("agent: exec options are required")
@@ -120,6 +124,8 @@ type ExecStatus struct {
 // ExecStatus retrieves a process started by Client.Exec's status via
 // GET /nodes/{node}/qemu/{vmid}/agent/exec-status
 // (guest-exec-status).
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.GuestAgent.Unrestricted,match=all
 func (c *Client) ExecStatus(ctx context.Context, vmid, pid int) (*ExecStatus, error) {
 	p := map[string]string{"pid": fmt.Sprintf("%d", pid)}
 
@@ -161,6 +167,8 @@ type FileReadResult struct {
 
 // FileRead reads a file from inside the guest via
 // GET /nodes/{node}/qemu/{vmid}/agent/file-read, capped at 16 MiB.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.GuestAgent.FileRead;VM.GuestAgent.Unrestricted,match=any
 func (c *Client) FileRead(ctx context.Context, vmid int, opts *FileReadOptions) (*FileReadResult, error) {
 	if opts == nil {
 		return nil, fmt.Errorf("agent: file-read options are required")
@@ -200,6 +208,8 @@ type FileWriteOptions struct {
 
 // FileWrite writes a file inside the guest via
 // POST /nodes/{node}/qemu/{vmid}/agent/file-write.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.GuestAgent.FileWrite;VM.GuestAgent.Unrestricted,match=any
 func (c *Client) FileWrite(ctx context.Context, vmid int, opts *FileWriteOptions) error {
 	if opts == nil {
 		return fmt.Errorf("agent: file-write options are required")

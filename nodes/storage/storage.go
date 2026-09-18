@@ -62,6 +62,10 @@ func New(c Getter, node string) *Client {
 // List retrieves the node's view of every storage via
 // GET /nodes/{node}/storage. opts may be nil to request every storage
 // the caller has access to, unfiltered.
+// This user=>all endpoint has no fixed privilege; results are filtered to
+// storage paths with either Datastore.Audit or Datastore.AllocateSpace.
+//
+// +proxmox:rbac:path=/storage/{storage},method=GET,privs=Datastore.Audit;Datastore.AllocateSpace,match=any
 func (c *Client) List(ctx context.Context, opts *ListOptions) ([]Storage, error) {
 	var p map[string]string
 	if opts != nil {
@@ -84,6 +88,8 @@ func (c *Client) List(ctx context.Context, opts *ListOptions) ([]Storage, error)
 // GET /nodes/{node}/storage/{storage}/status. The response omits the
 // storage id (it's already the URL path segment), so Status fills it in
 // manually.
+//
+// +proxmox:rbac:path=/storage/{storage},method=GET,privs=Datastore.Audit;Datastore.AllocateSpace,match=any
 func (c *Client) Status(ctx context.Context, storageID string) (*Storage, error) {
 	s := &Storage{}
 	if err := c.client.Get(ctx, "/nodes/"+c.node+"/storage/"+storageID+"/status", s, nil); err != nil {

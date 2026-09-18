@@ -61,6 +61,8 @@ func configPath(node string, vmid int) string {
 // Config retrieves a guest's configuration via
 // GET /nodes/{node}/qemu/{vmid}/config. opts may be nil to request the
 // configuration with pending changes applied.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (c *Client) Config(ctx context.Context, vmid int, opts *ConfigOptions) (*Config, error) {
 	var p map[string]string
 	if opts != nil {
@@ -84,6 +86,10 @@ func (c *Client) Config(ctx context.Context, vmid int, opts *ConfigOptions) (*Co
 // changes involving hotplug or storage allocation, per Proxmox's own
 // guidance. cfg.BackgroundDelay and cfg.ImportWorkingStorage are rejected
 // by this endpoint (POST-only); leave them unset.
+// The endpoint gate accepts any listed privilege; changed fields trigger the
+// additional field-, storage-, mapping-, and SDN-dependent checks documented above.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Config.Disk;VM.Config.CDROM;VM.Config.CPU;VM.Config.Memory;VM.Config.Network;VM.Config.HWType;VM.Config.Options;VM.Config.Cloudinit,match=any
 func (c *Client) UpdateConfig(ctx context.Context, vmid int, cfg *Config) error {
 	p, err := encodeConfig(cfg)
 	if err != nil {
@@ -97,6 +103,10 @@ func (c *Client) UpdateConfig(ctx context.Context, vmid int, cfg *Config) error 
 // POST /nodes/{node}/qemu/{vmid}/config, as a background task — the
 // endpoint to prefer for changes involving hotplug or storage
 // allocation. Returns the task's UPID.
+// The endpoint gate accepts any listed privilege; changed fields trigger the
+// additional field-, storage-, mapping-, and SDN-dependent checks documented above.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Disk;VM.Config.CDROM;VM.Config.CPU;VM.Config.Memory;VM.Config.Network;VM.Config.HWType;VM.Config.Options;VM.Config.Cloudinit,match=any
 func (c *Client) UpdateConfigAsync(ctx context.Context, vmid int, cfg *Config) (string, error) {
 	p, err := encodeConfig(cfg)
 	if err != nil {

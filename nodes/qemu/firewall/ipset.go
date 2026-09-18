@@ -30,6 +30,9 @@ type ipsetResource struct {
 }
 
 // List retrieves all IP sets via GET {base}.
+// GET /nodes/{node}/qemu/{vmid}/firewall/ipset.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (s *ipsetResource) List(ctx context.Context) ([]IPSet, error) {
 	var sets []IPSet
 	if err := s.client.Get(ctx, s.base, &sets, nil); err != nil {
@@ -40,6 +43,9 @@ func (s *ipsetResource) List(ctx context.Context) ([]IPSet, error) {
 }
 
 // Create creates a new IP set via POST {base}.
+// POST /nodes/{node}/qemu/{vmid}/firewall/ipset.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Network,match=all
 func (s *ipsetResource) Create(ctx context.Context, opts *IPSetOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: ipset options are required")
@@ -67,6 +73,9 @@ func (s *ipsetResource) Create(ctx context.Context, opts *IPSetOptions) error {
 // update Comment without renaming, or to a different value to rename
 // the set. If opts.Name is left empty, it defaults to name so the set
 // keeps its current name.
+// POST /nodes/{node}/qemu/{vmid}/firewall/ipset.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Network,match=all
 func (s *ipsetResource) Update(ctx context.Context, name string, opts *IPSetOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: ipset options are required")
@@ -88,6 +97,9 @@ func (s *ipsetResource) Update(ctx context.Context, name string, opts *IPSetOpti
 // Delete removes an IP set via DELETE {base}/{name}. If force is true,
 // any remaining members of the set are deleted along with it;
 // otherwise Proxmox refuses to delete a non-empty set.
+// DELETE /nodes/{node}/qemu/{vmid}/firewall/ipset/{name}.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=DELETE,privs=VM.Config.Network,match=all
 func (s *ipsetResource) Delete(ctx context.Context, name string, force bool) error {
 	var params map[string]string
 	if force {
@@ -113,6 +125,9 @@ type ipsetEntriesResource struct {
 }
 
 // List retrieves all members of the IP set via GET {base}.
+// GET /nodes/{node}/qemu/{vmid}/firewall/ipset/{name}.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (e *ipsetEntriesResource) List(ctx context.Context) ([]IPSetEntry, error) {
 	var entries []IPSetEntry
 	if err := e.client.Get(ctx, e.base, &entries, nil); err != nil {
@@ -123,6 +138,9 @@ func (e *ipsetEntriesResource) List(ctx context.Context) ([]IPSetEntry, error) {
 }
 
 // Get retrieves a single member via GET {base}/{cidr}.
+// GET /nodes/{node}/qemu/{vmid}/firewall/ipset/{name}/{cidr}.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (e *ipsetEntriesResource) Get(ctx context.Context, cidr string) (*IPSetEntry, error) {
 	var entry IPSetEntry
 	if err := e.client.Get(ctx, e.base+"/"+cidr, &entry, nil); err != nil {
@@ -133,6 +151,9 @@ func (e *ipsetEntriesResource) Get(ctx context.Context, cidr string) (*IPSetEntr
 }
 
 // Create adds a new member to the IP set via POST {base}.
+// POST /nodes/{node}/qemu/{vmid}/firewall/ipset/{name}.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Network,match=all
 func (e *ipsetEntriesResource) Create(ctx context.Context, opts *IPSetEntryOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: ipset entry options are required")
@@ -154,6 +175,9 @@ func (e *ipsetEntriesResource) Create(ctx context.Context, opts *IPSetEntryOptio
 // opts.CIDR must still be set (Proxmox requires it to be resent even
 // when unchanged) and, if different from cidr, changes the member's
 // address.
+// PUT /nodes/{node}/qemu/{vmid}/firewall/ipset/{name}/{cidr}.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Config.Network,match=all
 func (e *ipsetEntriesResource) Update(ctx context.Context, cidr string, opts *IPSetEntryOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: ipset entry options are required")
@@ -174,6 +198,9 @@ func (e *ipsetEntriesResource) Update(ctx context.Context, cidr string, opts *IP
 // cidr to be resent as a parameter even though it is already part of
 // the URL path; digest, when non-empty, guards against a concurrent
 // modification of the member.
+// DELETE /nodes/{node}/qemu/{vmid}/firewall/ipset/{name}/{cidr}.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=DELETE,privs=VM.Config.Network,match=all
 func (e *ipsetEntriesResource) Delete(ctx context.Context, cidr string, digest string) error {
 	params := map[string]string{"cidr": cidr}
 	if digest != "" {

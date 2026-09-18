@@ -33,6 +33,9 @@ type qemuResource struct {
 // Custom models are filtered to those the caller has Mapping.{Audit,Use,
 // Modify} on, unless it holds Sys.Audit on "/nodes" (which grants
 // visibility of every custom model, for backward compatibility).
+//
+// This user=>all endpoint has no fixed privilege; custom-model ACLs only
+// filter results. Sys.Audit on "/nodes" is an alternative elevated-access path.
 func (r *qemuResource) CPUModels(ctx context.Context, arch Arch) ([]CPUModel, error) {
 	var p map[string]string
 	if arch != "" {
@@ -52,6 +55,8 @@ func (r *qemuResource) CPUModels(ctx context.Context, arch Arch) ([]CPUModel, er
 // empty, default to the host's own architecture and AccelKVM respectively.
 // Proxmox always returns an empty list for ArchAarch64, since no
 // VM-specific flags are defined for it yet.
+//
+// This user=>all endpoint has no fixed privilege.
 func (r *qemuResource) CPUFlags(ctx context.Context, arch Arch, accel Accel) ([]CPUFlag, error) {
 	p := make(map[string]string, 2)
 	if arch != "" {
@@ -75,6 +80,8 @@ func (r *qemuResource) CPUFlags(ctx context.Context, arch Arch, accel Accel) ([]
 // Machines retrieves the supported QEMU/KVM machine types on the node via
 // GET /nodes/{node}/capabilities/qemu/machines. arch, when empty, defaults
 // to the host's own architecture.
+//
+// This user=>all endpoint has no fixed privilege.
 func (r *qemuResource) Machines(ctx context.Context, arch Arch) ([]MachineType, error) {
 	var p map[string]string
 	if arch != "" {
@@ -91,6 +98,8 @@ func (r *qemuResource) Machines(ctx context.Context, arch Arch) ([]MachineType, 
 
 // Migration retrieves the node's QEMU live-migration capabilities via
 // GET /nodes/{node}/capabilities/qemu/migration.
+//
+// +proxmox:rbac:path=/nodes/{node},method=GET,privs=Sys.Audit,match=all
 func (r *qemuResource) Migration(ctx context.Context) (*MigrationCapabilities, error) {
 	caps := &MigrationCapabilities{}
 	if err := r.client.Get(ctx, "/nodes/"+r.node+"/capabilities/qemu/migration", caps, nil); err != nil {

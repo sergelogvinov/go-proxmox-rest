@@ -53,6 +53,8 @@ type SyslogOptions struct {
 // Syslog retrieves system log lines for the node via GET /nodes/{node}/syslog.
 // opts may be nil to request Proxmox's default window (its most recent
 // lines).
+//
+// +proxmox:rbac:path=/nodes/{node},method=GET,privs=Sys.Syslog,match=all
 func (c *Client) Syslog(ctx context.Context, opts *SyslogOptions) ([]SyslogEntry, error) {
 	var p map[string]string
 	if opts != nil {

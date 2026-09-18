@@ -43,6 +43,8 @@ const (
 // GET /nodes/{node}/qemu/{vmid}/feature. snapname checks the feature
 // against a specific snapshot's state instead of the guest's current
 // one; pass "" to check the current state.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (c *Client) Feature(ctx context.Context, vmid int, feature Feature, snapname string) (*FeatureResult, error) {
 	p := map[string]string{"feature": string(feature)}
 	if snapname != "" {

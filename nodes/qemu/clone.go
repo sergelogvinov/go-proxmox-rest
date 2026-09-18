@@ -69,6 +69,10 @@ type CloneOptions struct {
 
 // Clone creates a copy of a guest (or template) via
 // POST /nodes/{node}/qemu/{vmid}/clone. Returns the clone task's UPID.
+// Target allocation is an alternative: VM.Allocate on /vms/{newid}, or on
+// /pool/{pool} when a pool is supplied. Storage, mapping, and SDN checks are conditional.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Clone,match=all
 func (c *Client) Clone(ctx context.Context, vmid int, opts *CloneOptions) (string, error) {
 	if opts == nil {
 		return "", fmt.Errorf("qemu: clone options are required")

@@ -49,6 +49,9 @@ func configPath(node string, vmid int) string {
 // Config retrieves a container's configuration via
 // GET /nodes/{node}/lxc/{vmid}/config. opts may be nil to request the
 // configuration with pending changes applied.
+// The env field is conditionally hidden without VM.Config.Options.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (c *Client) Config(ctx context.Context, vmid int, opts *ConfigOptions) (*Config, error) {
 	var p map[string]string
 	if opts != nil {
@@ -69,6 +72,10 @@ func (c *Client) Config(ctx context.Context, vmid int, opts *ConfigOptions) (*Co
 
 // UpdateConfig sets a container's configuration via
 // PUT /nodes/{node}/lxc/{vmid}/config.
+// The endpoint gate accepts any listed privilege; changed fields trigger the
+// additional field-, storage-, and SDN-dependent checks documented above.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Config.Disk;VM.Config.CPU;VM.Config.Memory;VM.Config.Network;VM.Config.Options,match=any
 func (c *Client) UpdateConfig(ctx context.Context, vmid int, cfg *Config) error {
 	p, err := encodeConfig(cfg)
 	if err != nil {

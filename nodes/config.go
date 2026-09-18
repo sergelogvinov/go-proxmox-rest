@@ -90,6 +90,8 @@ func (cfg *Config) encode() (map[string]string, error) {
 
 // Config retrieves the node's persistent configuration via
 // GET /nodes/{node}/config.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (c *Client) Config(ctx context.Context) (*Config, error) {
 	cfg := &Config{}
 	if err := c.client.Get(ctx, "/nodes/"+c.node+"/config", cfg, nil); err != nil {
@@ -102,6 +104,8 @@ func (c *Client) Config(ctx context.Context) (*Config, error) {
 // UpdateConfig applies cfg to the node's persistent configuration via
 // PUT /nodes/{node}/config. Only non-zero fields are sent; use
 // Config.Delete to explicitly reset a field to its default.
+//
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
 func (c *Client) UpdateConfig(ctx context.Context, cfg *Config) error {
 	p, err := cfg.encode()
 	if err != nil {

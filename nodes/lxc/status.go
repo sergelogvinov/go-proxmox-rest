@@ -31,6 +31,8 @@ func path(node string, vmid int, action string) string {
 
 // Status retrieves a container's current status via
 // GET /nodes/{node}/lxc/{vmid}/status/current.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (c *Client) Status(ctx context.Context, vmid int) (*Status, error) {
 	s := &Status{}
 	if err := c.client.Get(ctx, path(c.node, vmid, "current"), s, nil); err != nil {
@@ -43,6 +45,8 @@ func (c *Client) Status(ctx context.Context, vmid int) (*Status, error) {
 // Start starts a container via POST /nodes/{node}/lxc/{vmid}/status/start.
 // opts may be nil to use Proxmox's defaults. Returns the start task's
 // UPID.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.PowerMgmt,match=all
 func (c *Client) Start(ctx context.Context, vmid int, opts *StartOptions) (string, error) {
 	var p map[string]string
 	if opts != nil {
@@ -61,6 +65,8 @@ func (c *Client) Start(ctx context.Context, vmid int, opts *StartOptions) (strin
 // process running in the container; prefer Shutdown for a graceful
 // power-off. opts may be nil to use Proxmox's defaults. Returns the stop
 // task's UPID.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.PowerMgmt,match=all
 func (c *Client) Stop(ctx context.Context, vmid int, opts *StopOptions) (string, error) {
 	var p map[string]string
 	if opts != nil {
@@ -77,6 +83,8 @@ func (c *Client) Stop(ctx context.Context, vmid int, opts *StopOptions) (string,
 // Shutdown gracefully stops a container (see lxc-stop(1)) via
 // POST /nodes/{node}/lxc/{vmid}/status/shutdown. opts may be nil to use
 // Proxmox's defaults. Returns the shutdown task's UPID.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.PowerMgmt,match=all
 func (c *Client) Shutdown(ctx context.Context, vmid int, opts *ShutdownOptions) (string, error) {
 	var p map[string]string
 	if opts != nil {
@@ -94,6 +102,8 @@ func (c *Client) Shutdown(ctx context.Context, vmid int, opts *ShutdownOptions) 
 // pending configuration changes, via
 // POST /nodes/{node}/lxc/{vmid}/status/reboot. opts may be nil to use
 // Proxmox's defaults. Returns the reboot task's UPID.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.PowerMgmt,match=all
 func (c *Client) Reboot(ctx context.Context, vmid int, opts *RebootOptions) (string, error) {
 	var p map[string]string
 	if opts != nil {
@@ -110,6 +120,8 @@ func (c *Client) Reboot(ctx context.Context, vmid int, opts *RebootOptions) (str
 // Suspend suspends a running container (experimental, per Proxmox's own
 // description) via POST /nodes/{node}/lxc/{vmid}/status/suspend. Returns
 // the suspend task's UPID.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.PowerMgmt,match=all
 func (c *Client) Suspend(ctx context.Context, vmid int) (string, error) {
 	return c.action(ctx, vmid, "suspend", nil)
 }
@@ -117,6 +129,8 @@ func (c *Client) Suspend(ctx context.Context, vmid int) (string, error) {
 // Resume resumes a suspended container via
 // POST /nodes/{node}/lxc/{vmid}/status/resume. Returns the resume task's
 // UPID.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.PowerMgmt,match=all
 func (c *Client) Resume(ctx context.Context, vmid int) (string, error) {
 	return c.action(ctx, vmid, "resume", nil)
 }

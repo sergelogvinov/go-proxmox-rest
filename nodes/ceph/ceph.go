@@ -56,6 +56,8 @@ func New(c Getter, node string) *Client {
 // identical to Client.Cluster().Ceph().Status(ctx); this per-node path
 // exists purely for operator convenience (e.g. scripting against a
 // specific node), so the two share the same Status shape.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit;Datastore.Audit,match=any
 func (c *Client) Status(ctx context.Context) (*Status, error) {
 	status := &Status{}
 	if err := c.client.Get(ctx, "/nodes/"+c.node+"/ceph/status", status, nil); err != nil {
@@ -71,6 +73,8 @@ func (c *Client) Status(ctx context.Context) (*Status, error) {
 // affect every instance of that kind, "kind.instance" (e.g. "mon.pve1")
 // to target one instance, or "" for Proxmox's own default ("ceph.target",
 // every service). Returns the start task's UPID.
+//
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
 func (c *Client) Start(ctx context.Context, service Service) (string, error) {
 	return c.serviceCmd(ctx, "start", service)
 }
@@ -78,6 +82,8 @@ func (c *Client) Start(ctx context.Context, service Service) (string, error) {
 // Stop stops Ceph services on the node via POST /nodes/{node}/ceph/stop.
 // service has the same meaning as in Start. Returns the stop task's
 // UPID.
+//
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
 func (c *Client) Stop(ctx context.Context, service Service) (string, error) {
 	return c.serviceCmd(ctx, "stop", service)
 }
@@ -85,6 +91,8 @@ func (c *Client) Stop(ctx context.Context, service Service) (string, error) {
 // Restart restarts Ceph services on the node via
 // POST /nodes/{node}/ceph/restart. service has the same meaning as in
 // Start. Returns the restart task's UPID.
+//
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
 func (c *Client) Restart(ctx context.Context, service Service) (string, error) {
 	return c.serviceCmd(ctx, "restart", service)
 }
@@ -107,6 +115,8 @@ func (c *Client) serviceCmd(ctx context.Context, action string, service Service)
 
 // Releases lists every known Ceph release, marking which ones can be
 // installed on the node, via GET /nodes/{node}/ceph/releases.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit;Datastore.Audit,match=any
 func (c *Client) Releases(ctx context.Context) ([]Release, error) {
 	var releases []Release
 	if err := c.client.Get(ctx, "/nodes/"+c.node+"/ceph/releases", &releases, nil); err != nil {
@@ -119,6 +129,8 @@ func (c *Client) Releases(ctx context.Context) ([]Release, error) {
 // Log retrieves the node's Ceph log via GET /nodes/{node}/ceph/log.
 // opts may be nil to request Proxmox's default window (the first ~50
 // lines).
+//
+// +proxmox:rbac:path=/nodes/{node},method=GET,privs=Sys.Syslog,match=all
 func (c *Client) Log(ctx context.Context, opts *LogOptions) ([]LogEntry, error) {
 	var p map[string]string
 	if opts != nil {

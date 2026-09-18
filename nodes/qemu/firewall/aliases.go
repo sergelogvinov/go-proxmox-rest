@@ -29,7 +29,9 @@ type aliasesResource struct {
 	base   string
 }
 
-// List retrieves all aliases via GET {base}.
+// List retrieves all aliases via GET /nodes/{node}/qemu/{vmid}/firewall/aliases.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (a *aliasesResource) List(ctx context.Context) ([]Alias, error) {
 	var aliases []Alias
 	if err := a.client.Get(ctx, a.base, &aliases, nil); err != nil {
@@ -39,7 +41,9 @@ func (a *aliasesResource) List(ctx context.Context) ([]Alias, error) {
 	return aliases, nil
 }
 
-// Get retrieves a single alias via GET {base}/{name}.
+// Get retrieves a single alias via GET /nodes/{node}/qemu/{vmid}/firewall/aliases/{name}.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (a *aliasesResource) Get(ctx context.Context, name string) (*Alias, error) {
 	var alias Alias
 	if err := a.client.Get(ctx, a.base+"/"+name, &alias, nil); err != nil {
@@ -49,9 +53,11 @@ func (a *aliasesResource) Get(ctx context.Context, name string) (*Alias, error) 
 	return &alias, nil
 }
 
-// Create creates a new alias via POST {base}.
+// Create creates a new alias via POST /nodes/{node}/qemu/{vmid}/firewall/aliases.
 //
 // opts.Name and opts.CIDR are required.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Network,match=all
 func (a *aliasesResource) Create(ctx context.Context, opts *AliasOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: alias options are required")
@@ -71,11 +77,13 @@ func (a *aliasesResource) Create(ctx context.Context, opts *AliasOptions) error 
 	return a.client.Create(ctx, a.base, nil, params)
 }
 
-// Update modifies an existing alias via PUT {base}/{name}, addressed by
+// Update modifies an existing alias via PUT /nodes/{node}/qemu/{vmid}/firewall/aliases/{name}, addressed by
 // its current name. Set opts.Rename to give the alias a new name.
 //
 // opts.CIDR is required — Proxmox requires it to be resent on every
 // update even when unchanged.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Config.Network,match=all
 func (a *aliasesResource) Update(ctx context.Context, name string, opts *AliasOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: alias options are required")
@@ -92,10 +100,12 @@ func (a *aliasesResource) Update(ctx context.Context, name string, opts *AliasOp
 	return a.client.Update(ctx, a.base+"/"+name, nil, params)
 }
 
-// Delete removes an alias via DELETE {base}/{name}.
+// Delete removes an alias via DELETE /nodes/{node}/qemu/{vmid}/firewall/aliases/{name}.
 //
 // digest, when non-empty, guards against concurrent modification
 // (value from the corresponding Get).
+//
+// +proxmox:rbac:path=/vms/{vmid},method=DELETE,privs=VM.Config.Network,match=all
 func (a *aliasesResource) Delete(ctx context.Context, name string, digest string) error {
 	var params map[string]string
 	if digest != "" {

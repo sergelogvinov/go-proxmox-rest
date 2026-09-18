@@ -26,6 +26,8 @@ import (
 // to a single disk (e.g. "scsi0"), converting only that disk to a base
 // image instead of the whole guest; pass "" to convert the whole guest.
 // Returns the conversion task's UPID.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Allocate,match=all
 func (c *Client) Template(ctx context.Context, vmid int, disk string) (string, error) {
 	var p map[string]string
 	if disk != "" {

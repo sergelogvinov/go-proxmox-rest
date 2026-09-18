@@ -93,6 +93,8 @@ func snapshotPath(node string, vmid int, snapname, sub string) string {
 // List retrieves every snapshot via
 // GET /nodes/{node}/qemu/{vmid}/snapshot, including the "current"
 // live-state pseudo-entry.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (r *snapshotResource) List(ctx context.Context, vmid int) ([]Snapshot, error) {
 	var snapshots []Snapshot
 	if err := r.client.Get(ctx, snapshotPath(r.node, vmid, "", ""), &snapshots, nil); err != nil {
@@ -105,6 +107,8 @@ func (r *snapshotResource) List(ctx context.Context, vmid int) ([]Snapshot, erro
 // Create takes a new snapshot via
 // POST /nodes/{node}/qemu/{vmid}/snapshot. Returns the snapshot task's
 // UPID.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Snapshot,match=all
 func (r *snapshotResource) Create(ctx context.Context, vmid int, opts *CreateSnapshotOptions) (string, error) {
 	if opts == nil {
 		return "", fmt.Errorf("qemu: snapshot create options are required")
@@ -130,6 +134,8 @@ func (r *snapshotResource) Create(ctx context.Context, vmid int, opts *CreateSna
 // snapshot via GET /nodes/{node}/qemu/{vmid}/snapshot/{snapname}/config.
 // This is the same Config shape returned by Client.Config, since
 // Proxmox stores a full configuration copy inside each snapshot.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Snapshot;VM.Snapshot.Rollback;VM.Audit,match=any
 func (r *snapshotResource) GetConfig(ctx context.Context, vmid int, snapname string) (*Config, error) {
 	var raw map[string]json.RawMessage
 	if err := r.client.Get(ctx, snapshotPath(r.node, vmid, snapname, "config"), &raw, nil); err != nil {
@@ -142,6 +148,8 @@ func (r *snapshotResource) GetConfig(ctx context.Context, vmid int, snapname str
 // UpdateConfig replaces a snapshot's description via
 // PUT /nodes/{node}/qemu/{vmid}/snapshot/{snapname}/config — the only
 // snapshot metadata field Proxmox allows changing after the fact.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Snapshot,match=all
 func (r *snapshotResource) UpdateConfig(ctx context.Context, vmid int, snapname, description string) error {
 	p := map[string]string{"description": description}
 
@@ -153,6 +161,9 @@ func (r *snapshotResource) UpdateConfig(ctx context.Context, vmid int, snapname,
 // requests the guest be started afterwards if it wasn't already
 // (Proxmox always starts it automatically when the snapshot includes
 // RAM). Returns the rollback task's UPID.
+// Starting after rollback conditionally also requires VM.PowerMgmt.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Snapshot;VM.Snapshot.Rollback,match=any
 func (r *snapshotResource) Rollback(ctx context.Context, vmid int, snapname string, start bool) (string, error) {
 	var p map[string]string
 	if start {
@@ -171,6 +182,8 @@ func (r *snapshotResource) Rollback(ctx context.Context, vmid int, snapname stri
 // DELETE /nodes/{node}/qemu/{vmid}/snapshot/{snapname}. force removes
 // the snapshot from the configuration even if deleting its underlying
 // disk snapshots fails. Returns the deletion task's UPID.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=DELETE,privs=VM.Snapshot,match=all
 func (r *snapshotResource) Delete(ctx context.Context, vmid int, snapname string, force bool) (string, error) {
 	var p map[string]string
 	if force {

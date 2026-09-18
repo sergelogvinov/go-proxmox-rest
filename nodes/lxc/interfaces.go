@@ -26,6 +26,8 @@ import (
 // nodes/qemu/agent's NetworkGetInterfaces, this does not require a guest
 // agent — Proxmox reads the addresses directly from the container's
 // network namespace.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (c *Client) Interfaces(ctx context.Context, vmid int) ([]Interface, error) {
 	var ifaces []Interface
 	if err := c.client.Get(ctx, "/nodes/"+c.node+"/lxc/"+strconv.Itoa(vmid)+"/interfaces", &ifaces, nil); err != nil {
