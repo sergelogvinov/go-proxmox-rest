@@ -52,6 +52,13 @@ func New(c Getter, node string) *Client {
 // opts.VMID or opts.All is required — Proxmox otherwise silently
 // no-ops rather than erroring, so this validates it client-side.
 // Returns the backup task's UPID.
+// This user=>all endpoint has no fixed privilege. Runtime checks are conditional:
+// VM.Backup for every selected guest; storage allocation for backup/fleecing;
+// Datastore.Allocate for pruning; and Sys.Modify for privileged options or stop.
+// The marker records the permission required for every selected guest; the
+// option-dependent storage and system checks are documented above.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Backup,match=all
 func (c *Client) Create(ctx context.Context, opts *Options) (string, error) {
 	if opts == nil {
 		return "", fmt.Errorf("vzdump: options are required")
@@ -76,6 +83,10 @@ func (c *Client) Create(ctx context.Context, opts *Options) (string, error) {
 // Defaults retrieves the node's currently configured backup defaults
 // via GET /nodes/{node}/vzdump/defaults. storage may be empty to use
 // the node's default storage.
+// This user=>all endpoint has no fixed privilege. Storage Audit/AllocateSpace
+// gates the resolved storage; node Sys.Audit and Pool.Audit only control field disclosure.
+//
+// +proxmox:rbac:path=/storage/{storage},method=GET,privs=Datastore.Audit;Datastore.AllocateSpace,match=any
 func (c *Client) Defaults(ctx context.Context, storage string) (*Options, error) {
 	var p map[string]string
 	if storage != "" {
@@ -93,6 +104,11 @@ func (c *Client) Defaults(ctx context.Context, storage string) (*Options, error)
 // ExtractConfig extracts a guest's configuration from an existing
 // backup archive via GET /nodes/{node}/vzdump/extractconfig. Returns
 // the raw configuration text (a QEMU or LXC config file verbatim).
+// This user=>all endpoint has no fixed privilege. Managed backups conditionally
+// require Datastore.AllocateSpace and VM.Backup; arbitrary paths require root@pam.
+//
+// +proxmox:rbac:path=/storage/{storage},method=GET,privs=Datastore.AllocateSpace,match=all
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Backup,match=all
 func (c *Client) ExtractConfig(ctx context.Context, volume string) (string, error) {
 	var config string
 	if err := c.client.Get(ctx, "/nodes/"+c.node+"/vzdump/extractconfig", &config, map[string]string{"volume": volume}); err != nil {

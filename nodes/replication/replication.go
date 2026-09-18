@@ -54,6 +54,10 @@ func New(c Getter, node string) *Client {
 // List retrieves the status of every replication job whose guest runs on
 // the node via GET /nodes/{node}/replication. guest, when non-zero,
 // narrows the result to that single guest's jobs.
+// This user=>all endpoint has no fixed privilege; each result conditionally
+// requires VM.Audit on the job-derived /vms/{vmid} path.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (c *Client) List(ctx context.Context, guest int) ([]JobStatus, error) {
 	var p map[string]string
 	if guest != 0 {
@@ -70,6 +74,10 @@ func (c *Client) List(ctx context.Context, guest int) ([]JobStatus, error) {
 
 // Get retrieves a single replication job's status via
 // GET /nodes/{node}/replication/{id}/status.
+// This user=>all endpoint has no fixed privilege; the loaded job conditionally
+// requires VM.Audit on its /vms/{vmid} path.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (c *Client) Get(ctx context.Context, id string) (*JobStatus, error) {
 	status := &JobStatus{}
 	if err := c.client.Get(ctx, "/nodes/"+c.node+"/replication/"+id+"/status", status, nil); err != nil {
@@ -82,6 +90,11 @@ func (c *Client) Get(ctx context.Context, id string) (*JobStatus, error) {
 // Log retrieves a replication job's log via
 // GET /nodes/{node}/replication/{id}/log. opts may be nil to request
 // every line Proxmox has.
+// This user=>all endpoint has no fixed privilege. Access requires either VM.Audit
+// on the job-derived /vms/{vmid} or Sys.Audit on /nodes/{node}.
+// The marker records the guest-scoped branch; Sys.Audit is an alternative.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (c *Client) Log(ctx context.Context, id string, opts *LogOptions) ([]LogEntry, error) {
 	var p map[string]string
 	if opts != nil {
@@ -103,6 +116,10 @@ func (c *Client) Log(ctx context.Context, id string, opts *LogOptions) ([]LogEnt
 // ScheduleNow requests that a replication job run as soon as possible via
 // POST /nodes/{node}/replication/{id}/schedule_now, bypassing its normal
 // schedule for one run.
+// This user=>all endpoint has no fixed privilege; the ID-derived VM conditionally
+// requires VM.Replicate on /vms/{vmid}.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Replicate,match=all
 func (c *Client) ScheduleNow(ctx context.Context, id string) error {
 	return c.client.Create(ctx, "/nodes/"+c.node+"/replication/"+id+"/schedule_now", nil, nil)
 }

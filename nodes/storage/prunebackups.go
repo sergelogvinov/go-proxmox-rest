@@ -33,6 +33,8 @@ type pruneBackupsResource struct {
 // DryRun previews which backups a prune would keep or remove via
 // GET /nodes/{node}/storage/{storage}/prunebackups, without deleting
 // anything. opts may be nil to use the storage's configured retention.
+//
+// +proxmox:rbac:path=/storage/{storage},method=GET,privs=Datastore.Audit;Datastore.AllocateSpace,match=any
 func (r *pruneBackupsResource) DryRun(ctx context.Context, storageID string, opts *PruneOptions) ([]PruneEntry, error) {
 	var p map[string]string
 	if opts != nil {
@@ -57,6 +59,12 @@ func (r *pruneBackupsResource) DryRun(ctx context.Context, storageID string, opt
 // DryRun, opts.PruneBackups is required here — Proxmox does not fall
 // back to the storage's configured retention for the real prune.
 // Returns the pruning task's UPID.
+// This user=>all endpoint has no fixed privilege. With vmid, it requires both
+// Datastore.AllocateSpace and VM.Backup; without vmid, Datastore.Allocate applies.
+// The marker records the no-vmid branch; the vmid-specific alternative is
+// documented above.
+//
+// +proxmox:rbac:path=/storage/{storage},method=DELETE,privs=Datastore.Allocate,match=all
 func (r *pruneBackupsResource) Delete(ctx context.Context, storageID string, opts *PruneOptions) (string, error) {
 	if opts == nil || opts.PruneBackups == "" {
 		return "", fmt.Errorf("storage: prune-backups retention is required")
