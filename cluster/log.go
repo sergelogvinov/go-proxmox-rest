@@ -26,6 +26,8 @@ import (
 // limit, when non-zero, caps the number of entries returned (most recent
 // first); zero requests every entry the server has. Without Sys.Syslog on
 // "/", Proxmox restricts the result to the caller's own log entries.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Syslog,match=any
 func (c *Client) Log(ctx context.Context, limit int) ([]LogEntry, error) {
 	var params map[string]string
 	if limit != 0 {

@@ -104,6 +104,8 @@ type dirResource struct {
 // checkNode, when non-empty, asks Proxmox to validate every mapping's
 // configuration against that node (the path must exist and be a
 // directory) and populate Checks with any problems found.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (r *dirResource) List(ctx context.Context, checkNode string) ([]Dir, error) {
 	var params map[string]string
 	if checkNode != "" {
@@ -120,6 +122,8 @@ func (r *dirResource) List(ctx context.Context, checkNode string) ([]Dir, error)
 
 // Get retrieves a single directory mapping via
 // GET /cluster/mapping/dir/{id}.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (r *dirResource) Get(ctx context.Context, id string) (*Dir, error) {
 	var m Dir
 	if err := r.client.Get(ctx, "/cluster/mapping/dir/"+id, &m, nil); err != nil {
@@ -131,6 +135,8 @@ func (r *dirResource) Get(ctx context.Context, id string) (*Dir, error) {
 }
 
 // Create creates a new directory mapping via POST /cluster/mapping/dir.
+//
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
 func (r *dirResource) Create(ctx context.Context, opts *DirOptions) error {
 	if opts == nil {
 		return fmt.Errorf("mapping: dir options are required")
@@ -153,6 +159,8 @@ func (r *dirResource) Create(ctx context.Context, opts *DirOptions) error {
 // opts.Map is required — Proxmox does not treat it as optional on update,
 // so it must be resent (with its full, current entry list) on every call,
 // the same as ha.RuleOptions.Type.
+//
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
 func (r *dirResource) Update(ctx context.Context, id string, opts *DirOptions) error {
 	if opts == nil {
 		return fmt.Errorf("mapping: dir options are required")
@@ -170,6 +178,8 @@ func (r *dirResource) Update(ctx context.Context, id string, opts *DirOptions) e
 }
 
 // Delete removes a directory mapping via DELETE /cluster/mapping/dir/{id}.
+//
+// +proxmox:rbac:path=/,method=DELETE,privs=Sys.Modify,match=all
 func (r *dirResource) Delete(ctx context.Context, id string) error {
 	return r.client.Delete(ctx, "/cluster/mapping/dir/"+id, nil, nil)
 }

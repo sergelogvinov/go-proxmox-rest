@@ -79,6 +79,8 @@ func (c *Client) IPSet() *ipsetResource {
 // rule's Source/Dest fields via GET /cluster/firewall/refs. An empty
 // refType returns both kinds; refType narrows the result to just aliases
 // or just IP sets.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (c *Client) Refs(ctx context.Context, refType RefType) ([]Ref, error) {
 	var params map[string]string
 	if refType != "" {

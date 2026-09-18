@@ -112,6 +112,8 @@ type pciResource struct {
 // checkNode, when non-empty, asks Proxmox to validate every mapping's
 // configuration against that node's actual hardware and populate Checks
 // with any problems found.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (r *pciResource) List(ctx context.Context, checkNode string) ([]PCI, error) {
 	var params map[string]string
 	if checkNode != "" {
@@ -127,6 +129,8 @@ func (r *pciResource) List(ctx context.Context, checkNode string) ([]PCI, error)
 }
 
 // Get retrieves a single PCI mapping via GET /cluster/mapping/pci/{id}.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (r *pciResource) Get(ctx context.Context, id string) (*PCI, error) {
 	var m PCI
 	if err := r.client.Get(ctx, "/cluster/mapping/pci/"+id, &m, nil); err != nil {
@@ -138,6 +142,8 @@ func (r *pciResource) Get(ctx context.Context, id string) (*PCI, error) {
 }
 
 // Create creates a new PCI mapping via POST /cluster/mapping/pci.
+//
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
 func (r *pciResource) Create(ctx context.Context, opts *PCIOptions) error {
 	if opts == nil {
 		return fmt.Errorf("mapping: pci options are required")
@@ -159,6 +165,8 @@ func (r *pciResource) Create(ctx context.Context, opts *PCIOptions) error {
 // opts.Map is required — Proxmox does not treat it as optional on update,
 // so it must be resent (with its full, current entry list) on every call,
 // the same as ha.RuleOptions.Type.
+//
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
 func (r *pciResource) Update(ctx context.Context, id string, opts *PCIOptions) error {
 	if opts == nil {
 		return fmt.Errorf("mapping: pci options are required")
@@ -176,6 +184,8 @@ func (r *pciResource) Update(ctx context.Context, id string, opts *PCIOptions) e
 }
 
 // Delete removes a PCI mapping via DELETE /cluster/mapping/pci/{id}.
+//
+// +proxmox:rbac:path=/,method=DELETE,privs=Sys.Modify,match=all
 func (r *pciResource) Delete(ctx context.Context, id string) error {
 	return r.client.Delete(ctx, "/cluster/mapping/pci/"+id, nil, nil)
 }

@@ -84,6 +84,9 @@ type ScheduleEvent struct {
 //
 // This is a pure calculation: schedule need not belong to any actual
 // configured job.
+//
+// No fixed Proxmox privilege is required; the endpoint is declared
+// user => all. The URL is GET /cluster/jobs/schedule-analyze.
 func (c *Client) ScheduleAnalyze(ctx context.Context, schedule string, opts *ScheduleAnalyzeOptions) ([]ScheduleEvent, error) {
 	if schedule == "" {
 		return nil, fmt.Errorf("jobs: schedule is required")

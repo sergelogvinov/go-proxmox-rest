@@ -33,6 +33,8 @@ func (c *Client) Rules() *rulesResource {
 }
 
 // Get retrieves a single HA rule via GET /cluster/ha/rules/{rule}.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (r *rulesResource) Get(ctx context.Context, rule string) (*Rule, error) {
 	var hr Rule
 	if err := r.client.Get(ctx, "/cluster/ha/rules/"+rule, &hr, nil); err != nil {
@@ -45,6 +47,8 @@ func (r *rulesResource) Get(ctx context.Context, rule string) (*Rule, error) {
 // List retrieves HA rules via GET /cluster/ha/rules, optionally narrowed by
 // rule type and/or the HA resource ID they affect. An empty ruleType or
 // resource means unfiltered along that dimension.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (r *rulesResource) List(ctx context.Context, ruleType RuleType, resource string) ([]Rule, error) {
 	var params map[string]string
 	if ruleType != "" || resource != "" {
@@ -66,6 +70,8 @@ func (r *rulesResource) List(ctx context.Context, ruleType RuleType, resource st
 }
 
 // Create creates a new HA rule via POST /cluster/ha/rules.
+//
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
 func (r *rulesResource) Create(ctx context.Context, opts *RuleOptions) (*Rule, error) {
 	if opts == nil {
 		return nil, fmt.Errorf("ha: rule options are required")
@@ -96,6 +102,8 @@ func (r *rulesResource) Create(ctx context.Context, opts *RuleOptions) (*Rule, e
 // Update modifies an existing HA rule via PUT /cluster/ha/rules/{rule}.
 // Proxmox requires Type to be resent on every update, even though the rule
 // type itself cannot change.
+//
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
 func (r *rulesResource) Update(ctx context.Context, rule string, opts *RuleOptions) (*Rule, error) {
 	if opts == nil {
 		return nil, fmt.Errorf("ha: rule options are required")
@@ -118,6 +126,8 @@ func (r *rulesResource) Update(ctx context.Context, rule string, opts *RuleOptio
 }
 
 // Delete removes an HA rule via DELETE /cluster/ha/rules/{rule}.
+//
+// +proxmox:rbac:path=/,method=DELETE,privs=Sys.Modify,match=all
 func (r *rulesResource) Delete(ctx context.Context, rule string) error {
 	return r.client.Delete(ctx, "/cluster/ha/rules/"+rule, nil, nil)
 }

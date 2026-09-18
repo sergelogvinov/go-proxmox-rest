@@ -28,6 +28,8 @@ type aliasesResource struct {
 }
 
 // List retrieves all aliases via GET /cluster/firewall/aliases.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (a *aliasesResource) List(ctx context.Context) ([]Alias, error) {
 	var aliases []Alias
 	if err := a.client.Get(ctx, "/cluster/firewall/aliases", &aliases, nil); err != nil {
@@ -38,6 +40,8 @@ func (a *aliasesResource) List(ctx context.Context) ([]Alias, error) {
 }
 
 // Get retrieves a single alias via GET /cluster/firewall/aliases/{name}.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (a *aliasesResource) Get(ctx context.Context, name string) (*Alias, error) {
 	var alias Alias
 	if err := a.client.Get(ctx, "/cluster/firewall/aliases/"+name, &alias, nil); err != nil {
@@ -50,6 +54,8 @@ func (a *aliasesResource) Get(ctx context.Context, name string) (*Alias, error) 
 // Create creates a new alias via POST /cluster/firewall/aliases.
 //
 // opts.Name and opts.CIDR are required.
+//
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
 func (a *aliasesResource) Create(ctx context.Context, opts *AliasOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: alias options are required")
@@ -75,6 +81,8 @@ func (a *aliasesResource) Create(ctx context.Context, opts *AliasOptions) error 
 //
 // opts.CIDR is required — Proxmox requires it to be resent on every update
 // even when unchanged.
+//
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
 func (a *aliasesResource) Update(ctx context.Context, name string, opts *AliasOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: alias options are required")
@@ -95,6 +103,8 @@ func (a *aliasesResource) Update(ctx context.Context, name string, opts *AliasOp
 //
 // digest, when non-empty, guards against concurrent modification (value
 // from the corresponding Get).
+//
+// +proxmox:rbac:path=/,method=DELETE,privs=Sys.Modify,match=all
 func (a *aliasesResource) Delete(ctx context.Context, name string, digest string) error {
 	var params map[string]string
 	if digest != "" {

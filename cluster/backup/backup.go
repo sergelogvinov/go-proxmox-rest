@@ -45,6 +45,8 @@ func New(c Getter) *Client {
 }
 
 // List retrieves all backup jobs via GET /cluster/backup.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=any
 func (c *Client) List(ctx context.Context) ([]Job, error) {
 	var jobs []Job
 	if err := c.client.Get(ctx, "/cluster/backup", &jobs, nil); err != nil {
@@ -55,6 +57,8 @@ func (c *Client) List(ctx context.Context) ([]Job, error) {
 }
 
 // Get retrieves a single backup job via GET /cluster/backup/{id}.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=any
 func (c *Client) Get(ctx context.Context, id string) (*Job, error) {
 	var job Job
 	if err := c.client.Get(ctx, "/cluster/backup/"+id, &job, nil); err != nil {
@@ -65,6 +69,8 @@ func (c *Client) Get(ctx context.Context, id string) (*Job, error) {
 }
 
 // Create creates a new backup job via POST /cluster/backup.
+//
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
 //
 // opts.ID and opts.Schedule are required. Proxmox itself allows the id to
 // be omitted (it then autogenerates one), but since Create's response is
@@ -91,6 +97,8 @@ func (c *Client) Create(ctx context.Context, opts *JobOptions) error {
 }
 
 // Update modifies an existing backup job via PUT /cluster/backup/{id}.
+//
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
 func (c *Client) Update(ctx context.Context, id string, opts *JobOptions) error {
 	params, err := opts.encode()
 	if err != nil {
@@ -101,6 +109,8 @@ func (c *Client) Update(ctx context.Context, id string, opts *JobOptions) error 
 }
 
 // Delete removes a backup job via DELETE /cluster/backup/{id}.
+//
+// +proxmox:rbac:path=/,method=DELETE,privs=Sys.Modify,match=all
 func (c *Client) Delete(ctx context.Context, id string) error {
 	return c.client.Delete(ctx, "/cluster/backup/"+id, nil, nil)
 }

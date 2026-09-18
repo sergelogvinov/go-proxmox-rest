@@ -50,6 +50,9 @@ func New(c Getter) *Client {
 // Proxmox (ArchAarch64 always returns an empty list); an empty arch
 // defaults to the host's own architecture. An empty accel defaults to
 // AccelKVM.
+//
+// No fixed Proxmox privilege is required; the endpoint is declared
+// user => all. The URL is GET /cluster/qemu/cpu-flags.
 func (c *Client) CPUFlags(ctx context.Context, arch Arch, accel Accel) ([]CPUFlag, error) {
 	var reqParams map[string]string
 	if arch != "" || accel != "" {

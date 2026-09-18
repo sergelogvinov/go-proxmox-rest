@@ -22,6 +22,8 @@ import (
 
 // optionsResource provides access to GET/PUT /cluster/firewall/options, the
 // cluster-wide firewall configuration.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 type optionsResource struct {
 	client Getter
 }
@@ -40,6 +42,8 @@ func (o *optionsResource) Get(ctx context.Context) (*Options, error) {
 // Update executes PUT /cluster/firewall/options, applying the given options
 // to the cluster-wide firewall configuration. Only non-zero fields are
 // sent; use Options.Delete to explicitly reset a field to its default.
+//
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
 func (o *optionsResource) Update(ctx context.Context, opts *Options) error {
 	params, err := opts.encode()
 	if err != nil {

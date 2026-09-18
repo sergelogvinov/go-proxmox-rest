@@ -27,6 +27,9 @@ import (
 // (or default) auto-allocation range. With vmid != 0, Proxmox instead
 // asserts that vmid itself is free at the time of the check and returns it
 // unchanged, or returns an error if it is already in use.
+//
+// No fixed Proxmox privilege is required; the endpoint is declared
+// user => all. The URL is GET /cluster/nextid?vmid={vmid} when vmid is set.
 func (c *Client) NextID(ctx context.Context, vmid int) (int, error) {
 	var params map[string]string
 	if vmid != 0 {

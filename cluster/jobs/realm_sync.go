@@ -125,6 +125,8 @@ type realmSyncResource struct {
 }
 
 // List retrieves all realm-sync jobs via GET /cluster/jobs/realm-sync.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=any
 func (r *realmSyncResource) List(ctx context.Context) ([]RealmSyncJob, error) {
 	var jobs []RealmSyncJob
 	if err := r.client.Get(ctx, "/cluster/jobs/realm-sync", &jobs, nil); err != nil {
@@ -136,6 +138,8 @@ func (r *realmSyncResource) List(ctx context.Context) ([]RealmSyncJob, error) {
 
 // Get retrieves a single realm-sync job via
 // GET /cluster/jobs/realm-sync/{id}.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=any
 func (r *realmSyncResource) Get(ctx context.Context, id string) (*RealmSyncJob, error) {
 	var job RealmSyncJob
 	if err := r.client.Get(ctx, "/cluster/jobs/realm-sync/"+id, &job, nil); err != nil {
@@ -150,6 +154,8 @@ func (r *realmSyncResource) Get(ctx context.Context, id string) (*RealmSyncJob, 
 // in this module layout, Proxmox addresses the new job's id via the URL
 // here rather than a body parameter, so id is a required call argument
 // rather than a field on RealmSyncOptions.
+//
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
 func (r *realmSyncResource) Create(ctx context.Context, id string, opts *RealmSyncOptions) error {
 	if id == "" {
 		return fmt.Errorf("jobs: realm-sync job id is required")
@@ -177,6 +183,8 @@ func (r *realmSyncResource) Create(ctx context.Context, id string, opts *RealmSy
 
 // Update modifies an existing realm-sync job via
 // PUT /cluster/jobs/realm-sync/{id}.
+//
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
 func (r *realmSyncResource) Update(ctx context.Context, id string, opts *RealmSyncOptions) error {
 	params, err := opts.encode()
 	if err != nil {
@@ -189,6 +197,8 @@ func (r *realmSyncResource) Update(ctx context.Context, id string, opts *RealmSy
 
 // Delete removes a realm-sync job via
 // DELETE /cluster/jobs/realm-sync/{id}.
+//
+// +proxmox:rbac:path=/,method=DELETE,privs=Sys.Modify,match=all
 func (r *realmSyncResource) Delete(ctx context.Context, id string) error {
 	return r.client.Delete(ctx, "/cluster/jobs/realm-sync/"+id, nil, nil)
 }

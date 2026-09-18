@@ -24,6 +24,8 @@ import (
 //
 // On a standalone (non-clustered) node the response contains only the
 // node entry, and the cluster fields of Status are left zero-valued.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (c *Client) Status(ctx context.Context) (*Status, error) {
 	var entries []statusEntry
 	if err := c.client.Get(ctx, "/cluster/status", &entries, nil); err != nil {

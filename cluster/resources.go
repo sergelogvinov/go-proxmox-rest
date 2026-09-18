@@ -80,6 +80,17 @@ type ListFilter struct {
 
 // List executes GET /cluster/resources and applies filter to the decoded
 // results.
+//
+// The endpoint is available to all users. Returned entries are filtered by
+// the following ACLs: /vms/{vmid} VM.Audit, /storage/{storage}
+// Datastore.Audit, /nodes/{node} Sys.Audit, /sdn/zones/{zone} SDN.Audit,
+// and /sdn/fabrics/{network} SDN.Audit or SDN.Allocate.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
+// +proxmox:rbac:path=/storage/{storage},method=GET,privs=Datastore.Audit,match=all
+// +proxmox:rbac:path=/nodes/{node},method=GET,privs=Sys.Audit,match=all
+// +proxmox:rbac:path=/sdn/zones/{zone},method=GET,privs=SDN.Audit,match=all
+// +proxmox:rbac:path=/sdn/fabrics/{network},method=GET,privs=SDN.Audit;SDN.Allocate,match=any
 func (r *resourcesResource) List(ctx context.Context, filter ListFilter) ([]Resource, error) {
 	var params map[string]string
 	if filter.Type != "" {

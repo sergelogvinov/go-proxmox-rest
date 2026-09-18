@@ -42,6 +42,8 @@ func New(c Getter) *Client {
 
 // Status retrieves the cluster-wide Ceph status via
 // GET /cluster/ceph/status.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit;Datastore.Audit,match=any
 func (c *Client) Status(ctx context.Context) (*Status, error) {
 	var status Status
 	if err := c.client.Get(ctx, "/cluster/ceph/status", &status, nil); err != nil {

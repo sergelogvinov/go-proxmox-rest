@@ -37,6 +37,8 @@ func (g *groupsResource) Rules(name string) *ruleResource {
 }
 
 // List retrieves all security groups via GET /cluster/firewall/groups.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (g *groupsResource) List(ctx context.Context) ([]Group, error) {
 	var groups []Group
 	if err := g.client.Get(ctx, "/cluster/firewall/groups", &groups, nil); err != nil {
@@ -53,6 +55,8 @@ func (g *groupsResource) List(ctx context.Context) ([]Group, error) {
 // (see Update); Create leaves opts.Rename unset, which — being a plain
 // string field — params.Encode naturally omits from the request, so
 // Proxmox treats it as a creation.
+//
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
 func (g *groupsResource) Create(ctx context.Context, opts *GroupOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: group options are required")
@@ -81,6 +85,8 @@ func (g *groupsResource) Create(ctx context.Context, opts *GroupOptions) error {
 // empty, the target name defaults to name — i.e. the group keeps its
 // current name and only its comment changes. To rename the group, set
 // opts.Name to the desired new name.
+//
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
 func (g *groupsResource) Update(ctx context.Context, name string, opts *GroupOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: group options are required")
@@ -101,6 +107,8 @@ func (g *groupsResource) Update(ctx context.Context, name string, opts *GroupOpt
 
 // Delete removes an (empty) security group via
 // DELETE /cluster/firewall/groups/{name}.
+//
+// +proxmox:rbac:path=/,method=DELETE,privs=Sys.Modify,match=all
 func (g *groupsResource) Delete(ctx context.Context, name string) error {
 	return g.client.Delete(ctx, "/cluster/firewall/groups/"+name, nil, nil)
 }

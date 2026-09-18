@@ -31,6 +31,8 @@ type customCPUModelsResource struct {
 
 // List retrieves all custom CPU model definitions via
 // GET /cluster/qemu/custom-cpu-models.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (r *customCPUModelsResource) List(ctx context.Context) ([]CPUModel, error) {
 	var models []CPUModel
 	if err := r.client.Get(ctx, "/cluster/qemu/custom-cpu-models", &models, nil); err != nil {
@@ -43,6 +45,8 @@ func (r *customCPUModelsResource) List(ctx context.Context) ([]CPUModel, error) 
 // Get retrieves a single custom CPU model definition via
 // GET /cluster/qemu/custom-cpu-models/{cputype}. The "custom-" prefix on
 // cputype is optional.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (r *customCPUModelsResource) Get(ctx context.Context, cputype string) (*CPUModel, error) {
 	var m CPUModel
 	if err := r.client.Get(ctx, "/cluster/qemu/custom-cpu-models/"+cputype, &m, nil); err != nil {
@@ -54,6 +58,8 @@ func (r *customCPUModelsResource) Get(ctx context.Context, cputype string) (*CPU
 
 // Create creates a new custom CPU model definition via
 // POST /cluster/qemu/custom-cpu-models.
+//
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
 func (r *customCPUModelsResource) Create(ctx context.Context, opts *CPUModelOptions) error {
 	if opts == nil {
 		return fmt.Errorf("qemu: custom cpu model options are required")
@@ -80,6 +86,8 @@ func (r *customCPUModelsResource) Create(ctx context.Context, opts *CPUModelOpti
 // opts.CPUType is ignored (overwritten with cputype): Proxmox requires the
 // model identifier in the update body too, even though it is already part
 // of the URL.
+//
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
 func (r *customCPUModelsResource) Update(ctx context.Context, cputype string, opts *CPUModelOptions) error {
 	if opts == nil {
 		return fmt.Errorf("qemu: custom cpu model options are required")
@@ -98,6 +106,8 @@ func (r *customCPUModelsResource) Update(ctx context.Context, cputype string, op
 // Delete removes a custom CPU model definition via
 // DELETE /cluster/qemu/custom-cpu-models/{cputype}. The "custom-" prefix on
 // cputype is optional.
+//
+// +proxmox:rbac:path=/,method=DELETE,privs=Sys.Modify,match=all
 func (r *customCPUModelsResource) Delete(ctx context.Context, cputype string) error {
 	return r.client.Delete(ctx, "/cluster/qemu/custom-cpu-models/"+cputype, nil, nil)
 }

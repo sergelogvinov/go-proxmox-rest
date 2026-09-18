@@ -46,6 +46,8 @@ func New(c Getter) *Client {
 
 // List retrieves all replication jobs the caller may see via
 // GET /cluster/replication.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (c *Client) List(ctx context.Context) ([]Job, error) {
 	var jobs []Job
 	if err := c.client.Get(ctx, "/cluster/replication", &jobs, nil); err != nil {
@@ -56,6 +58,8 @@ func (c *Client) List(ctx context.Context) ([]Job, error) {
 }
 
 // Get retrieves a single replication job via GET /cluster/replication/{id}.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (c *Client) Get(ctx context.Context, id string) (*Job, error) {
 	var job Job
 	if err := c.client.Get(ctx, "/cluster/replication/"+id, &job, nil); err != nil {
@@ -66,6 +70,8 @@ func (c *Client) Get(ctx context.Context, id string) (*Job, error) {
 }
 
 // Create creates a new replication job via POST /cluster/replication.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Replicate,match=all
 func (c *Client) Create(ctx context.Context, opts *JobOptions) error {
 	if opts == nil {
 		return fmt.Errorf("replication: job options are required")
@@ -96,6 +102,8 @@ func (c *Client) Create(ctx context.Context, opts *JobOptions) error {
 // already part of the URL, but rejects "type" there entirely. opts.Target
 // is required — Proxmox treats it as fixed but still requires it resent,
 // unchanged, on every Update.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Replicate,match=all
 func (c *Client) Update(ctx context.Context, id string, opts *JobOptions) error {
 	if opts == nil {
 		return fmt.Errorf("replication: job options are required")
@@ -121,6 +129,8 @@ func (c *Client) Update(ctx context.Context, id string, opts *JobOptions) error 
 // data on the target in place instead of removing it; force removes the
 // job's configuration entry immediately without any cleanup (use when the
 // target is unreachable and the normal cleanup would block).
+//
+// +proxmox:rbac:path=/vms/{vmid},method=DELETE,privs=VM.Replicate,match=all
 func (c *Client) Delete(ctx context.Context, id string, keep, force bool) error {
 	if keep && force {
 		return fmt.Errorf("replication: keep and force are mutually exclusive")

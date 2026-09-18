@@ -102,6 +102,8 @@ type usbResource struct {
 // checkNode, when non-empty, asks Proxmox to validate every mapping's
 // configuration against that node's actual hardware and populate Checks
 // with any problems found.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (r *usbResource) List(ctx context.Context, checkNode string) ([]USB, error) {
 	var params map[string]string
 	if checkNode != "" {
@@ -117,6 +119,8 @@ func (r *usbResource) List(ctx context.Context, checkNode string) ([]USB, error)
 }
 
 // Get retrieves a single USB mapping via GET /cluster/mapping/usb/{id}.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (r *usbResource) Get(ctx context.Context, id string) (*USB, error) {
 	var m USB
 	if err := r.client.Get(ctx, "/cluster/mapping/usb/"+id, &m, nil); err != nil {
@@ -128,6 +132,8 @@ func (r *usbResource) Get(ctx context.Context, id string) (*USB, error) {
 }
 
 // Create creates a new USB mapping via POST /cluster/mapping/usb.
+//
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
 func (r *usbResource) Create(ctx context.Context, opts *USBOptions) error {
 	if opts == nil {
 		return fmt.Errorf("mapping: usb options are required")
@@ -149,6 +155,8 @@ func (r *usbResource) Create(ctx context.Context, opts *USBOptions) error {
 // opts.Map is required — Proxmox does not treat it as optional on update,
 // so it must be resent (with its full, current entry list) on every call,
 // the same as ha.RuleOptions.Type.
+//
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
 func (r *usbResource) Update(ctx context.Context, id string, opts *USBOptions) error {
 	if opts == nil {
 		return fmt.Errorf("mapping: usb options are required")
@@ -166,6 +174,8 @@ func (r *usbResource) Update(ctx context.Context, id string, opts *USBOptions) e
 }
 
 // Delete removes a USB mapping via DELETE /cluster/mapping/usb/{id}.
+//
+// +proxmox:rbac:path=/,method=DELETE,privs=Sys.Modify,match=all
 func (r *usbResource) Delete(ctx context.Context, id string) error {
 	return r.client.Delete(ctx, "/cluster/mapping/usb/"+id, nil, nil)
 }

@@ -33,6 +33,9 @@ func (c *Client) Options() *optionsResource {
 
 // Get executes GET /cluster/options and returns the current cluster-wide
 // configuration.
+// Without this permission, Proxmox returns only a restricted subset.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=any
 func (o *optionsResource) Get(ctx context.Context) (*Options, error) {
 	var opts Options
 	if err := o.client.Get(ctx, "/cluster/options", &opts, nil); err != nil {
@@ -45,6 +48,8 @@ func (o *optionsResource) Get(ctx context.Context) (*Options, error) {
 // Update executes PUT /cluster/options, applying the given options to the
 // cluster-wide configuration. Only non-zero fields are sent; use
 // Options.Delete to explicitly reset a field to its default.
+//
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
 func (o *optionsResource) Update(ctx context.Context, opts *Options) error {
 	params, err := opts.encode()
 	if err != nil {

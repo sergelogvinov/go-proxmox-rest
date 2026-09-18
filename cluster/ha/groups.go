@@ -33,6 +33,8 @@ func (c *Client) Groups() *groupsResource {
 }
 
 // Get retrieves a single HA group via GET /cluster/ha/groups/{group}.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (g *groupsResource) Get(ctx context.Context, group string) (*Group, error) {
 	var hg Group
 	if err := g.client.Get(ctx, "/cluster/ha/groups/"+group, &hg, nil); err != nil {
@@ -43,6 +45,8 @@ func (g *groupsResource) Get(ctx context.Context, group string) (*Group, error) 
 }
 
 // List retrieves all HA groups via GET /cluster/ha/groups.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (g *groupsResource) List(ctx context.Context) ([]Group, error) {
 	var groups []Group
 	if err := g.client.Get(ctx, "/cluster/ha/groups", &groups, nil); err != nil {
@@ -53,6 +57,8 @@ func (g *groupsResource) List(ctx context.Context) ([]Group, error) {
 }
 
 // Create creates a new HA group via POST /cluster/ha/groups.
+//
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
 func (g *groupsResource) Create(ctx context.Context, opts *GroupOptions) (*Group, error) {
 	if opts == nil {
 		return nil, fmt.Errorf("ha: group options are required")
@@ -78,6 +84,8 @@ func (g *groupsResource) Create(ctx context.Context, opts *GroupOptions) (*Group
 }
 
 // Update modifies an existing HA group via PUT /cluster/ha/groups/{group}.
+//
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
 func (g *groupsResource) Update(ctx context.Context, group string, opts *GroupOptions) (*Group, error) {
 	params, err := opts.encode()
 	if err != nil {
@@ -93,6 +101,8 @@ func (g *groupsResource) Update(ctx context.Context, group string, opts *GroupOp
 }
 
 // Delete removes an HA group via DELETE /cluster/ha/groups/{group}.
+//
+// +proxmox:rbac:path=/,method=DELETE,privs=Sys.Modify,match=all
 func (g *groupsResource) Delete(ctx context.Context, group string) error {
 	return g.client.Delete(ctx, "/cluster/ha/groups/"+group, nil, nil)
 }

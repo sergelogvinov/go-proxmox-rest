@@ -37,6 +37,8 @@ type BackupInfoGuest struct {
 
 // BackupInfoNotBackedUp retrieves every guest not covered by any backup
 // job via GET /cluster/backup-info/not-backed-up.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (c *Client) BackupInfoNotBackedUp(ctx context.Context) ([]BackupInfoGuest, error) {
 	var guests []BackupInfoGuest
 	if err := c.client.Get(ctx, "/cluster/backup-info/not-backed-up", &guests, nil); err != nil {
