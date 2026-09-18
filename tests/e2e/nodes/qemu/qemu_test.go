@@ -1,17 +1,17 @@
 //go:build e2e
 
 // Package qemu_e2e exercises the per-node QEMU guest module (status,
-// config, clone, template) against a live Proxmox VE cluster.
+// config, clone, template, delete) against a live Proxmox VE cluster.
 //
-// This suite has no VM creation or destroy method yet, so every write
-// path here (the power actions in this file, UpdateConfig/
-// UpdateConfigAsync in config_test.go, Clone in clone_test.go, Template
-// in template_test.go) runs against a syntactically valid but
+// This suite has no VM creation method yet, so every write path here
+// (the power actions in this file, UpdateConfig/UpdateConfigAsync in
+// config_test.go, Clone in clone_test.go, Template in template_test.go,
+// Delete below) runs against a syntactically valid but
 // guaranteed-nonexistent VMID rather than a real guest: starting/
-// stopping/reconfiguring a real guest is too disruptive to run
-// unattended, and Clone/Template would leave state (a new guest, or an
-// irreversible template conversion) this suite has no way to clean up.
-// Config's read path (config_test.go) is the exception — being
+// stopping/reconfiguring/destroying a real guest is too disruptive to
+// run unattended, and Clone/Template would leave state (a new guest, or
+// an irreversible template conversion) this suite has no way to clean
+// up. Config's read path (config_test.go) is the exception — being
 // read-only, it's also exercised opportunistically against any real
 // guest found via cluster.Resources, to verify decoding against
 // production data.
@@ -120,6 +120,26 @@ func TestQemuStatusActionsAbsentAsyncTask(t *testing.T) {
 	if upid == "" {
 		t.Errorf("shutdown absent guest: got empty UPID")
 	}
+}
+
+// TestQemuDeleteAbsent verifies that DELETE
+// /nodes/{node}/qemu/{vmid} against a nonexistent guest returns an
+// error: destroy_vm loads the guest's config synchronously and dies
+// before forking its worker task if it doesn't exist.
+func TestQemuDeleteAbsent(t *testing.T) {
+	cfg := e2e.MustConfig(t)
+	if cfg.Parallel {
+		t.Parallel()
+	}
+	if cfg.Node == "" {
+		t.Skip("PVE_E2E_NODE is not set; skipping qemu tests")
+	}
+
+	client := e2e.NewE2EClient(t, cfg)
+	ctx := t.Context()
+
+	_, err := client.Nodes(cfg.Node).Qemu().Delete(ctx, nonexistentVMID, nil)
+	e2e.RequireError(t, "delete absent guest", err)
 }
 
 // TestQemuStatusStartOptions verifies that Start's options are encoded

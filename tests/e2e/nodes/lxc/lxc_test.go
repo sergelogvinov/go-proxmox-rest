@@ -1,17 +1,17 @@
 //go:build e2e
 
 // Package lxc_e2e exercises the per-node LXC container module (status,
-// config, clone, template) against a live Proxmox VE cluster.
+// config, clone, template, delete) against a live Proxmox VE cluster.
 //
-// This suite has no CT creation or destroy method yet, so every write
-// path here (the power actions in this file, UpdateConfig in
-// config_test.go, Clone in clone_test.go, Template in template_test.go)
+// This suite has no CT creation method yet, so every write path here
+// (the power actions in this file, UpdateConfig in config_test.go,
+// Clone in clone_test.go, Template in template_test.go, Delete below)
 // runs against a syntactically valid but guaranteed-nonexistent VMID
-// rather than a real container: starting/stopping/reconfiguring a real
-// container is too disruptive to run unattended, and Clone/Template
-// would leave state (a new container, or an irreversible template
-// conversion) this suite has no way to clean up. Config's read path
-// (config_test.go) is the exception — being read-only, it's also
+// rather than a real container: starting/stopping/reconfiguring/
+// destroying a real container is too disruptive to run unattended, and
+// Clone/Template would leave state (a new container, or an irreversible
+// template conversion) this suite has no way to clean up. Config's read
+// path (config_test.go) is the exception — being read-only, it's also
 // exercised opportunistically against any real container found via
 // cluster.Resources, to verify decoding against production data.
 //
@@ -85,6 +85,26 @@ func TestLXCStatusActionsAbsentSynchronousCheck(t *testing.T) {
 
 	_, err = lc.Reboot(ctx, nonexistentVMID, nil)
 	e2e.RequireError(t, "reboot absent container", err)
+}
+
+// TestLXCDeleteAbsent verifies that DELETE /nodes/{node}/lxc/{vmid}
+// against a nonexistent container returns an error: destroy_vm loads
+// the container's config synchronously and dies before forking its
+// worker task if it doesn't exist.
+func TestLXCDeleteAbsent(t *testing.T) {
+	cfg := e2e.MustConfig(t)
+	if cfg.Parallel {
+		t.Parallel()
+	}
+	if cfg.Node == "" {
+		t.Skip("PVE_E2E_NODE is not set; skipping lxc tests")
+	}
+
+	client := e2e.NewE2EClient(t, cfg)
+	ctx := t.Context()
+
+	_, err := client.Nodes(cfg.Node).LXC().Delete(ctx, nonexistentVMID, nil)
+	e2e.RequireError(t, "delete absent container", err)
 }
 
 // TestLXCStatusActionsAbsentAsyncTask verifies that Start/Resume against
