@@ -47,6 +47,10 @@ func New(c Getter) *Client {
 //
 // The optional type filter restricts the result to a single plugin type
 // (e.g. "dir", "zfs", "nfs"); an empty string returns all storages.
+// Proxmox filters the result and returns only storages for which the caller
+// has either privilege on the storage-specific ACL path.
+//
+// +proxmox:rbac:path=/storage/{storage},method=GET,privs=Datastore.Audit;Datastore.AllocateSpace,match=any
 func (c *Client) List(ctx context.Context, storageType string) ([]Storage, error) {
 	var params map[string]string
 	if storageType != "" {
@@ -62,6 +66,8 @@ func (c *Client) List(ctx context.Context, storageType string) ([]Storage, error
 }
 
 // Get retrieves a single storage configuration via GET /storage/{storage}.
+//
+// +proxmox:rbac:path=/storage/{storage},method=GET,privs=Datastore.Allocate,match=all
 func (c *Client) Get(ctx context.Context, storageID string) (*Storage, error) {
 	var storage Storage
 	if err := c.client.Get(ctx, "/storage/"+storageID, &storage, nil); err != nil {
@@ -72,6 +78,8 @@ func (c *Client) Get(ctx context.Context, storageID string) (*Storage, error) {
 }
 
 // Create creates a new storage via POST /storage.
+//
+// +proxmox:rbac:path=/storage,method=POST,privs=Datastore.Allocate,match=all
 func (c *Client) Create(ctx context.Context, opts *Options) (*Storage, error) {
 	if opts == nil {
 		return nil, fmt.Errorf("storage: options are required")
@@ -97,6 +105,8 @@ func (c *Client) Create(ctx context.Context, opts *Options) (*Storage, error) {
 }
 
 // Update modifies an existing storage via PUT /storage/{storage}.
+//
+// +proxmox:rbac:path=/storage,method=PUT,privs=Datastore.Allocate,match=all
 func (c *Client) Update(ctx context.Context, storageID string, opts *Options) (*Storage, error) {
 	params, err := opts.encode()
 	if err != nil {
@@ -114,6 +124,8 @@ func (c *Client) Update(ctx context.Context, storageID string, opts *Options) (*
 //
 // The storage must not be in use; Proxmox refuses to delete a storage
 // that still holds references.
+//
+// +proxmox:rbac:path=/storage,method=DELETE,privs=Datastore.Allocate,match=all
 func (c *Client) Delete(ctx context.Context, storageID string) error {
 	return c.client.Delete(ctx, "/storage/"+storageID, nil, nil)
 }

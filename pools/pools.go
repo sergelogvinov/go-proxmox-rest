@@ -44,6 +44,8 @@ func New(c Getter) *Client {
 }
 
 // Get retrieves a single pool configuration via GET /pools/?poolid={poolid}.
+//
+// +proxmox:rbac:path=/pool/{poolid},method=GET,privs=Pool.Audit,match=all
 func (c *Client) Get(ctx context.Context, poolID string) (*Pool, error) {
 	var pools []Pool
 	if err := c.client.Get(ctx, "/pools/", &pools, map[string]string{"poolid": poolID}); err != nil {
@@ -65,6 +67,9 @@ func (c *Client) Get(ctx context.Context, poolID string) (*Pool, error) {
 // With verbose=false (default) only the pool IDs are returned. With
 // verbose=true the full pool configuration (members and comment) is
 // included for every pool.
+// Proxmox filters the result to pools on which the caller has Pool.Audit.
+//
+// +proxmox:rbac:path=/pool/{poolid},method=GET,privs=Pool.Audit,match=all
 func (c *Client) List(ctx context.Context) ([]Pool, error) {
 	var pools []Pool
 	if err := c.client.Get(ctx, "/pools", &pools, nil); err != nil {
@@ -75,6 +80,8 @@ func (c *Client) List(ctx context.Context) ([]Pool, error) {
 }
 
 // Create creates a new pool via POST /pools.
+//
+// +proxmox:rbac:path=/pool/{poolid},method=POST,privs=Pool.Allocate,match=all
 func (c *Client) Create(ctx context.Context, name string, opts *Options) error {
 	params, err := opts.encode()
 	if err != nil {
@@ -87,6 +94,13 @@ func (c *Client) Create(ctx context.Context, name string, opts *Options) error {
 }
 
 // Update modifies an existing pool via PUT /pools/?poolid={poolid}.
+//
+// Adding or removing a guest additionally requires Permissions.Modify or
+// VM.Allocate on /vms/{vmid}. Adding or removing storage requires
+// Permissions.Modify or Datastore.Allocate on /storage/{storage}. Moving a
+// guest from another pool also requires Pool.Allocate on that source pool.
+//
+// +proxmox:rbac:path=/pool/{poolid},method=PUT,privs=Pool.Allocate,match=all
 func (c *Client) Update(ctx context.Context, poolID string, opts *Options) error {
 	params, err := opts.encode()
 	if err != nil {
@@ -104,6 +118,8 @@ func (c *Client) Update(ctx context.Context, poolID string, opts *Options) error
 // either — there is no force option to override this (unlike Update,
 // which does support removing individual members). Remove every member
 // via Update first if needed.
+//
+// +proxmox:rbac:path=/pool/{poolid},method=DELETE,privs=Pool.Allocate,match=all
 func (c *Client) Delete(ctx context.Context, poolID string) error {
 	return c.client.Delete(ctx, "/pools/", nil, map[string]string{"poolid": poolID})
 }
