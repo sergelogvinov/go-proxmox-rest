@@ -190,3 +190,160 @@ func (o *RuleOptions) encode() (map[string]string, error) {
 
 	return params.Encode(o)
 }
+
+// ResourceMode controls how HA-managed resources are treated while the
+// cluster-wide fencing stack is disarmed. It appears both as
+// StatusEntry.ResourceMode (read, type "fencing" entries) and as the
+// required parameter to statusResource.Update when disarming.
+type ResourceMode string
+
+const (
+	// ResourceModeFreeze leaves resources' current state untouched: new
+	// commands and state changes are not applied while disarmed.
+	ResourceModeFreeze ResourceMode = "freeze"
+	// ResourceModeIgnore drops resources from HA tracking entirely while
+	// disarmed, so they can be managed as if they were not HA managed.
+	ResourceModeIgnore ResourceMode = "ignore"
+)
+
+// EntryType is the kind of a StatusEntry returned by
+// GET /cluster/ha/status/current.
+type EntryType string
+
+const (
+	// EntryTypeQuorum reports whether the cluster currently has quorum.
+	EntryTypeQuorum EntryType = "quorum"
+	// EntryTypeMaster identifies the node currently holding the CRM
+	// (master) lock.
+	EntryTypeMaster EntryType = "master"
+	// EntryTypeLRM reports a single node's Local Resource Manager state.
+	EntryTypeLRM EntryType = "lrm"
+	// EntryTypeService reports a single HA-managed resource's state.
+	EntryTypeService EntryType = "service"
+	// EntryTypeFencing reports the cluster-wide HA fencing arm state.
+	EntryTypeFencing EntryType = "fencing"
+)
+
+// StatusEntry describes a single entry returned by
+// GET /cluster/ha/status/current. The list mixes five unrelated kinds of
+// entry (see Type); only the fields relevant to that Type are populated.
+type StatusEntry struct {
+	// ID identifies the entry, e.g. "quorum", "master", "lrm:<node>" or
+	// "service:<sid>".
+	ID string `json:"id,omitempty" url:"id,omitempty"`
+	// Node is the node associated with this entry.
+	Node string `json:"node,omitempty" url:"node,omitempty"`
+	// Status is the entry's status; its meaning depends on Type.
+	Status string `json:"status,omitempty" url:"status,omitempty"`
+	// Type is the kind of status entry.
+	Type EntryType `json:"type,omitempty" url:"type,omitempty"`
+
+	// Quorate is 1 if the cluster currently has quorum (type "quorum"
+	// only).
+	Quorate int `json:"quorate,omitempty" url:"quorate,omitempty"`
+	// Timestamp is when the status information was recorded (types "lrm"
+	// and "master" only).
+	Timestamp int64 `json:"timestamp,omitempty" url:"timestamp,omitempty"`
+
+	// CRMState is the service state as seen by the CRM (type "service"
+	// only).
+	CRMState string `json:"crm_state,omitempty" url:"crm_state,omitempty"`
+	// State is the verbose service state, e.g. "started", "fence",
+	// "recovery", "migrate" (type "service" only).
+	State string `json:"state,omitempty" url:"state,omitempty"`
+	// RequestState is the requested service state (type "service" only).
+	RequestState string `json:"request_state,omitempty" url:"request_state,omitempty"`
+	// SID is the HA resource/service ID, e.g. "vm:100" (type "service"
+	// only).
+	SID string `json:"sid,omitempty" url:"sid,omitempty"`
+	// Failback is 1 if the resource automatically migrates back to the
+	// highest-priority node once it rejoins (type "service" only,
+	// defaults to enabled).
+	Failback int `json:"failback,omitempty" url:"failback,omitempty"`
+	// AutoRebalance is 1 if the resource may be migrated during automatic
+	// rebalancing (type "service" only, defaults to enabled).
+	AutoRebalance int `json:"auto-rebalance,omitempty" url:"auto-rebalance,omitempty"`
+	// MaxRelocate is the resource's relocation attempt limit (type
+	// "service" only).
+	MaxRelocate int `json:"max_relocate,omitempty" url:"max_relocate,omitempty"`
+	// MaxRestart is the resource's restart attempt limit (type "service"
+	// only).
+	MaxRestart int `json:"max_restart,omitempty" url:"max_restart,omitempty"`
+
+	// ArmedState is whether HA fencing is "armed", "standby",
+	// "disarming" or "disarmed" (type "fencing" only).
+	ArmedState string `json:"armed-state,omitempty" url:"armed-state,omitempty"`
+	// ResourceMode is how resources are handled while disarmed: "freeze"
+	// or "ignore" (type "fencing" only).
+	ResourceMode string `json:"resource_mode,omitempty" url:"resource_mode,omitempty"`
+}
+
+// ManagerStatus is the response of GET /cluster/ha/status/manager_status:
+// the elected CRM master's persisted status, merged with live quorum and
+// per-node LRM info. Proxmox does not publish a formal schema for this
+// endpoint (its API declares the response as a bare "object"), so this
+// mirrors the on-disk /etc/pve/ha/manager_status structure as maintained by
+// PVE::HA::Manager; unknown fields are ignored, so the type can grow to
+// cover more of it later without breaking callers.
+type ManagerStatus struct {
+	// Manager is the CRM master's own persisted status, nil if no master
+	// is currently elected.
+	Manager *ManagerState `json:"manager_status,omitempty" url:"manager_status,omitempty"`
+	// Quorum is the live quorum state as seen by the responding node.
+	Quorum *ManagerQuorum `json:"quorum,omitempty" url:"quorum,omitempty"`
+	// LRM is the live per-node Local Resource Manager state, keyed by
+	// node name.
+	LRM map[string]LRMState `json:"lrm_status,omitempty" url:"lrm_status,omitempty"`
+}
+
+// ManagerState is the CRM master's own persisted status, the
+// "manager_status" key of ManagerStatus.
+type ManagerState struct {
+	// MasterNode is the node currently holding the CRM lock.
+	MasterNode string `json:"master_node,omitempty" url:"master_node,omitempty"`
+	// Timestamp is when the master last wrote this status.
+	Timestamp int64 `json:"timestamp,omitempty" url:"timestamp,omitempty"`
+	// NodeStatus is the per-node HA availability as seen by the master,
+	// keyed by node name (e.g. "online", "unknown", "fence").
+	NodeStatus map[string]string `json:"node_status,omitempty" url:"node_status,omitempty"`
+	// ServiceStatus is the per-service HA state, keyed by HA resource ID
+	// (e.g. "vm:100").
+	ServiceStatus map[string]ServiceState `json:"service_status,omitempty" url:"service_status,omitempty"`
+}
+
+// ServiceState is a single HA-managed resource's state within
+// ManagerState.ServiceStatus.
+type ServiceState struct {
+	// State is the service's current state, e.g. "started", "stopped",
+	// "fence", "recovery", "migrate".
+	State string `json:"state,omitempty" url:"state,omitempty"`
+	// Node is the node the service currently runs on (or is assigned
+	// to).
+	Node string `json:"node,omitempty" url:"node,omitempty"`
+	// UID is the CRM-internal unique identifier for this service's
+	// current state transition.
+	UID string `json:"uid,omitempty" url:"uid,omitempty"`
+}
+
+// ManagerQuorum is the live quorum state within ManagerStatus.
+type ManagerQuorum struct {
+	// Node is the node the quorum state was observed on.
+	Node string `json:"node,omitempty" url:"node,omitempty"`
+	// Quorate is 1 if the cluster currently has quorum.
+	Quorate int `json:"quorate,omitempty" url:"quorate,omitempty"`
+}
+
+// LRMState is a single node's Local Resource Manager state within
+// ManagerStatus.LRM.
+type LRMState struct {
+	// Mode is the LRM's operating mode: "wait_for_agent_lock" (idle,
+	// waiting for the exclusive lock), "active" (holds the lock and has
+	// services configured), or "lost_agent_lock" (lost the lock,
+	// typically after losing quorum).
+	Mode string `json:"mode,omitempty" url:"mode,omitempty"`
+	// State mirrors Mode for older Proxmox versions that report it under
+	// this key instead.
+	State string `json:"state,omitempty" url:"state,omitempty"`
+	// Timestamp is when the LRM last wrote this status.
+	Timestamp int64 `json:"timestamp,omitempty" url:"timestamp,omitempty"`
+}
