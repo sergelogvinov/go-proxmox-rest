@@ -18,7 +18,9 @@ package fakeapi_test
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
 
 	proxmox "github.com/sergelogvinov/go-proxmox-rest"
 	"github.com/sergelogvinov/go-proxmox-rest/cluster"
@@ -26,6 +28,7 @@ import (
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/lxc"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/qemu"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/storage"
+	"github.com/sergelogvinov/go-proxmox-rest/nodes/tasks"
 )
 
 func TestClusterStatusAndResources(t *testing.T) {
@@ -391,6 +394,81 @@ func TestManualTasks(t *testing.T) {
 	}
 	if status.Status != qemu.VMStatusRunning {
 		t.Fatalf("expected running after Complete, got %s", status.Status)
+	}
+}
+
+func TestTasksWait(t *testing.T) {
+	cl := fakeapi.NewCluster(t, fakeapi.WithNodes("pve1"))
+	cl.Node("pve1").AddVM(100, &qemu.Config{Name: "web-01"})
+
+	c := cl.Client(t)
+	ctx := context.Background()
+
+	// Instant mode: the task is already stopped by the time Start
+	// returns, so Wait must return immediately without ever polling.
+	upid, err := c.Nodes("pve1").Qemu().Start(ctx, 100, nil)
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+
+	if err := c.Nodes("pve1").Tasks().Wait(ctx, upid, nil); err != nil {
+		t.Fatalf("wait: %v", err)
+	}
+}
+
+func TestTasksWaitFailed(t *testing.T) {
+	cl := fakeapi.NewCluster(t, fakeapi.WithNodes("pve1"), fakeapi.WithManualTasks())
+	cl.Node("pve1").AddVM(100, &qemu.Config{Name: "web-01"})
+
+	c := cl.Client(t)
+	ctx := context.Background()
+
+	upid, err := c.Nodes("pve1").Qemu().Start(ctx, 100, nil)
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+
+	waitErr := make(chan error, 1)
+	go func() {
+		waitErr <- c.Nodes("pve1").Tasks().Wait(ctx, upid, &tasks.WaitOptions{
+			PollInterval: 20 * time.Millisecond,
+			Timeout:      2 * time.Second,
+		})
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	cl.Tasks().Fail(upid, "boom")
+
+	err = <-waitErr
+
+	var failed *tasks.FailedError
+	if !errors.As(err, &failed) {
+		t.Fatalf("expected a *tasks.FailedError, got %v", err)
+	}
+	if failed.UPID != upid || failed.ExitStatus != "boom" {
+		t.Fatalf("unexpected FailedError: %+v", failed)
+	}
+}
+
+func TestTasksWaitTimeout(t *testing.T) {
+	cl := fakeapi.NewCluster(t, fakeapi.WithNodes("pve1"), fakeapi.WithManualTasks())
+	cl.Node("pve1").AddVM(100, &qemu.Config{Name: "web-01"})
+
+	c := cl.Client(t)
+	ctx := context.Background()
+
+	// Never completed: Wait must give up once its Timeout elapses.
+	upid, err := c.Nodes("pve1").Qemu().Start(ctx, 100, nil)
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+
+	err = c.Nodes("pve1").Tasks().Wait(ctx, upid, &tasks.WaitOptions{
+		PollInterval: 10 * time.Millisecond,
+		Timeout:      50 * time.Millisecond,
+	})
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("expected an error wrapping context.DeadlineExceeded, got %v", err)
 	}
 }
 

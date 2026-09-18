@@ -15,8 +15,10 @@ limitations under the License.
 */
 
 // Package tasks provides access to the Proxmox VE per-node task API
-// (endpoints under /nodes/{node}/tasks): the node's task history, and a
-// single task's log/status/stop.
+// (endpoints under /nodes/{node}/tasks): the node's task history, a
+// single task's log/status/stop, and Wait, a client-side blocking helper
+// that polls Status until the task finishes (Proxmox has no
+// server-side "block until done" endpoint of its own).
 package tasks
 
 import (
