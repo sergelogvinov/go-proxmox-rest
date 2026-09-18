@@ -101,7 +101,7 @@ func handleClusterStatus(state *clusterState) http.HandlerFunc {
 // handleClusterResources backs GET /cluster/resources, synthesizing
 // node/storage/qemu/lxc entries from state. The "type" query parameter
 // filters to a single cluster.ResourceType, matching
-// cluster.Client.Resources().Get.
+// cluster.Client.Resources().List.
 func handleClusterResources(state *clusterState) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		filter := cluster.ResourceType(r.URL.Query().Get("type"))

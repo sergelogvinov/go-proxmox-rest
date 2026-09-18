@@ -46,7 +46,7 @@ func TestClusterStatusAndResources(t *testing.T) {
 
 	cl.Node("pve1").AddVM(100, &qemu.Config{Name: "web-01"})
 
-	resources, err := c.Cluster().Resources().Get(ctx, cluster.ResourceTypeVM)
+	resources, err := c.Cluster().Resources().List(ctx, cluster.ListFilter{Type: cluster.ResourceTypeVM})
 	if err != nil {
 		t.Fatalf("cluster resources: %v", err)
 	}

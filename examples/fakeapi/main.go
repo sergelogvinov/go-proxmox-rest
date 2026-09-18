@@ -228,7 +228,7 @@ func printInventory(ctx context.Context, c *proxmox.Client) {
 	fmt.Println()
 	fmt.Println("cluster inventory (GET /cluster/resources):")
 
-	nodes, err := c.Cluster().Resources().Get(ctx, cluster.ResourceTypeNode)
+	nodes, err := c.Cluster().Resources().List(ctx, cluster.ListFilter{Type: cluster.ResourceTypeNode})
 	if err != nil {
 		log.Fatalf("listing nodes: %v", err)
 	}
@@ -237,7 +237,7 @@ func printInventory(ctx context.Context, c *proxmox.Client) {
 			n.Name, n.Status, n.MaxCPU, n.MaxMem>>30)
 	}
 
-	storages, err := c.Cluster().Resources().Get(ctx, cluster.ResourceTypeStorage)
+	storages, err := c.Cluster().Resources().List(ctx, cluster.ListFilter{Type: cluster.ResourceTypeStorage})
 	if err != nil {
 		log.Fatalf("listing storages: %v", err)
 	}
@@ -246,7 +246,7 @@ func printInventory(ctx context.Context, c *proxmox.Client) {
 			s.Storage, s.Status, s.Node, s.PluginType, s.Disk>>30, s.MaxDisk>>30)
 	}
 
-	guests, err := c.Cluster().Resources().Get(ctx, cluster.ResourceTypeVM)
+	guests, err := c.Cluster().Resources().List(ctx, cluster.ListFilter{Type: cluster.ResourceTypeVM})
 	if err != nil {
 		log.Fatalf("listing guests: %v", err)
 	}

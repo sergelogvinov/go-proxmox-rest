@@ -44,7 +44,7 @@ func TestQemuFeatureOpportunistic(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	resources, err := client.Cluster().Resources().Get(ctx, cluster.ResourceTypeVM)
+	resources, err := client.Cluster().Resources().List(ctx, cluster.ListFilter{Type: cluster.ResourceTypeVM})
 	e2e.RequireNoError(t, "list cluster vm resources", err)
 
 	var vmid int

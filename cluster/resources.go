@@ -45,12 +45,45 @@ func (c *Client) Resources() *resourcesResource {
 	return &resourcesResource{client: c.client}
 }
 
-// Get executes GET /cluster/resources, optionally filtered by resType. An
-// empty ResourceType returns every resource type.
-func (r *resourcesResource) Get(ctx context.Context, resType ResourceType) ([]Resource, error) {
+// ListFilter filters the entries returned by GET /cluster/resources. Type
+// is sent to the API as the "type" query parameter; every other field is
+// applied client-side after the response is decoded, since Proxmox has no
+// server-side support for them.
+type ListFilter struct {
+	// Type restricts the resource kind fetched from the API: "vm",
+	// "storage", "node", or "sdn". Empty fetches every kind.
+	Type ResourceType
+
+	// GuestType restricts vm entries to a guest kind, "qemu" or "lxc".
+	// Empty disables the filter. Ignored for non-vm entries.
+	GuestType string
+
+	// VMID restricts vm entries to a specific guest ID. Zero disables the
+	// filter.
+	VMID int
+
+	// Node restricts entries to a specific node. Empty disables the
+	// filter.
+	Node string
+
+	// SkipTemplates excludes vm entries flagged as templates
+	// (Template == 1).
+	SkipTemplates bool
+
+	// Match, when set, is evaluated last for each entry that passed the
+	// filters above; the entry is kept only if Match returns true. Use it
+	// for conditions List can't express directly, such as a check that
+	// requires another API call. An error return aborts List, and that
+	// error is returned to the caller.
+	Match func(*Resource) (bool, error)
+}
+
+// List executes GET /cluster/resources and applies filter to the decoded
+// results.
+func (r *resourcesResource) List(ctx context.Context, filter ListFilter) ([]Resource, error) {
 	var params map[string]string
-	if resType != "" {
-		params = map[string]string{"type": string(resType)}
+	if filter.Type != "" {
+		params = map[string]string{"type": string(filter.Type)}
 	}
 
 	var resources []Resource
@@ -58,5 +91,40 @@ func (r *resourcesResource) Get(ctx context.Context, resType ResourceType) ([]Re
 		return nil, err
 	}
 
-	return resources, nil
+	out := make([]Resource, 0, len(resources))
+
+	for i := range resources {
+		rs := &resources[i]
+
+		if filter.GuestType != "" && rs.Type != filter.GuestType {
+			continue
+		}
+
+		if filter.VMID != 0 && rs.VMID != filter.VMID {
+			continue
+		}
+
+		if filter.Node != "" && rs.Node != filter.Node {
+			continue
+		}
+
+		if filter.SkipTemplates && rs.Template == 1 {
+			continue
+		}
+
+		if filter.Match != nil {
+			ok, err := filter.Match(rs)
+			if err != nil {
+				return nil, err
+			}
+
+			if !ok {
+				continue
+			}
+		}
+
+		out = append(out, *rs)
+	}
+
+	return out, nil
 }
