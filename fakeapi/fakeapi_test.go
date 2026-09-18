@@ -275,14 +275,14 @@ func TestStorageContentLifecycle(t *testing.T) {
 	c := cl.Client(t)
 	ctx := context.Background()
 
-	volid, err := c.Nodes("pve1").Storage().Content().Create(ctx, "local-lvm", &storage.CreateVolumeOptions{
+	volid, err := c.Nodes("pve1").Storage().Content("local-lvm").Create(ctx, &storage.CreateVolumeOptions{
 		Filename: "vm-100-disk-1", VMID: 100, Size: "10G", Format: "raw",
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
-	vols, err := c.Nodes("pve1").Storage().Content().List(ctx, "local-lvm", &storage.ContentListOptions{VMID: 100})
+	vols, err := c.Nodes("pve1").Storage().Content("local-lvm").List(ctx, &storage.ContentListOptions{VMID: 100})
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -290,16 +290,76 @@ func TestStorageContentLifecycle(t *testing.T) {
 		t.Fatalf("unexpected volumes: %+v", vols)
 	}
 
-	if _, err := c.Nodes("pve1").Storage().Content().Delete(ctx, "local-lvm", volid, 0); err != nil {
+	if _, err := c.Nodes("pve1").Storage().Content("local-lvm").Delete(ctx, volid, 0); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 
-	vols, err = c.Nodes("pve1").Storage().Content().List(ctx, "local-lvm", nil)
+	vols, err = c.Nodes("pve1").Storage().Content("local-lvm").List(ctx, nil)
 	if err != nil {
 		t.Fatalf("list after delete: %v", err)
 	}
 	if len(vols) != 0 {
 		t.Fatalf("expected no volumes after delete, got %+v", vols)
+	}
+}
+
+func TestStorageContentCopy(t *testing.T) {
+	cl := fakeapi.NewCluster(t, fakeapi.WithNodes("pve1", "pve2"))
+	cl.Node("pve1").AddStorage("shared", "nfs", fakeapi.WithCapacity(500<<30, 100<<30, 400<<30),
+		fakeapi.WithVolume(storage.Volume{VolID: "shared:vm-100-disk-0", VMID: 100, Format: "raw", Size: 10 << 30}))
+	cl.Node("pve2").AddStorage("shared", "nfs", fakeapi.WithCapacity(500<<30, 100<<30, 400<<30))
+
+	c := cl.Client(t)
+	ctx := context.Background()
+
+	// Same-node copy to a new volume name.
+	upid, err := c.Nodes("pve1").Storage().Content("shared").Copy(ctx, "vm-100-disk-0", &storage.CopyOptions{
+		Target: "vm-100-disk-1",
+	})
+	if err != nil {
+		t.Fatalf("copy: %v", err)
+	}
+	if upid == "" {
+		t.Fatal("expected non-empty UPID")
+	}
+
+	taskStatus, err := c.Nodes("pve1").Tasks().Status(ctx, upid)
+	if err != nil {
+		t.Fatalf("task status: %v", err)
+	}
+	if taskStatus.ExitStatus != "OK" {
+		t.Fatalf("expected OK task, got %+v", taskStatus)
+	}
+
+	vols, err := c.Nodes("pve1").Storage().Content("shared").List(ctx, nil)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(vols) != 2 {
+		t.Fatalf("expected source and copy on pve1, got %+v", vols)
+	}
+
+	// Cross-node move to pve2's copy of the same shared storage.
+	if _, err := c.Nodes("pve1").Storage().Content("shared").Copy(ctx, "vm-100-disk-0", &storage.CopyOptions{
+		Target:     "vm-100-disk-2",
+		TargetNode: "pve2",
+	}); err != nil {
+		t.Fatalf("cross-node copy: %v", err)
+	}
+
+	vols, err = c.Nodes("pve2").Storage().Content("shared").List(ctx, nil)
+	if err != nil {
+		t.Fatalf("list on pve2: %v", err)
+	}
+	if len(vols) != 1 || vols[0].VolID != "shared:vm-100-disk-2" {
+		t.Fatalf("expected the copy on pve2, got %+v", vols)
+	}
+
+	// A source volume that doesn't exist.
+	if _, err := c.Nodes("pve1").Storage().Content("shared").Copy(ctx, "does-not-exist", &storage.CopyOptions{
+		Target: "vm-100-disk-3",
+	}); !proxmox.IsNotFound(err) {
+		t.Fatalf("expected IsNotFound copying an absent volume, got %v", err)
 	}
 }
 

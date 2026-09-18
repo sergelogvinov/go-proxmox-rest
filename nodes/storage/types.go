@@ -80,9 +80,9 @@ type ListOptions struct {
 }
 
 // Volume describes a storage volume, as returned by
-// GET /nodes/{node}/storage/{storage}/content (Client.Content().List) and
+// GET /nodes/{node}/storage/{storage}/content (Client.Content(storageID).List) and
 // GET /nodes/{node}/storage/{storage}/content/{volume}
-// (Client.Content().Get, which populates only Path/Size/Used/Format/
+// (Client.Content(storageID).Get, which populates only Path/Size/Used/Format/
 // Notes/Protected — VolID and the rest are List-only).
 type Volume struct {
 	// VolID is the volume identifier, e.g. "local:iso/debian.iso"
@@ -130,7 +130,7 @@ type Verification struct {
 }
 
 // ContentListOptions filters the volumes returned by
-// Client.Content().List. A nil *ContentListOptions (or the zero value)
+// Client.Content(storageID).List. A nil *ContentListOptions (or the zero value)
 // requests every volume unfiltered.
 type ContentListOptions struct {
 	// Content restricts the result to volumes of this content type,
@@ -141,7 +141,7 @@ type ContentListOptions struct {
 }
 
 // CreateVolumeOptions holds the parameters for allocating a new disk
-// image via Client.Content().Create
+// image via Client.Content(storageID).Create
 // (POST /nodes/{node}/storage/{storage}/content).
 type CreateVolumeOptions struct {
 	// Filename is the name of the file to create. Required.
@@ -158,7 +158,7 @@ type CreateVolumeOptions struct {
 }
 
 // UpdateVolumeOptions holds the parameters for
-// Client.Content().Update (PUT /nodes/{node}/storage/{storage}/content/
+// Client.Content(storageID).Update (PUT /nodes/{node}/storage/{storage}/content/
 // {volume}). Pointer fields are sent only when non-nil.
 //
 // Both fields are rejected by most storage plugins (e.g. DirPlugin) for

@@ -148,11 +148,11 @@ func handleStorageContentCollection(w http.ResponseWriter, r *http.Request, n *n
 	}
 }
 
-// handleStorageContentItem backs GET/PUT/DELETE
-// /nodes/{node}/storage/{storage}/content/{volume} — Get, Update, and
-// Delete. volume may be a bare volume name (resolved against storageID)
-// or a full "storage:name" volume id, matching
-// storage.Client.Content().Get's doc comment.
+// handleStorageContentItem backs GET/PUT/POST/DELETE
+// /nodes/{node}/storage/{storage}/content/{volume} — Get, Update, Copy,
+// and Delete. volume may be a bare volume name (resolved against
+// storageID) or a full "storage:name" volume id, matching
+// storage.Client.Content(storageID).Get's doc comment.
 func handleStorageContentItem(w http.ResponseWriter, r *http.Request, n *nodeState) {
 	id := r.PathValue("storage")
 	volume := r.PathValue("volume")
@@ -209,6 +209,9 @@ func handleStorageContentItem(w http.ResponseWriter, r *http.Request, n *nodeSta
 		}
 		writeData(w, nil)
 
+	case http.MethodPost:
+		handleStorageContentCopy(w, r, n, id, st, full)
+
 	case http.MethodDelete:
 		n.cs.mu.Lock()
 		idx := findVolume(st, full)
@@ -229,6 +232,80 @@ func handleStorageContentItem(w http.ResponseWriter, r *http.Request, n *nodeSta
 	default:
 		methodNotAllowed(w)
 	}
+}
+
+// handleStorageContentCopy backs the POST case of handleStorageContentItem
+// — Content().Copy. It copies the source volume (already resolved to its
+// full "storage:name" id as full) to a new volume named by the "target"
+// query parameter, on the same storage id but optionally a different node
+// (the "target_node" query parameter). Like guest creation/config changes,
+// this is modeled as a task, matching real Proxmox: the copy is not
+// visible in the target's content list until the task completes, which is
+// immediate in the fake's default instant mode.
+func handleStorageContentCopy(w http.ResponseWriter, r *http.Request, n *nodeState, storageID string, st *storageState, full string) {
+	q := r.URL.Query()
+
+	target := q.Get("target")
+	if target == "" {
+		writeError(w, http.StatusBadRequest, "parameter verification failed", map[string]string{"target": "target is required"})
+		return
+	}
+
+	targetNode := q.Get("target_node")
+	if targetNode == "" {
+		targetNode = n.name
+	}
+
+	n.cs.mu.Lock()
+	idx := findVolume(st, full)
+	var src storage.Volume
+	if idx >= 0 {
+		src = st.content[idx]
+	}
+	destNode, destNodeOK := n.cs.nodes[targetNode]
+	var destSt *storageState
+	if destNodeOK {
+		destSt = destNode.storages[storageID]
+	}
+	n.cs.mu.Unlock()
+
+	if idx < 0 {
+		notFound(w, "volume")
+		return
+	}
+	if !destNodeOK {
+		notFound(w, "target node")
+		return
+	}
+	if destSt == nil {
+		notFound(w, "target storage")
+		return
+	}
+
+	newVolID := storageID + ":" + target
+
+	n.cs.mu.Lock()
+	dup := findVolume(destSt, newVolID) >= 0
+	n.cs.mu.Unlock()
+	if dup {
+		writeError(w, http.StatusBadRequest, newVolID+" already exists", nil)
+		return
+	}
+
+	upid := n.cs.startTask(n.name, "imgcopy", full, func() error {
+		n.cs.mu.Lock()
+		defer n.cs.mu.Unlock()
+
+		copyVol := src
+		copyVol.VolID = newVolID
+		copyVol.CTime = time.Now().Unix()
+
+		destSt.content = append(destSt.content, copyVol)
+
+		return nil
+	})
+
+	writeData(w, upid)
 }
 
 func findVolume(st *storageState, volid string) int {

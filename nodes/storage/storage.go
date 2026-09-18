@@ -23,11 +23,15 @@ limitations under the License.
 // web UI), upload (multipart file upload), download-url and
 // oci-registry-pull (server-side fetch of external content into a
 // storage), file-restore (single-file restore from a backup, a binary
-// download), import-metadata/identity (import-specific introspection),
-// and content's copy (Proxmox's own source marks it "experimental - do
-// not use"). None of these fit this client's JSON-envelope
+// download), and import-metadata/identity (import-specific
+// introspection). None of these fit this client's JSON-envelope
 // request/response model as cleanly as the rest of the API, or are worth
-// the surface area yet.
+// the surface area yet. Content().Copy is the one exception: despite
+// Proxmox's own source marking it "experimental - do not use", it has
+// shipped unchanged across many releases and is the only way to copy or
+// move an existing volume (e.g. across nodes) without going through the
+// guest config, so it's included with that caveat documented on the
+// method itself.
 package storage
 
 import (
@@ -101,10 +105,10 @@ func (c *Client) Status(ctx context.Context, storageID string) (*Storage, error)
 }
 
 // Content returns an accessor for the
-// /nodes/{node}/storage/{storage}/content resource tree, a storage's
-// volumes.
-func (c *Client) Content() *contentResource {
-	return &contentResource{client: c.client, node: c.node}
+// /nodes/{node}/storage/{storage}/content resource tree, scoped to
+// storageID: a storage's volumes.
+func (c *Client) Content(storageID string) *contentResource {
+	return &contentResource{client: c.client, node: c.node, storageID: storageID}
 }
 
 // PruneBackups returns an accessor for the
