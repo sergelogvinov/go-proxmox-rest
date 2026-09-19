@@ -53,7 +53,7 @@ func TestPoolsLifecycle(t *testing.T) {
 
 	// 3. create — a uniquely-named pool with a comment.
 	comment := "e2e lifecycle"
-	err = pc.Create(ctx, name, &pools.Options{Comment: &comment})
+	err = pc.Create(ctx, name, &pools.CreateOptions{Comment: comment})
 	e2e.RequireNoError(t, "create pool", err)
 
 	// 4. get — verify the create.
@@ -68,7 +68,7 @@ func TestPoolsLifecycle(t *testing.T) {
 
 	// 5. update — mutate the comment.
 	newComment := "e2e updated"
-	err = pc.Update(ctx, name, &pools.Options{Comment: &newComment})
+	err = pc.Update(ctx, name, &pools.UpdateOptions{Comment: &newComment})
 	e2e.RequireNoError(t, "update pool", err)
 
 	// 6. get — verify the update.
@@ -120,11 +120,11 @@ func TestPoolsUpdateClearComment(t *testing.T) {
 	}
 
 	toBeCleared := "e2e to-be-cleared"
-	err := pc.Create(ctx, name, &pools.Options{Comment: &toBeCleared})
+	err := pc.Create(ctx, name, &pools.CreateOptions{Comment: toBeCleared})
 	e2e.RequireNoError(t, "create pool", err)
 
 	empty := ""
-	err = pc.Update(ctx, name, &pools.Options{Comment: &empty})
+	err = pc.Update(ctx, name, &pools.UpdateOptions{Comment: &empty})
 	e2e.RequireNoError(t, "update pool (clear comment)", err)
 
 	pool, err := pc.Get(ctx, name)

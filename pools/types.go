@@ -89,27 +89,54 @@ type PoolMember struct {
 	StorageContent string `json:"content,omitempty" url:"content,omitempty"`
 }
 
-// Options holds the write parameters shared by POST /pools (Create) and
-// PUT /pools/{poolid} (Update).
-//
-// Fields are encoded to form parameters via the `url` struct tags: plain
-// fields are omitted when zero, []string is comma-joined. Comment is a
-// pointer so Update can distinguish "leave unchanged" (nil) from "clear"
-// (pointer to ""); Create simply sends whatever is set.
-type Options struct {
-	// Comment is the pool description. Use a pointer to distinguish
-	// "unset" from "clear".
-	Comment *string `url:"comment"`
-	// Members are the resources assigned to the pool, e.g. "vm/100",
-	// "storage/local". On Create these seed the pool; on Update the list
-	// replaces the current members.
-	Members []string `url:"vms"`
+// CreateOptions holds the write parameters for POST /pools (Create).
+// Proxmox's create endpoint accepts only a comment — a pool starts out
+// empty; use Client.Update to add members afterwards.
+type CreateOptions struct {
+	// Comment is the pool description.
+	Comment string `url:"comment,omitempty"`
 }
 
 // encode converts the options to form parameters.
-func (o *Options) encode() (map[string]string, error) {
+func (o *CreateOptions) encode() (map[string]string, error) {
 	if o == nil {
-		return nil, fmt.Errorf("pools: options are required")
+		return nil, fmt.Errorf("pools: create options are required")
+	}
+
+	return params.Encode(o)
+}
+
+// UpdateOptions holds the write parameters for PUT /pools/{poolid}
+// (Update).
+//
+// VMIDs and Storage are additive, not a replacement list: Proxmox adds
+// the named guests/storages to the pool, or — when Remove is true —
+// removes them instead. There is no "replace the whole member list"
+// operation; to fully replace membership, issue a Remove call for the
+// old members and a separate add call for the new ones.
+type UpdateOptions struct {
+	// Comment replaces the pool description. Use a pointer to
+	// distinguish "leave unchanged" (nil) from "clear" (pointer to "").
+	Comment *string `url:"comment"`
+	// VMIDs lists guest VMIDs to add to (or, with Remove, remove from)
+	// the pool.
+	VMIDs []int `url:"vms,omitempty"`
+	// Storage lists storage IDs to add to (or, with Remove, remove
+	// from) the pool.
+	Storage []string `url:"storage,omitempty"`
+	// AllowMove lets a guest already assigned to another pool be moved
+	// into this one (removed from its current pool) instead of Proxmox
+	// rejecting the request.
+	AllowMove *bool `url:"allow-move"`
+	// Remove, instead of adding VMIDs/Storage to the pool, removes them
+	// from it.
+	Remove *bool `url:"delete"`
+}
+
+// encode converts the options to form parameters.
+func (o *UpdateOptions) encode() (map[string]string, error) {
+	if o == nil {
+		return nil, fmt.Errorf("pools: update options are required")
 	}
 
 	return params.Encode(o)

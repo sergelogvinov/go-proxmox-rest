@@ -511,7 +511,9 @@ them just because the field lists look similar at a glance.
 
 **Default: two separate types, `X` (read) and `XOptions` (write).** This is the shape
 for every multi-item, key-addressed resource (`List`/`Get`/`Create`/`Update`/`Delete`)
-— e.g. `pools.Pool`/`pools.Options`, `ha.Group`/`ha.GroupOptions`,
+— e.g. `pools.Pool`/`pools.CreateOptions`+`pools.UpdateOptions` (pools splits even its
+write side by verb: Create only takes a comment, Update also adds/removes members),
+`ha.Group`/`ha.GroupOptions`,
 `ha.Rule`/`ha.RuleOptions`, `firewall.Alias`/`firewall.AliasOptions`,
 `firewall.Group`/`firewall.GroupOptions`, `firewall.IPSet`/`firewall.IPSetOptions`,
 `firewall.Rule`/`firewall.RuleOptions`. Keep them separate whenever any of these hold:

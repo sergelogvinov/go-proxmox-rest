@@ -82,7 +82,7 @@ func (c *Client) List(ctx context.Context) ([]Pool, error) {
 // Create creates a new pool via POST /pools.
 //
 // +proxmox:rbac:path=/pool/{poolid},method=POST,privs=Pool.Allocate,match=all
-func (c *Client) Create(ctx context.Context, name string, opts *Options) error {
+func (c *Client) Create(ctx context.Context, name string, opts *CreateOptions) error {
 	params, err := opts.encode()
 	if err != nil {
 		return err
@@ -93,15 +93,19 @@ func (c *Client) Create(ctx context.Context, name string, opts *Options) error {
 	return c.client.Create(ctx, "/pools", nil, params)
 }
 
-// Update modifies an existing pool via PUT /pools/?poolid={poolid}.
+// Update modifies an existing pool via PUT /pools/?poolid={poolid}: it
+// changes the comment and/or adds or removes the guests/storages named
+// in opts.VMIDs/opts.Storage (see UpdateOptions's doc comment — there is
+// no whole-list replace).
 //
 // Adding or removing a guest additionally requires Permissions.Modify or
 // VM.Allocate on /vms/{vmid}. Adding or removing storage requires
 // Permissions.Modify or Datastore.Allocate on /storage/{storage}. Moving a
-// guest from another pool also requires Pool.Allocate on that source pool.
+// guest from another pool (opts.AllowMove) also requires Pool.Allocate on
+// that source pool.
 //
 // +proxmox:rbac:path=/pool/{poolid},method=PUT,privs=Pool.Allocate,match=all
-func (c *Client) Update(ctx context.Context, poolID string, opts *Options) error {
+func (c *Client) Update(ctx context.Context, poolID string, opts *UpdateOptions) error {
 	params, err := opts.encode()
 	if err != nil {
 		return err
