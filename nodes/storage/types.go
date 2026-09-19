@@ -54,6 +54,18 @@ type Storage struct {
 	Formats *Formats `json:"formats,omitempty" url:"formats,omitempty"`
 }
 
+// Identity describes a storage instance's plugin-assigned identity, as
+// returned by GET /nodes/{node}/storage/{storage}/identity
+// (Client.Identity).
+type Identity struct {
+	// ID is the storage instance's unique identifier. Its exact format
+	// and semantics are plugin-specific.
+	ID string `json:"id,omitempty" url:"id,omitempty"`
+	// Type is the storage plugin type, e.g. "dir", "zfs", "nfs", "esxi",
+	// matching Storage.Type.
+	Type string `json:"type,omitempty" url:"type,omitempty"`
+}
+
 // Formats lists a storage's supported image formats and its default.
 type Formats struct {
 	Supported []string `json:"supported,omitempty" url:"supported,omitempty"`

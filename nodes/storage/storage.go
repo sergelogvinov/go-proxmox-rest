@@ -20,18 +20,22 @@ limitations under the License.
 //
 // This intentionally stops short of the full endpoint surface under
 // /nodes/{node}/storage/{storage}/*: rrd/rrddata (graph data meant for the
-// web UI), upload (multipart file upload), download-url and
-// oci-registry-pull (server-side fetch of external content into a
-// storage), file-restore (single-file restore from a backup, a binary
-// download), and import-metadata/identity (import-specific
-// introspection). None of these fit this client's JSON-envelope
-// request/response model as cleanly as the rest of the API, or are worth
-// the surface area yet. Content().Copy is the one exception: despite
-// Proxmox's own source marking it "experimental - do not use", it has
+// web UI), upload (multipart file upload), file-restore (single-file
+// restore from a backup, a binary download), and import-metadata
+// (introspection of an importable guest, tied to the import workflow
+// this client doesn't otherwise support yet). None of these fit this
+// client's JSON-envelope request/response model as cleanly as the rest
+// of the API, or are worth the surface area yet. Content().Copy,
+// DownloadURL, OCIRegistryPull, and Identity are the exceptions: despite
+// Proxmox's own source marking Copy "experimental - do not use", it has
 // shipped unchanged across many releases and is the only way to copy or
 // move an existing volume (e.g. across nodes) without going through the
-// guest config, so it's included with that caveat documented on the
-// method itself.
+// guest config; DownloadURL and OCIRegistryPull are server-side fetches
+// that, like Copy, return a plain UPID and fit the envelope model just
+// as well as any other task-returning write; Identity is a plain GET
+// returning a small {id, type} object and fits the model as directly as
+// Status does. All four are included, Copy with its caveat documented
+// on its own method.
 package storage
 
 import (
@@ -102,6 +106,22 @@ func (c *Client) Status(ctx context.Context, storageID string) (*Storage, error)
 	s.Storage = storageID
 
 	return s, nil
+}
+
+// Identity retrieves a storage instance's plugin-assigned identity via
+// GET /nodes/{node}/storage/{storage}/identity. It's meaningful mainly
+// for import-capable storage plugins (e.g. "esxi"), which use it to
+// recognize the same backing instance across config changes; other
+// plugin types may return an ID with no comparable stability guarantee.
+//
+// +proxmox:rbac:path=/storage/{storage},method=GET,privs=Datastore.Audit;Datastore.AllocateSpace,match=any
+func (c *Client) Identity(ctx context.Context, storageID string) (*Identity, error) {
+	id := &Identity{}
+	if err := c.client.Get(ctx, "/nodes/"+c.node+"/storage/"+storageID+"/identity", id, nil); err != nil {
+		return nil, err
+	}
+
+	return id, nil
 }
 
 // Content returns an accessor for the
