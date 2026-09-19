@@ -54,6 +54,12 @@ type ListFilter struct {
 	// "storage", "node", or "sdn". Empty fetches every kind.
 	Type ResourceType
 
+	// Node restricts entries to a specific node. Empty disables the
+	// filter.
+	Node string
+
+	// For VM entries, this restricts the kind of guest.
+
 	// GuestType restricts vm entries to a guest kind, "qemu" or "lxc".
 	// Empty disables the filter. Ignored for non-vm entries.
 	GuestType string
@@ -62,13 +68,15 @@ type ListFilter struct {
 	// filter.
 	VMID int
 
-	// Node restricts entries to a specific node. Empty disables the
-	// filter.
-	Node string
-
 	// SkipTemplates excludes vm entries flagged as templates
 	// (Template == 1).
 	SkipTemplates bool
+
+	// For Storage entries, this restricts the kind of storage.
+
+	// StorageID restricts storage entries to a specific storage ID.
+	// Empty disables the filter. Ignored for non-storage entries.
+	StorageID string
 
 	// Match, when set, is evaluated last for each entry that passed the
 	// filters above; the entry is kept only if Match returns true. Use it
@@ -120,6 +128,10 @@ func (r *resourcesResource) List(ctx context.Context, filter ListFilter) ([]Reso
 		}
 
 		if filter.SkipTemplates && rs.Template == 1 {
+			continue
+		}
+
+		if filter.StorageID != "" && rs.Storage != filter.StorageID {
 			continue
 		}
 
