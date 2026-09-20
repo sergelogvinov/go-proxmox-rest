@@ -45,6 +45,32 @@ func TestSMBios1String(t *testing.T) {
 	}
 }
 
+func TestTagsUnmarshalJSON(t *testing.T) {
+	var value Tags
+	if err := json.Unmarshal([]byte(`"prod;web;team-a"`), &value); err != nil {
+		t.Fatalf("unmarshal Tags: %v", err)
+	}
+
+	want := []string{"prod", "web", "team-a"}
+	if len(value.Tags) != len(want) {
+		t.Fatalf("unexpected Tags value: %+v", value)
+	}
+	for i := range want {
+		if value.Tags[i] != want[i] {
+			t.Fatalf("unexpected Tags value: %+v", value)
+		}
+	}
+}
+
+func TestTagsString(t *testing.T) {
+	value := Tags{Tags: []string{"prod", "web", "team-a"}}
+
+	const expected = "prod;web;team-a"
+	if actual := value.String(); actual != expected {
+		t.Fatalf("String() = %q, want %q", actual, expected)
+	}
+}
+
 func TestStartupUnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		name  string

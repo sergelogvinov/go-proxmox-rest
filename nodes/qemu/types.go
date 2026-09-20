@@ -564,6 +564,28 @@ func (s *SMBios1) UnmarshalJSON(data []byte) error {
 	return property.Unmarshal(value, s)
 }
 
+// Tags describes the guest's tag list (meta information only), as
+// found in Config.Tags. Proxmox encodes it as a single property string
+// that is itself already a ";"-separated list — unlike the
+// comma-joined convention params.Encode/Decode apply to ordinary
+// []string fields — so, like Drive/Net/EFIDisk/etc., it round-trips
+// through property.Marshal/Unmarshal via its own String/UnmarshalJSON
+// rather than a bare []string field.
+type Tags struct {
+	Tags []string `cfg:"tags,omitempty,default"`
+}
+
+// String converts the tag list to Proxmox's property-string format.
+func (t Tags) String() string {
+	value, _ := property.Marshal(t)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's tags property string into Tags.
+func (t *Tags) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, t, "tags")
+}
+
 // Config describes a QEMU guest's configuration, as returned by
 // GET /nodes/{node}/qemu/{vmid}/config and accepted by
 // Client.UpdateConfig/UpdateConfigAsync (PUT/POST to the same path).
@@ -593,7 +615,7 @@ type Config struct {
 	// summary panel and saved as a comment inside the config file.
 	Description string `json:"description,omitempty" url:"description,omitempty"`
 	// Tags is the guest's tag list (meta information only).
-	Tags []string `json:"tags,omitempty" url:"tags,omitempty"`
+	Tags *Tags `json:"tags,omitempty" url:"tags,omitempty"`
 	// OSType selects guest-OS-specific optimizations, e.g. "l26"
 	// (Linux 2.6+), "win10", "other".
 	OSType *string `json:"ostype,omitempty" url:"ostype,omitempty"`
