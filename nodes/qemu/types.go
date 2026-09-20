@@ -327,6 +327,12 @@ func (v *VirtioFS) UnmarshalJSON(data []byte) error {
 // the backing volume either as a bare first value or as file=<volume>.
 // Not every bus supports every option (e.g. only scsi has vendor/product);
 // Proxmox rejects unsupported keys, so fill only the relevant fields.
+//
+// ImportFrom is create-only: it has Proxmox allocate the new disk (File
+// still names the destination storage, e.g. "local-lvm:0") by importing
+// the content of an existing volume or absolute image path instead of
+// creating it empty. Proxmox rejects it on an update to an existing
+// drive.
 type Drive struct {
 	File            string `cfg:"file,omitempty,default"`
 	AIO             string `cfg:"aio,omitempty"`
@@ -341,6 +347,7 @@ type Drive struct {
 	DetectZeroes    *bool  `cfg:"detect_zeroes,omitempty"`
 	Discard         string `cfg:"discard,omitempty"`
 	Format          string `cfg:"format,omitempty"`
+	ImportFrom      string `cfg:"import-from,omitempty"`
 	IOPS            *int   `cfg:"iops,omitempty"`
 	IOPSMax         *int   `cfg:"iops_max,omitempty"`
 	IOPSMaxLength   *int   `cfg:"iops_max_length,omitempty"`

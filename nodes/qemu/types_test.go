@@ -45,6 +45,23 @@ func TestSMBios1String(t *testing.T) {
 	}
 }
 
+func TestDriveImportFrom(t *testing.T) {
+	value := Drive{File: "local-lvm:0", ImportFrom: "local:import/debian-12-generic-amd64.qcow2", SSD: new(true)}
+
+	const expected = "local-lvm:0,import-from=local:import/debian-12-generic-amd64.qcow2,ssd=1"
+	if got := value.String(); got != expected {
+		t.Fatalf("String() = %q, want %q", got, expected)
+	}
+
+	var decoded Drive
+	if err := decoded.UnmarshalJSON([]byte(`"` + expected + `"`)); err != nil {
+		t.Fatalf("UnmarshalJSON() error = %v", err)
+	}
+	if decoded.String() != expected {
+		t.Fatalf("UnmarshalJSON() result = %q, want %q", decoded.String(), expected)
+	}
+}
+
 func TestTagsUnmarshalJSON(t *testing.T) {
 	var value Tags
 	if err := json.Unmarshal([]byte(`"prod;web;team-a"`), &value); err != nil {
