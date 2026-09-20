@@ -215,19 +215,39 @@ func handleStorageContentItem(w http.ResponseWriter, r *http.Request, n *nodeSta
 	case http.MethodDelete:
 		n.cs.mu.Lock()
 		idx := findVolume(st, full)
-		if idx >= 0 {
-			st.content = append(st.content[:idx], st.content[idx+1:]...)
-		}
-		n.cs.mu.Unlock()
-
+		manual := n.cs.manual
 		if idx < 0 {
+			n.cs.mu.Unlock()
 			notFound(w, "volume")
 			return
 		}
-		// Content().Delete is unconditional in real Proxmox too (see
-		// docs/fakeapi.md §13) and this fake always completes it
-		// synchronously, so the UPID it returns is always empty.
-		writeData(w, "")
+
+		if !manual {
+			st.content = append(st.content[:idx], st.content[idx+1:]...)
+			n.cs.mu.Unlock()
+
+			// Content().Delete is unconditional in real Proxmox too (see
+			// docs/fakeapi.md §13) and completes synchronously in the
+			// fake's default instant mode, so the UPID it returns is
+			// empty. Under WithManualTasks it runs as a task instead (see
+			// below), so a test can fail it via TaskController.Fail.
+			writeData(w, "")
+			return
+		}
+		n.cs.mu.Unlock()
+
+		upid := n.cs.startTask(n.name, "imgdel", full, func() error {
+			n.cs.mu.Lock()
+			defer n.cs.mu.Unlock()
+
+			if i := findVolume(st, full); i >= 0 {
+				st.content = append(st.content[:i], st.content[i+1:]...)
+			}
+
+			return nil
+		})
+
+		writeData(w, upid)
 
 	default:
 		methodNotAllowed(w)

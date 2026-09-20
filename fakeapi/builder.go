@@ -75,6 +75,15 @@ func WithCapacity(total, used, avail int64) StorageOption {
 	}
 }
 
+// WithShared marks the storage as shared across nodes — a config attribute
+// independent of how many nodes it was actually seeded on (e.g. a CIFS/NFS
+// share is normally configured shared regardless of how many cluster members
+// currently mount it). Surfaced as cluster.Resource.Shared (GET
+// /cluster/resources) and storage.Storage.Shared (GET /storage/{storage}).
+func WithShared() StorageOption {
+	return func(s *storageState) { s.shared = true }
+}
+
 // AddStorage seeds a storage visible on this node (dir/lvm/zfs/... —
 // storageType is opaque to the fake beyond being echoed back).
 func (n *Node) AddStorage(id, storageType string, opts ...StorageOption) *Storage {

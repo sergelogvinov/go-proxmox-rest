@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/qemu"
@@ -179,6 +180,64 @@ func handleQemuStatusCurrent(w http.ResponseWriter, r *http.Request, n *nodeStat
 	}
 
 	writeData(w, status)
+}
+
+// handleQemuResize backs PUT /nodes/{node}/qemu/{vmid}/resize — Resize. Only
+// absolute sizes are supported (a bare number with an optional K/M/G/T
+// suffix); Proxmox's "+<delta>" grow-by-amount form isn't modeled, since
+// this repo's own qemu.ResizeOptions callers only ever send an absolute
+// size.
+func handleQemuResize(w http.ResponseWriter, r *http.Request, n *nodeState) {
+	vmid, ok := pathVMID(w, r)
+	if !ok {
+		return
+	}
+
+	query := r.URL.Query()
+	disk := query.Get("disk")
+	size := query.Get("size")
+
+	if disk == "" || size == "" {
+		writeError(w, http.StatusBadRequest, "parameter verification failed", map[string]string{"disk": "disk and size are required"})
+		return
+	}
+
+	n.cs.mu.Lock()
+	vm := n.guests[vmid]
+	n.cs.mu.Unlock()
+	if vm == nil {
+		notFound(w, "vm")
+		return
+	}
+
+	upid := n.cs.startTask(n.name, "qmresize", strconv.Itoa(vmid), func() error {
+		n.cs.mu.Lock()
+		defer n.cs.mu.Unlock()
+
+		vm.cfg[disk] = setPropertySize(vm.cfg[disk], size)
+
+		return nil
+	})
+
+	writeData(w, upid)
+}
+
+// setPropertySize replaces (or appends) a drive property string's "size="
+// component with size, leaving every other component untouched.
+func setPropertySize(prop, size string) string {
+	if prop == "" {
+		return prop
+	}
+
+	parts := strings.Split(prop, ",")
+	for i, p := range parts {
+		if strings.HasPrefix(p, "size=") {
+			parts[i] = "size=" + size
+			return strings.Join(parts, ",")
+		}
+	}
+
+	return prop + ",size=" + size
 }
 
 // handleQemuAction backs POST /nodes/{node}/qemu/{vmid}/status/{action}

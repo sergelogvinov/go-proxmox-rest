@@ -94,6 +94,7 @@ type haGroupState struct {
 type storageState struct {
 	id      string
 	typ     string
+	shared  bool
 	content []storage.Volume
 	total   int64
 	used    int64

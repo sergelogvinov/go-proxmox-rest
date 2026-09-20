@@ -165,7 +165,7 @@ func storageResource(node string, st *storageState) cluster.Resource {
 		Storage:    st.id,
 		Status:     "available",
 		PluginType: st.typ,
-		Shared:     0,
+		Shared:     boolToInt(st.shared),
 		MaxDisk:    st.total,
 		Disk:       st.used,
 	}

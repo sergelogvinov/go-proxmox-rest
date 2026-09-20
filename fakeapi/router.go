@@ -47,10 +47,14 @@ func newRouter(state *clusterState) http.Handler {
 	reg("GET /nodes", handleNodesList(state))
 	reg("GET /nodes/{node}/status", withNode(state, handleNodeStatus))
 
+	reg("GET /storage", handleStorageRootList(state))
+	reg("GET /storage/{storage}", handleStorageRootGet(state))
+
 	reg("POST /nodes/{node}/qemu", withNode(state, handleQemuCreate))
 	reg("/nodes/{node}/qemu/{vmid}/config", withNode(state, handleQemuConfig))
 	reg("GET /nodes/{node}/qemu/{vmid}/status/current", withNode(state, handleQemuStatusCurrent))
 	reg("POST /nodes/{node}/qemu/{vmid}/status/{action}", withNode(state, handleQemuAction))
+	reg("PUT /nodes/{node}/qemu/{vmid}/resize", withNode(state, handleQemuResize))
 
 	reg("POST /nodes/{node}/lxc", withNode(state, handleLXCCreate))
 	reg("/nodes/{node}/lxc/{vmid}/config", withNode(state, handleLXCConfig))
