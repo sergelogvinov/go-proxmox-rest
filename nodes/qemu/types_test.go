@@ -62,6 +62,32 @@ func TestDriveImportFrom(t *testing.T) {
 	}
 }
 
+func TestNetString(t *testing.T) {
+	const expected = "virtio=32:90:AC:10:00:91,bridge=vmbr0,firewall=1,mtu=1500,queues=8,tag=1,trunks=1;2"
+
+	var decoded Net
+	if err := decoded.UnmarshalJSON([]byte(`"` + expected + `"`)); err != nil {
+		t.Fatalf("UnmarshalJSON() error = %v", err)
+	}
+
+	if decoded.Model != "virtio" || decoded.MACAddr != "32:90:AC:10:00:91" || decoded.Bridge != "vmbr0" {
+		t.Fatalf("unexpected Net value: %+v", decoded)
+	}
+	if decoded.Firewall == nil || !*decoded.Firewall {
+		t.Fatalf("expected firewall to be enabled: %+v", decoded)
+	}
+	if !sameIntPtr(decoded.MTU, new(1500)) || !sameIntPtr(decoded.Queues, new(8)) || !sameIntPtr(decoded.Tag, new(1)) {
+		t.Fatalf("unexpected Net value: %+v", decoded)
+	}
+	if len(decoded.Trunks) != 2 || decoded.Trunks[0] != "1" || decoded.Trunks[1] != "2" {
+		t.Fatalf("unexpected Net trunks: %+v", decoded.Trunks)
+	}
+
+	if got := decoded.String(); got != expected {
+		t.Fatalf("String() = %q, want %q", got, expected)
+	}
+}
+
 func TestTagsUnmarshalJSON(t *testing.T) {
 	var value Tags
 	if err := json.Unmarshal([]byte(`"prod;web;team-a"`), &value); err != nil {

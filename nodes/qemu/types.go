@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/property"
 	"github.com/sergelogvinov/go-proxmox-rest/types"
@@ -394,8 +395,10 @@ func (d *Drive) UnmarshalJSON(data []byte) error {
 }
 
 // Net describes a network interface entry (netN), following the
-// PVE::QemuServer::Network property grammar. Proxmox accepts the NIC
-// model either as a bare first value or as model=<e1000|virtio|...>.
+// PVE::QemuServer::Network property grammar. Proxmox registers each NIC
+// model name (e.g. "virtio", "e1000") as an alias key for the MAC address,
+// so the model and MAC travel together as a single "<model>=<macaddr>"
+// component, e.g. "virtio=32:90:AC:10:00:91,bridge=vmbr0,...".
 type Net struct {
 	Model    string   `cfg:"model,omitempty,default"`
 	Bridge   string   `cfg:"bridge,omitempty"`
@@ -409,16 +412,66 @@ type Net struct {
 	Trunks   []string `cfg:"trunks,omitempty"`
 }
 
+// netKnownKeys lists the netN property keys handled directly by the
+// generic property struct tags. Any other key is a NIC model name used as
+// an alias for the MAC address (see Net's doc comment).
+var netKnownKeys = map[string]bool{
+	"model": true, "bridge": true, "firewall": true, "link_down": true,
+	"macaddr": true, "mtu": true, "queues": true, "rate": true, "tag": true, "trunks": true,
+}
+
 // String converts the network interface settings to Proxmox's
 // property-string format.
 func (n Net) String() string {
-	value, _ := property.Marshal(n)
-	return value
+	rest := n
+	rest.Model = ""
+	rest.MACAddr = ""
+	value, _ := property.Marshal(rest)
+
+	var alias string
+	switch {
+	case n.Model != "" && n.MACAddr != "":
+		alias = n.Model + "=" + n.MACAddr
+	case n.Model != "":
+		alias = n.Model
+	case n.MACAddr != "":
+		alias = "macaddr=" + n.MACAddr
+	}
+
+	switch {
+	case alias == "":
+		return value
+	case value == "":
+		return alias
+	default:
+		return alias + "," + value
+	}
 }
 
 // UnmarshalJSON converts Proxmox's netN property string into Net.
 func (n *Net) UnmarshalJSON(data []byte) error {
-	return unmarshalPropertyJSON(data, n, "net")
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return fmt.Errorf("qemu: net must be a property string: %w", err)
+	}
+
+	*n = Net{}
+
+	var rest []string
+	for item := range strings.SplitSeq(value, ",") {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		if key, val, ok := strings.Cut(item, "="); ok && !netKnownKeys[key] {
+			n.Model = key
+			n.MACAddr = val
+			continue
+		}
+		rest = append(rest, item)
+	}
+
+	return property.Unmarshal(strings.Join(rest, ","), n)
 }
 
 // Watchdog describes a virtual hardware watchdog device. Proxmox
