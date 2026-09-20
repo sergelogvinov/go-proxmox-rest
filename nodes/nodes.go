@@ -20,6 +20,7 @@ package nodes
 
 import (
 	"context"
+	"io"
 
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/capabilities"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/ceph"
@@ -40,12 +41,14 @@ import (
 // Create/Delete are carried here, even though only nodes/network needs
 // them so far, for the same reason cluster.Getter carries CreateValues/
 // UpdateValues: so every child package can be wired in from the single
-// c.client value below.
+// c.client value below. Upload is likewise carried only for
+// nodes/storage's Upload.
 type Getter interface {
 	Get(ctx context.Context, path string, out any, params map[string]string) error
 	Create(ctx context.Context, path string, out any, params map[string]string) error
 	Update(ctx context.Context, path string, out any, params map[string]string) error
 	Delete(ctx context.Context, path string, out any, params map[string]string) error
+	Upload(ctx context.Context, path string, out any, fields map[string]string, fieldName, fileName string, file io.Reader) error
 }
 
 // Client provides access to a single node's API section. The node's name

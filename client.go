@@ -23,6 +23,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -398,6 +399,21 @@ func (c *Client) CreateValues(ctx context.Context, path string, out any, params 
 // (see doValues).
 func (c *Client) UpdateValues(ctx context.Context, path string, out any, params url.Values) error {
 	return c.doValues(ctx, http.MethodPut, path, out, params)
+}
+
+// Upload performs a multipart/form-data POST request: fields are sent as
+// ordinary form fields and file is streamed as the part named fieldName,
+// with fileName carried as that part's Content-Disposition filename.
+// Used only by endpoints that accept a raw file upload (e.g.
+// nodes/{node}/storage/{storage}/upload) rather than form-encoded params.
+func (c *Client) Upload(ctx context.Context, path string, out any, fields map[string]string, fieldName, fileName string, file io.Reader) error {
+	req := c.rc.R().SetContext(ctx)
+	if len(fields) > 0 {
+		req.SetMultipartFormData(fields)
+	}
+	req.SetFileReader(fieldName, fileName, file)
+
+	return c.send(ctx, http.MethodPost, path, out, req)
 }
 
 // Cluster returns a client for the cluster API section (/cluster).

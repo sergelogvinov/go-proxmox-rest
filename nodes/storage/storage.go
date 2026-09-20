@@ -18,28 +18,31 @@ limitations under the License.
 // (endpoints under /nodes/{node}/storage): each storage's status on that
 // node, its content (volumes), and backup retention pruning.
 //
-// This intentionally stops short of the full endpoint surface under
-// /nodes/{node}/storage/{storage}/*: rrd/rrddata (graph data meant for the
-// web UI), upload (multipart file upload), file-restore (single-file
-// restore from a backup, a binary download), and import-metadata
-// (introspection of an importable guest, tied to the import workflow
-// this client doesn't otherwise support yet). None of these fit this
-// client's JSON-envelope request/response model as cleanly as the rest
-// of the API, or are worth the surface area yet. Content().Copy,
-// DownloadURL, OCIRegistryPull, and Identity are the exceptions: despite
+// This intentionally stops short of most of the remaining endpoint
+// surface under /nodes/{node}/storage/{storage}/*: rrd/rrddata (graph
+// data meant for the web UI), file-restore (single-file restore from a
+// backup, a binary download), and import-metadata (introspection of an
+// importable guest, tied to the import workflow this client doesn't
+// otherwise support yet). None of these fit this client's JSON-envelope
+// request/response model as cleanly as the rest of the API, or are
+// worth the surface area yet. Content().Copy, DownloadURL,
+// OCIRegistryPull, Upload, and Identity are the exceptions: despite
 // Proxmox's own source marking Copy "experimental - do not use", it has
 // shipped unchanged across many releases and is the only way to copy or
 // move an existing volume (e.g. across nodes) without going through the
-// guest config; DownloadURL and OCIRegistryPull are server-side fetches
-// that, like Copy, return a plain UPID and fit the envelope model just
-// as well as any other task-returning write; Identity is a plain GET
-// returning a small {id, type} object and fits the model as directly as
-// Status does. All four are included, Copy with its caveat documented
-// on its own method.
+// guest config; DownloadURL, OCIRegistryPull, and Upload are the ways to
+// get a file into storage without an existing guest — DownloadURL and
+// OCIRegistryPull as server-side fetches, Upload as a client-supplied
+// multipart file — and all three, like Copy, return a plain UPID and
+// fit the envelope model just as well as any other task-returning
+// write; Identity is a plain GET returning a small {id, type} object
+// and fits the model as directly as Status does. All five are included,
+// Copy with its caveat documented on its own method.
 package storage
 
 import (
 	"context"
+	"io"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
 )
@@ -52,6 +55,8 @@ type Getter interface {
 	Create(ctx context.Context, path string, out any, params map[string]string) error
 	Update(ctx context.Context, path string, out any, params map[string]string) error
 	Delete(ctx context.Context, path string, out any, params map[string]string) error
+	// Upload performs a multipart/form-data POST, used only by Upload.
+	Upload(ctx context.Context, path string, out any, fields map[string]string, fieldName, fileName string, file io.Reader) error
 }
 
 // Client provides access to the /nodes/{node}/storage resource tree,
