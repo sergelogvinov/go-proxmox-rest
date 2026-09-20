@@ -455,6 +455,28 @@ func (e *EFIDisk) UnmarshalJSON(data []byte) error {
 	return unmarshalPropertyJSON(data, e, "efidisk0")
 }
 
+// TPMState describes the guest's TPM state disk (tpmstate0), backing a
+// virtual TPM device. Proxmox accepts the backing volume either as a
+// bare first value or as file=<volume>.
+type TPMState struct {
+	File    string `cfg:"file,omitempty,default"`
+	Version string `cfg:"version,omitempty"`
+	Size    string `cfg:"size,omitempty"`
+}
+
+// String converts the TPM state disk settings to Proxmox's
+// property-string format.
+func (t TPMState) String() string {
+	value, _ := property.Marshal(t)
+	return value
+}
+
+// UnmarshalJSON converts Proxmox's tpmstate0 property string into
+// TPMState.
+func (t *TPMState) UnmarshalJSON(data []byte) error {
+	return unmarshalPropertyJSON(data, t, "tpmstate0")
+}
+
 // Audio describes a virtual audio device (audio0). Proxmox accepts
 // the audio hardware either as a bare first value or as
 // device=<intel-hda|AC97>.
@@ -685,7 +707,9 @@ type Config struct {
 	// TDF enables/disables the time-drift fix.
 	TDF *bool `json:"tdf,omitempty" url:"tdf,omitempty"`
 	// EFIDisk configures the EFI disk for the guest.
-	EFIDisk *EFIDisk `json:"efidisk,omitempty" url:"efidisk,omitempty"`
+	EFIDisk *EFIDisk `json:"efidisk0,omitempty" url:"efidisk0,omitempty"`
+	// TPMState configures the guest's virtual TPM state disk.
+	TPMState *TPMState `json:"tpmstate0,omitempty" url:"tpmstate0,omitempty"`
 	// LocalTime sets the RTC to local time instead of UTC.
 	LocalTime *bool `json:"localtime,omitempty" url:"localtime,omitempty"`
 	// Agent configures the QEMU Guest Agent, e.g. "1" or
@@ -713,8 +737,6 @@ type Config struct {
 	// RNG0 configures a VirtIO random number generator, e.g.
 	// "/dev/urandom,max_bytes=1024,period=1000".
 	RNG0 *RNG0 `json:"rng0,omitempty" url:"rng0,omitempty"`
-	// CDROM is an alias for the ide2 drive.
-	CDROM string `json:"cdrom,omitempty" url:"cdrom,omitempty"`
 	// HotPlug selectively enables hotplug features, e.g.
 	// "network,disk,usb"; "0" disables hotplug entirely.
 	HotPlug []string `json:"hotplug,omitempty" url:"hotplug,omitempty"`

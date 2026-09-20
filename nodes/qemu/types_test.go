@@ -349,6 +349,37 @@ func TestRNG0(t *testing.T) {
 	}
 }
 
+func TestTPMState(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "bare volume",
+			input: `"local-lvm:vm-100-disk-1"`,
+			want:  "local-lvm:vm-100-disk-1",
+		},
+		{
+			name:  "named file with version",
+			input: `"file=local-lvm:vm-100-disk-1,version=v2.0"`,
+			want:  "local-lvm:vm-100-disk-1,version=v2.0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got TPMState
+			if err := got.UnmarshalJSON([]byte(tt.input)); err != nil {
+				t.Fatalf("UnmarshalJSON() error = %v", err)
+			}
+			if got.String() != tt.want {
+				t.Fatalf("UnmarshalJSON() = %q, want %q", got.String(), tt.want)
+			}
+		})
+	}
+}
+
 func TestMachine(t *testing.T) {
 	tests := []struct {
 		name  string
