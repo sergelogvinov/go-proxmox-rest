@@ -60,7 +60,7 @@ func TestStorageLifecycle(t *testing.T) {
 	e2e.RequireError(t, "get absent storage", err)
 
 	// 3. create — a uniquely-named dir storage.
-	stCreated, err := sc.Create(ctx, &storage.Options{
+	stCreated, err := sc.Create(ctx, &storage.Storage{
 		ID:      name,
 		Type:    "dir",
 		Content: []string{"iso", "vztmpl"},
@@ -69,8 +69,8 @@ func TestStorageLifecycle(t *testing.T) {
 	e2e.RequireNoError(t, "create storage", err)
 
 	// Verify that the created storage has the expected ID.
-	if stCreated.Storage != name {
-		t.Errorf("create: Storage = %q, want %q", stCreated.Storage, name)
+	if stCreated.ID != name {
+		t.Errorf("create: ID = %q, want %q", stCreated.ID, name)
 	}
 	if stCreated.Type != "dir" {
 		t.Errorf("create: Type = %q, want %q", stCreated.Type, "dir")
@@ -79,24 +79,24 @@ func TestStorageLifecycle(t *testing.T) {
 	// 4. get — verify the create.
 	st, err := sc.Get(ctx, name)
 	e2e.RequireNoError(t, "get storage after create", err)
-	if st.Storage != name {
-		t.Errorf("get: Storage = %q, want %q", st.Storage, name)
+	if st.ID != name {
+		t.Errorf("get: ID = %q, want %q", st.ID, name)
 	}
 	if st.Type != "dir" {
 		t.Errorf("get: Type = %q, want %q", st.Type, "dir")
 	}
-	if st.Path != path {
-		t.Errorf("get: Path = %q, want %q", st.Path, path)
+	if st.Path == nil || *st.Path != path {
+		t.Errorf("get: Path = %v, want %q", st.Path, path)
 	}
 	requireContent(t, "get", st.Content, []string{"iso", "vztmpl"})
 
 	// 5. update — mutate the content list.
 	newContent := []string{"iso", "backup"}
-	stUpdated, err := sc.Update(ctx, name, &storage.Options{Content: newContent})
+	stUpdated, err := sc.Update(ctx, name, &storage.Storage{Content: newContent})
 	e2e.RequireNoError(t, "update storage", err)
 
-	if stUpdated.Storage != name {
-		t.Errorf("update: Storage = %q, want %q", stUpdated.Storage, name)
+	if stUpdated.ID != name {
+		t.Errorf("update: ID = %q, want %q", stUpdated.ID, name)
 	}
 
 	// 6. get — verify the update.
@@ -146,7 +146,7 @@ func TestStorageListTypeFilter(t *testing.T) {
 		})
 	}
 
-	_, err := sc.Create(ctx, &storage.Options{
+	_, err := sc.Create(ctx, &storage.Storage{
 		ID:      name,
 		Type:    "dir",
 		Content: []string{"iso"},
@@ -162,7 +162,7 @@ func TestStorageListTypeFilter(t *testing.T) {
 	}
 	for _, st := range dirs {
 		if st.Type != "dir" {
-			t.Errorf("list type=dir: storage %q has Type %q, want %q", st.Storage, st.Type, "dir")
+			t.Errorf("list type=dir: storage %q has Type %q, want %q", st.ID, st.Type, "dir")
 		}
 	}
 
@@ -203,7 +203,7 @@ func TestStorageUpdateContent(t *testing.T) {
 		})
 	}
 
-	_, err := sc.Create(ctx, &storage.Options{
+	_, err := sc.Create(ctx, &storage.Storage{
 		ID:      name,
 		Type:    "dir",
 		Content: []string{"iso"},
@@ -212,7 +212,7 @@ func TestStorageUpdateContent(t *testing.T) {
 	e2e.RequireNoError(t, "create storage", err)
 
 	newContent := []string{"vztmpl", "backup"}
-	_, err = sc.Update(ctx, name, &storage.Options{Content: newContent})
+	_, err = sc.Update(ctx, name, &storage.Storage{Content: newContent})
 	e2e.RequireNoError(t, "update storage (content)", err)
 
 	st, err := sc.Get(ctx, name)
@@ -238,10 +238,10 @@ func TestStorageValidation(t *testing.T) {
 	_, err := sc.Create(ctx, nil)
 	e2e.RequireError(t, "create with nil options", err)
 
-	_, err = sc.Create(ctx, &storage.Options{Type: "dir"})
+	_, err = sc.Create(ctx, &storage.Storage{Type: "dir"})
 	e2e.RequireError(t, "create without id", err)
 
-	_, err = sc.Create(ctx, &storage.Options{ID: "no-type"})
+	_, err = sc.Create(ctx, &storage.Storage{ID: "no-type"})
 	e2e.RequireError(t, "create without type", err)
 
 	_, err = sc.Update(ctx, "does-not-matter", nil)
@@ -265,5 +265,5 @@ func requireContent(t *testing.T, what string, got, want []string) {
 // containsStorage reports whether the slice contains a storage with the
 // given ID.
 func containsStorage(list []storage.Storage, id string) bool {
-	return slices.ContainsFunc(list, func(s storage.Storage) bool { return s.Storage == id })
+	return slices.ContainsFunc(list, func(s storage.Storage) bool { return s.ID == id })
 }

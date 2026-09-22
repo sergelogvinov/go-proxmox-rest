@@ -19,7 +19,6 @@ package fakeapi
 import (
 	"net/http"
 	"sort"
-	"strings"
 
 	rootstorage "github.com/sergelogvinov/go-proxmox-rest/storage"
 )
@@ -37,7 +36,7 @@ func handleStorageRootList(state *clusterState) http.HandlerFunc {
 
 		list := make([]rootstorage.Storage, 0, len(ids))
 		for _, id := range ids {
-			list = append(list, storageRootView(state, id, false))
+			list = append(list, storageRootView(state, id))
 		}
 
 		writeData(w, list)
@@ -57,17 +56,19 @@ func handleStorageRootGet(state *clusterState) http.HandlerFunc {
 			return
 		}
 
-		writeData(w, storageRootView(state, id, true))
+		writeData(w, storageRootView(state, id))
 	}
 }
 
 // storageRootView builds the root /storage config view for id, aggregating
-// across every node that carries it: Nodes lists them all (comma-separated,
-// matching Storage.Nodes' documented grammar), and Type/Shared/capacity come
-// from the first such node (sorted) — every node seeding the same storage id
-// is expected to agree on its config, mirroring real Proxmox's single shared
-// /etc/pve/storage.cfg entry.
-func storageRootView(state *clusterState, id string, includeCapacity bool) rootstorage.Storage {
+// across every node that carries it: Nodes lists them all, matching
+// Storage.Nodes' documented grammar, and Type/Shared come from the first
+// such node (sorted) — every node seeding the same storage id is expected
+// to agree on its config, mirroring real Proxmox's single shared
+// /etc/pve/storage.cfg entry. Unlike GET /nodes/{node}/storage/{storage}/
+// status, the cluster-wide config endpoint reports no capacity/active
+// state.
+func storageRootView(state *clusterState, id string) rootstorage.Storage {
 	var nodes []string
 
 	var first *storageState
@@ -86,21 +87,13 @@ func storageRootView(state *clusterState, id string, includeCapacity bool) roots
 	}
 
 	s := rootstorage.Storage{
-		Storage: id,
-		Nodes:   strings.Join(nodes, ","),
+		ID:    id,
+		Nodes: nodes,
 	}
 
 	if first != nil {
 		s.Type = first.typ
-		s.Shared = boolToInt(first.shared)
-		s.Enabled = 1
-		s.Active = 1
-
-		if includeCapacity {
-			s.TotalSpace = first.total
-			s.SpaceUsed = first.used
-			s.AvailableSpace = first.avail
-		}
+		s.Shared = first.shared
 	}
 
 	return s

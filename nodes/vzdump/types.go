@@ -64,7 +64,7 @@ const (
 // string (Performance, Fleecing, PruneBackups) are kept as opaque
 // strings rather than parsed further; see PVE::VZDump::Common's
 // "backup-performance"/"backup-fleecing" formats and the root package's
-// storage.Options.PruneBackups for the same convention.
+// storage.Storage.PruneBackups for the same convention.
 type Options struct {
 	// VMID lists the guest(s) to back up. Empty (with All unset) is
 	// invalid — Create requires either VMID or All.
