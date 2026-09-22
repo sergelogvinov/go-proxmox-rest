@@ -80,7 +80,7 @@ func (c *Client) Get(ctx context.Context, storageID string) (*Storage, error) {
 // Create creates a new storage via POST /storage.
 //
 // +proxmox:rbac:path=/storage,method=POST,privs=Datastore.Allocate,match=all
-func (c *Client) Create(ctx context.Context, opts *Options) (*Storage, error) {
+func (c *Client) Create(ctx context.Context, opts *Storage) (*Storage, error) {
 	if opts == nil {
 		return nil, fmt.Errorf("storage: options are required")
 	}
@@ -107,7 +107,7 @@ func (c *Client) Create(ctx context.Context, opts *Options) (*Storage, error) {
 // Update modifies an existing storage via PUT /storage/{storage}.
 //
 // +proxmox:rbac:path=/storage,method=PUT,privs=Datastore.Allocate,match=all
-func (c *Client) Update(ctx context.Context, storageID string, opts *Options) (*Storage, error) {
+func (c *Client) Update(ctx context.Context, storageID string, opts *Storage) (*Storage, error) {
 	params, err := opts.encode()
 	if err != nil {
 		return nil, err

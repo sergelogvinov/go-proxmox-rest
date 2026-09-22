@@ -47,7 +47,7 @@ func newRootDirStorage(t *testing.T, cfg *e2e.E2EConfig, client *proxmox.Client)
 		})
 	}
 
-	_, err := sc.Create(ctx, &rootstorage.Options{
+	_, err := sc.Create(ctx, &rootstorage.Storage{
 		ID:      name,
 		Type:    "dir",
 		Content: []string{"rootdir"},
