@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/types"
 )
 
 // Pool describes a resource pool as returned by GET /pools and
@@ -53,8 +54,8 @@ type PoolMember struct {
 	Template int `json:"template,omitempty" url:"template,omitempty"`
 	// CGroupMode is the cgroup mode of the guest (only for qemu/lxc).
 	CGroupMode string `json:"cgroup-mode,omitempty" url:"cgroup-mode,omitempty"`
-	// Tags is the comma-separated tag list of the guest.
-	Tags string `json:"tags,omitempty" url:"tags,omitempty"`
+	// Tags is the guest's tag list.
+	Tags types.Tags `json:"tags,omitempty" url:"tags,omitempty"`
 	// Uptime is the guest uptime in seconds (only for qemu/lxc).
 	Uptime int `json:"uptime,omitempty" url:"uptime,omitempty"`
 	// MaxCPU is the maximum CPU count (only for qemu/lxc).

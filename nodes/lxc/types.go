@@ -184,7 +184,7 @@ type Config struct {
 	// UI's summary panel and saved as a comment inside the config file.
 	Description string `json:"description,omitempty" url:"description,omitempty"`
 	// Tags is the container's tag list (meta information only).
-	Tags []string `json:"tags,omitempty" url:"tags,omitempty"`
+	Tags types.Tags `json:"tags,omitempty" url:"tags,omitempty"`
 	// OSType is the guest OS type, used to select lxc setup scripts,
 	// e.g. "debian", "alpine", "unmanaged".
 	OSType *string `json:"ostype,omitempty" url:"ostype,omitempty"`
@@ -357,7 +357,7 @@ type Status struct {
 	// Lock is the current config lock holder, if any.
 	Lock string `json:"lock,omitempty" url:"lock,omitempty"`
 	// Tags is the container's configured tags.
-	Tags string `json:"tags,omitempty" url:"tags,omitempty"`
+	Tags types.Tags `json:"tags,omitempty" url:"tags,omitempty"`
 	// Template marks the container as a template.
 	Template bool `json:"template,omitempty" url:"template,omitempty"`
 	// PressureCPUSome is the CPU "some" pressure stall average over the

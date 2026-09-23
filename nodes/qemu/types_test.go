@@ -95,18 +95,18 @@ func TestTagsUnmarshalJSON(t *testing.T) {
 	}
 
 	want := []string{"prod", "web", "team-a"}
-	if len(value.Tags) != len(want) {
+	if len(value) != len(want) {
 		t.Fatalf("unexpected Tags value: %+v", value)
 	}
 	for i := range want {
-		if value.Tags[i] != want[i] {
+		if value[i] != want[i] {
 			t.Fatalf("unexpected Tags value: %+v", value)
 		}
 	}
 }
 
 func TestTagsString(t *testing.T) {
-	value := Tags{Tags: []string{"prod", "web", "team-a"}}
+	value := Tags{"prod", "web", "team-a"}
 
 	const expected = "prod;web;team-a"
 	if actual := value.String(); actual != expected {

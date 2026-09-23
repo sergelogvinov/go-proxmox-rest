@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/types"
 )
 
 // Status contains the cluster status returned by GET /cluster/status.
@@ -148,8 +149,8 @@ type Resource struct {
 	Status string `json:"status,omitempty" url:"status,omitempty"`
 	// Template is 1 if the guest is a template (vm entries only).
 	Template int `json:"template,omitempty" url:"template,omitempty"`
-	// Tags is the comma-separated tag list (vm entries only).
-	Tags string `json:"tags,omitempty" url:"tags,omitempty"`
+	// Tags is the guest's tag list (vm entries only).
+	Tags types.Tags `json:"tags,omitempty" url:"tags,omitempty"`
 	// Uptime is the uptime in seconds.
 	Uptime int `json:"uptime,omitempty" url:"uptime,omitempty"`
 	// Level is the node's cluster support level (node entries only).
@@ -240,9 +241,9 @@ type Options struct {
 	// NextID is the property-string constraining VMID auto-allocation,
 	// e.g. "lower=100,upper=999999999".
 	NextID string `json:"next-id,omitempty" url:"next-id,omitempty"`
-	// RegisteredTags is the comma-separated list of tags that are
-	// managed/registered cluster-wide.
-	RegisteredTags string `json:"registered-tags,omitempty" url:"registered-tags,omitempty"`
+	// RegisteredTags is the list of tags that are managed/registered
+	// cluster-wide.
+	RegisteredTags types.Tags `json:"registered-tags,omitempty" url:"registered-tags,omitempty"`
 	// TagStyle is the property-string configuring tag appearance and
 	// ordering in the UI.
 	TagStyle string `json:"tag-style,omitempty" url:"tag-style,omitempty"`

@@ -35,9 +35,9 @@ func TestDecodeConfigTags(t *testing.T) {
 	if cfg.Tags == nil {
 		t.Fatal("Tags = nil, want populated")
 	}
-	want := []string{"prod", "web", "team-a"}
-	if !reflect.DeepEqual(cfg.Tags.Tags, want) {
-		t.Fatalf("Tags.Tags = %#v, want %#v", cfg.Tags.Tags, want)
+	want := Tags{"prod", "web", "team-a"}
+	if !reflect.DeepEqual(*cfg.Tags, want) {
+		t.Fatalf("Tags = %#v, want %#v", *cfg.Tags, want)
 	}
 }
 
@@ -52,7 +52,7 @@ func TestDecodeConfigNoTags(t *testing.T) {
 }
 
 func TestEncodeConfigTags(t *testing.T) {
-	p, err := encodeConfig(&Config{Tags: &Tags{Tags: []string{"prod", "web", "team-a"}}})
+	p, err := encodeConfig(&Config{Tags: &Tags{"prod", "web", "team-a"}})
 	if err != nil {
 		t.Fatalf("encodeConfig() error = %v", err)
 	}
