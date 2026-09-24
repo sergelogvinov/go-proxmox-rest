@@ -23,6 +23,7 @@ package tasks
 
 import (
 	"context"
+	"strings"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
 )
@@ -74,14 +75,20 @@ func (c *Client) List(ctx context.Context, opts *ListOptions) ([]Task, error) {
 }
 
 // Status retrieves a single task's current status via
-// GET /nodes/{node}/tasks/{upid}/status.
+// GET /nodes/{node}/tasks/{upid}/status. {node} is the node embedded in
+// upid itself (see taskNode), which does not always match the node this
+// Client is scoped to — e.g. a storage upload's imgcopy task can end up
+// running on whichever node actually hosts that storage, not the node
+// the upload request's own URL named. Addressing the wrong node fails
+// with "Parameter verification failed" (upid doesn't match {node}) or
+// "no such task" (right node, but it never ran this upid).
 // This user=>all endpoint has no fixed privilege for the UPID owner; a non-owner
 // conditionally requires Sys.Audit on /nodes/{node}.
 //
 // +proxmox:rbac:path=/nodes/{node},method=GET,privs=Sys.Audit,match=any
 func (c *Client) Status(ctx context.Context, upid string) (*Status, error) {
 	status := &Status{}
-	if err := c.client.Get(ctx, "/nodes/"+c.node+"/tasks/"+upid+"/status", status, nil); err != nil {
+	if err := c.client.Get(ctx, "/nodes/"+taskNode(c.node, upid)+"/tasks/"+upid+"/status", status, nil); err != nil {
 		return nil, err
 	}
 
@@ -89,8 +96,8 @@ func (c *Client) Status(ctx context.Context, upid string) (*Status, error) {
 }
 
 // Log retrieves a single task's log via GET /nodes/{node}/tasks/{upid}/log.
-// opts may be nil to request Proxmox's default window (the first 50
-// lines).
+// {node} is upid's own node — see Status's doc comment. opts may be nil
+// to request Proxmox's default window (the first 50 lines).
 // This user=>all endpoint has no fixed privilege for the UPID owner; a non-owner
 // conditionally requires Sys.Audit on /nodes/{node}.
 //
@@ -106,7 +113,7 @@ func (c *Client) Log(ctx context.Context, upid string, opts *LogOptions) ([]LogE
 	}
 
 	var entries []LogEntry
-	if err := c.client.Get(ctx, "/nodes/"+c.node+"/tasks/"+upid+"/log", &entries, p); err != nil {
+	if err := c.client.Get(ctx, "/nodes/"+taskNode(c.node, upid)+"/tasks/"+upid+"/log", &entries, p); err != nil {
 		return nil, err
 	}
 
@@ -114,10 +121,28 @@ func (c *Client) Log(ctx context.Context, upid string, opts *LogOptions) ([]LogE
 }
 
 // Stop terminates a running task via DELETE /nodes/{node}/tasks/{upid}.
+// {node} is upid's own node — see Status's doc comment.
 // This user=>all endpoint has no fixed privilege for the UPID owner; a non-owner
 // conditionally requires Sys.Modify on /nodes/{node}.
 //
 // +proxmox:rbac:path=/nodes/{node},method=DELETE,privs=Sys.Modify,match=any
 func (c *Client) Stop(ctx context.Context, upid string) error {
-	return c.client.Delete(ctx, "/nodes/"+c.node+"/tasks/"+upid, nil, nil)
+	return c.client.Delete(ctx, "/nodes/"+taskNode(c.node, upid)+"/tasks/"+upid, nil, nil)
+}
+
+// taskNode returns the node embedded in upid — a UPID's format is
+// "UPID:{node}:{pid}:{pstart}:{starttime}:{type}:{id}:{user}:" — falling
+// back to defaultNode if upid isn't in the expected format. Per-task
+// endpoints (status/log/stop) must address this node, which is not
+// necessarily the node a Client happens to be scoped to (see Status's
+// doc comment): Proxmox spawns a task's worker process on whichever node
+// actually performs the work, and that's the only node that can answer
+// for it.
+func taskNode(defaultNode, upid string) string {
+	parts := strings.SplitN(upid, ":", 3)
+	if len(parts) < 2 || parts[0] != "UPID" || parts[1] == "" {
+		return defaultNode
+	}
+
+	return parts[1]
 }

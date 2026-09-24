@@ -455,7 +455,24 @@ func (n *Net) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("qemu: net must be a property string: %w", err)
 	}
 
-	*n = Net{}
+	parsed, err := parseNet(value)
+	if err != nil {
+		return err
+	}
+
+	*n = parsed
+
+	return nil
+}
+
+// parseNet parses a netN property string into a Net, pulling out the
+// "<model>=<macaddr>" alias component (an arbitrary, dynamic key not
+// covered by Net's cfg tags) before handing the rest to property.Unmarshal.
+// Used both by UnmarshalJSON and by config.go's setIndexedNet, which must
+// not fall back to the alias-unaware property.Unmarshal directly or it
+// silently drops the model/macaddr pair.
+func parseNet(value string) (Net, error) {
+	n := Net{}
 
 	var rest []string
 	for item := range strings.SplitSeq(value, ",") {
@@ -471,7 +488,11 @@ func (n *Net) UnmarshalJSON(data []byte) error {
 		rest = append(rest, item)
 	}
 
-	return property.Unmarshal(strings.Join(rest, ","), n)
+	if err := property.Unmarshal(strings.Join(rest, ","), &n); err != nil {
+		return Net{}, err
+	}
+
+	return n, nil
 }
 
 // Watchdog describes a virtual hardware watchdog device. Proxmox

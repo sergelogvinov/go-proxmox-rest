@@ -252,14 +252,16 @@ func setIndexedDrive(m *map[int]Drive, index int, v string) {
 }
 
 // setIndexedNet parses v as a netN property string and stores it at
-// (*m)[index], allocating *m on first use.
+// (*m)[index], allocating *m on first use. Uses parseNet rather than
+// property.Unmarshal directly, since the model=macaddr alias (e.g.
+// "virtio=AA:BB:...") is a dynamic key that property.Unmarshal's
+// cfg-tag matching cannot recognize on its own.
 func setIndexedNet(m *map[int]Net, index int, v string) {
 	if *m == nil {
 		*m = map[int]Net{}
 	}
 
-	net := Net{}
-	_ = property.Unmarshal(v, &net)
+	net, _ := parseNet(v)
 	(*m)[index] = net
 }
 

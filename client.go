@@ -19,11 +19,13 @@ limitations under the License.
 package proxmox
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
@@ -406,14 +408,85 @@ func (c *Client) UpdateValues(ctx context.Context, path string, out any, params 
 // with fileName carried as that part's Content-Disposition filename.
 // Used only by endpoints that accept a raw file upload (e.g.
 // nodes/{node}/storage/{storage}/upload) rather than form-encoded params.
+//
+// The multipart body is built by hand instead of via resty's
+// SetMultipartFormData/SetFileReader, which always streams the body
+// through an io.Pipe with no Content-Length, forcing
+// Transfer-Encoding: chunked. pveproxy rejects that on upload endpoints
+// with "501 chunked transfer encoding not supported", so the exact body
+// size is computed up front (buffering file into memory only if it
+// doesn't support io.Seeker) and set via SetContentLength.
+//
+// The multipart-framing technique — write the fields and the file part's
+// header into a buffer, close the writer to finalize the closing
+// boundary, then splice file's content in at the recorded header offset
+// — matches other Proxmox Go clients doing the same non-chunked upload
+// (e.g. luthermonson/go-proxmox's Client.UploadReader), rather than
+// reconstructing the closing boundary by hand.
 func (c *Client) Upload(ctx context.Context, path string, out any, fields map[string]string, fieldName, fileName string, file io.Reader) error {
-	req := c.rc.R().SetContext(ctx)
-	if len(fields) > 0 {
-		req.SetMultipartFormData(fields)
+	size, file, err := seekableSize(file)
+	if err != nil {
+		return fmt.Errorf("upload: determining file size: %w", err)
 	}
-	req.SetFileReader(fieldName, fileName, file)
+
+	var b bytes.Buffer
+
+	mw := multipart.NewWriter(&b)
+	for k, v := range fields {
+		if err := mw.WriteField(k, v); err != nil {
+			return fmt.Errorf("upload: writing field %q: %w", k, err)
+		}
+	}
+	if _, err := mw.CreateFormFile(fieldName, fileName); err != nil {
+		return fmt.Errorf("upload: creating file part: %w", err)
+	}
+
+	header := b.Len()
+	if err := mw.Close(); err != nil {
+		return fmt.Errorf("upload: closing multipart writer: %w", err)
+	}
+
+	body := io.MultiReader(bytes.NewReader(b.Bytes()[:header]), file, bytes.NewReader(b.Bytes()[header:]))
+	contentLength := int64(b.Len()) + size
+
+	req := c.rc.R().SetContext(ctx)
+	req.SetHeader("Content-Type", mw.FormDataContentType())
+	req.SetBody(body)
+	req.SetContentLength(contentLength)
 
 	return c.send(ctx, http.MethodPost, path, out, req)
+}
+
+// seekableSize returns file's remaining size and a reader that yields the
+// same content from the current position. It uses io.Seeker when
+// available (e.g. *os.File, *bytes.Reader) to avoid buffering; otherwise
+// it reads file fully into memory, since Upload must know the exact
+// multipart body length up front.
+func seekableSize(file io.Reader) (int64, io.Reader, error) {
+	if seeker, ok := file.(io.Seeker); ok {
+		cur, err := seeker.Seek(0, io.SeekCurrent)
+		if err != nil {
+			return 0, nil, err
+		}
+
+		end, err := seeker.Seek(0, io.SeekEnd)
+		if err != nil {
+			return 0, nil, err
+		}
+
+		if _, err := seeker.Seek(cur, io.SeekStart); err != nil {
+			return 0, nil, err
+		}
+
+		return end - cur, file, nil
+	}
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return int64(len(data)), bytes.NewReader(data), nil
 }
 
 // Cluster returns a client for the cluster API section (/cluster).

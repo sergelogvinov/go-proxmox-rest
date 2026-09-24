@@ -71,3 +71,34 @@ func TestEncodeConfigNoTags(t *testing.T) {
 		t.Fatalf("params contains %q for a nil Tags: %v", "tags", p)
 	}
 }
+
+// TestDecodeConfigNet guards against decodeConfig (via setIndexedNet)
+// dropping the model=macaddr alias — property.Unmarshal alone can't
+// recognize it since the model name ("virtio") is a dynamic key, not one
+// of Net's cfg tags. A regression here silently strips Model/MACAddr, so
+// a decoded config re-sent through UpdateConfig loses the required
+// "netN.model" property.
+func TestDecodeConfigNet(t *testing.T) {
+	raw := map[string]json.RawMessage{
+		"net0": json.RawMessage(`"virtio=BC:24:11:CD:B9:41,bridge=vmbr0"`),
+	}
+
+	cfg, err := decodeConfig(raw)
+	if err != nil {
+		t.Fatalf("decodeConfig() error = %v", err)
+	}
+
+	got, ok := cfg.Net[0]
+	if !ok {
+		t.Fatal("Net[0] missing, want populated")
+	}
+
+	want := Net{Model: "virtio", MACAddr: "BC:24:11:CD:B9:41", Bridge: "vmbr0"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Net[0] = %#v, want %#v", got, want)
+	}
+
+	if got := got.String(); got != "virtio=BC:24:11:CD:B9:41,bridge=vmbr0" {
+		t.Fatalf("Net[0].String() = %q, want round-trip of the original value", got)
+	}
+}
