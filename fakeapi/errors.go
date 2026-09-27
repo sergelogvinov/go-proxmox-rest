@@ -18,6 +18,7 @@ package fakeapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -64,6 +65,35 @@ func methodNotAllowed(w http.ResponseWriter) {
 // any 5xx, 596 included.
 func unreachable(w http.ResponseWriter) {
 	writeError(w, 596, "no route to host (596)", nil)
+}
+
+// writeStatusLineError writes a raw HTTP/1.1 response whose status line's
+// reason phrase is message, instead of the standard net/http reason text
+// for status. This exists because proxmox.APIError.Message actually comes
+// from the raw HTTP status line (resty's Response.Status) whenever the
+// body carries no "errors" map — see the root package's newAPIError, which
+// never reads this envelope's own "message" field in that case. A few real
+// Proxmox error paths (e.g. HA groups migrated to rules) convey their
+// message this way, and net/http's ResponseWriter has no method to set a
+// custom reason phrase, so the response is hand-written after hijacking
+// the connection, the same way hijackConnRefused bypasses it below.
+func writeStatusLineError(w http.ResponseWriter, status int, message string) {
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		w.WriteHeader(status)
+		return
+	}
+
+	conn, buf, err := hj.Hijack()
+	if err != nil {
+		return
+	}
+	defer func() { _ = conn.Close() }()
+
+	body := `{"data":null}`
+	fmt.Fprintf(buf, "HTTP/1.1 %d %s\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s",
+		status, message, len(body), body)
+	_ = buf.Flush()
 }
 
 // hijackConnRefused closes the underlying TCP connection outright instead

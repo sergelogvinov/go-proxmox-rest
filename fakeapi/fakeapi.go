@@ -34,6 +34,7 @@ import (
 	"testing"
 
 	proxmox "github.com/sergelogvinov/go-proxmox-rest"
+	"github.com/sergelogvinov/go-proxmox-rest/cluster/ha"
 )
 
 // fakeTokenID and fakeTokenSecret are the fixed credentials Cluster.Client
@@ -126,6 +127,68 @@ func WithHAGroup(id, nodes string, opts ...HAGroupOption) ClusterOption {
 
 		s.haGroups[id] = g
 	}
+}
+
+// HARuleOption configures an HA rule at seed time, via WithHARule.
+type HARuleOption func(*haRuleState)
+
+// WithHARuleNodes sets a node-affinity rule's property-string list of
+// member nodes with optional priority, e.g. "node1:2,node2:1" (higher
+// number wins), matching ha.Rule.Nodes/ha.RuleOptions.Nodes.
+func WithHARuleNodes(nodes string) HARuleOption {
+	return func(r *haRuleState) { r.nodes = nodes }
+}
+
+// WithHARuleAffinity sets a resource-affinity rule's affinity — "positive"
+// keeps its resources together, "negative" keeps them apart — matching
+// ha.Rule.Affinity/ha.RuleOptions.Affinity.
+func WithHARuleAffinity(affinity ha.RuleAffinity) HARuleOption {
+	return func(r *haRuleState) { r.affinity = string(affinity) }
+}
+
+// WithHARuleStrict marks a node-affinity rule strict (resources may only
+// run on the given nodes) rather than non-strict (preferred).
+func WithHARuleStrict() HARuleOption {
+	return func(r *haRuleState) { r.strict = true }
+}
+
+// WithHARuleDisable disables the rule without deleting it.
+func WithHARuleDisable() HARuleOption {
+	return func(r *haRuleState) { r.disable = true }
+}
+
+// WithHARuleComment sets the rule's comment/description.
+func WithHARuleComment(comment string) HARuleOption {
+	return func(r *haRuleState) { r.comment = comment }
+}
+
+// WithHARule seeds an HA rule visible via GET /cluster/ha/rules and
+// GET/PUT/DELETE /cluster/ha/rules/{rule} — the migrated-to-rules
+// replacement for HA groups. resources is the list of HA resource IDs the
+// rule applies to, e.g. "vm:100", "ct:101"; use WithHARuleNodes or
+// WithHARuleAffinity for the field specific to ruleType (node-affinity
+// vs. resource-affinity). Like WithHAGroup, a client can also
+// Create/Update/Delete rules over the wire once the cluster is running.
+func WithHARule(id string, ruleType ha.RuleType, resources []string, opts ...HARuleOption) ClusterOption {
+	return func(s *clusterState) {
+		r := &haRuleState{id: id, typ: string(ruleType), resources: resources}
+		for _, opt := range opts {
+			opt(r)
+		}
+
+		s.haRules[id] = r
+	}
+}
+
+// WithHAGroupsMigrated makes GET /cluster/ha/groups behave the way a real
+// Proxmox cluster does once its HA groups have been migrated to HA rules:
+// every call rejects with the 500 that callers (e.g.
+// go-proxmox-pool's GetNodeHAGroups) must catch and fall back to listing
+// "node-affinity" HA rules instead — see WithHARule. Seeded HA groups, if
+// any, become unreachable through the API, matching real Proxmox, where
+// the migration is one-way.
+func WithHAGroupsMigrated() ClusterOption {
+	return func(s *clusterState) { s.haGroupsMigrated = true }
 }
 
 // WithManualTasks disables the default instant-completion behavior for
