@@ -19,11 +19,14 @@ package fakeapi_test
 import (
 	"context"
 	"errors"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
 
 	proxmox "github.com/sergelogvinov/go-proxmox-rest"
 	"github.com/sergelogvinov/go-proxmox-rest/cluster"
+	"github.com/sergelogvinov/go-proxmox-rest/cluster/ha"
 	"github.com/sergelogvinov/go-proxmox-rest/fakeapi"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/lxc"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/qemu"
@@ -504,5 +507,90 @@ func TestFailNode(t *testing.T) {
 	cl.RecoverNode("pve3")
 	if _, err := c.Nodes("pve3").Status(ctx); err != nil {
 		t.Fatalf("expected pve3 to recover, got %v", err)
+	}
+}
+
+func TestHARules(t *testing.T) {
+	cl := fakeapi.NewCluster(t, fakeapi.WithNodes("pve1", "pve2"),
+		fakeapi.WithHARule("rule-a", ha.RuleTypeNodeAffinity, []string{"vm:100"},
+			fakeapi.WithHARuleNodes("pve1:1")),
+		fakeapi.WithHARule("rule-b", ha.RuleTypeResourceAffinity, []string{"vm:100", "vm:101"},
+			fakeapi.WithHARuleAffinity(ha.RuleAffinityPositive)),
+	)
+	c := cl.Client(t)
+	ctx := context.Background()
+
+	rules, err := c.Cluster().HA().Rules().List(ctx, "", "")
+	if err != nil {
+		t.Fatalf("list ha rules: %v", err)
+	}
+	if len(rules) != 2 {
+		t.Fatalf("expected 2 ha rules, got %d: %+v", len(rules), rules)
+	}
+
+	nodeAffinity, err := c.Cluster().HA().Rules().List(ctx, ha.RuleTypeNodeAffinity, "")
+	if err != nil {
+		t.Fatalf("list node-affinity ha rules: %v", err)
+	}
+	if len(nodeAffinity) != 1 || nodeAffinity[0].Rule != "rule-a" {
+		t.Fatalf("expected only rule-a, got %+v", nodeAffinity)
+	}
+
+	byResource, err := c.Cluster().HA().Rules().List(ctx, "", "vm:101")
+	if err != nil {
+		t.Fatalf("list ha rules by resource: %v", err)
+	}
+	if len(byResource) != 1 || byResource[0].Rule != "rule-b" {
+		t.Fatalf("expected only rule-b, got %+v", byResource)
+	}
+
+	rule, err := c.Cluster().HA().Rules().Get(ctx, "rule-a")
+	if err != nil {
+		t.Fatalf("get ha rule: %v", err)
+	}
+	if rule.Nodes != "pve1:1" {
+		t.Fatalf("expected nodes pve1:1, got %q", rule.Nodes)
+	}
+
+	if err := c.Cluster().HA().Rules().Delete(ctx, "rule-b"); err != nil {
+		t.Fatalf("delete ha rule: %v", err)
+	}
+	if _, err := c.Cluster().HA().Rules().Get(ctx, "rule-b"); !proxmox.IsNotFound(err) {
+		t.Fatalf("expected IsNotFound after delete, got %v", err)
+	}
+}
+
+// TestHAGroupsMigrated covers WithHAGroupsMigrated: a cluster whose HA
+// groups have been migrated to HA rules rejects GET /cluster/ha/groups
+// with a 500 whose message conveys the migration, and node-affinity rules
+// remain listable as the replacement.
+func TestHAGroupsMigrated(t *testing.T) {
+	cl := fakeapi.NewCluster(t, fakeapi.WithNodes("pve1"),
+		fakeapi.WithHAGroupsMigrated(),
+		fakeapi.WithHARule("rule-a", ha.RuleTypeNodeAffinity, []string{"vm:100"},
+			fakeapi.WithHARuleNodes("pve1:1")),
+	)
+	c := cl.Client(t)
+	ctx := context.Background()
+
+	_, err := c.Cluster().HA().Groups().List(ctx)
+
+	var apiErr *proxmox.APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *proxmox.APIError, got %v (%T)", err, err)
+	}
+	if apiErr.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", apiErr.StatusCode)
+	}
+	if !strings.Contains(apiErr.Message, "ha groups have been migrated to rules") {
+		t.Fatalf("expected migrated-groups message, got %q", apiErr.Message)
+	}
+
+	rules, err := c.Cluster().HA().Rules().List(ctx, ha.RuleTypeNodeAffinity, "")
+	if err != nil {
+		t.Fatalf("list ha rules: %v", err)
+	}
+	if len(rules) != 1 || rules[0].Rule != "rule-a" {
+		t.Fatalf("expected only rule-a, got %+v", rules)
 	}
 }

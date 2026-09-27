@@ -43,6 +43,8 @@ func newRouter(state *clusterState) http.Handler {
 
 	reg("/cluster/ha/groups", handleHAGroupsCollection(state))
 	reg("/cluster/ha/groups/{group}", handleHAGroupItem(state))
+	reg("/cluster/ha/rules", handleHARulesCollection(state))
+	reg("/cluster/ha/rules/{rule}", handleHARuleItem(state))
 
 	reg("GET /nodes", handleNodesList(state))
 	reg("GET /nodes/{node}/status", withNode(state, handleNodeStatus))

@@ -42,10 +42,18 @@ type clusterState struct {
 	name     string
 	nodes    map[string]*nodeState
 	haGroups map[string]*haGroupState
+	haRules  map[string]*haRuleState
 	tasks    map[string]*taskState
 	tickets  map[string]string // PVEAuthCookie value -> username
 	taskSeq  int64
 	manual   bool
+
+	// haGroupsMigrated makes GET /cluster/ha/groups behave the way a real
+	// Proxmox cluster does once its HA groups have been migrated to HA
+	// rules: a 500 whose message is "cannot index groups: ha groups have
+	// been migrated to rules", instead of the seeded haGroups. See
+	// WithHAGroupsMigrated.
+	haGroupsMigrated bool
 }
 
 // nodeState is one cluster member: its online/failure state, seeded
@@ -88,6 +96,21 @@ type haGroupState struct {
 	comment    string
 	nofailback bool
 	restricted bool
+}
+
+// haRuleState is one HA rule, backing GET /cluster/ha/rules and
+// GET/PUT/DELETE /cluster/ha/rules/{rule} — the migrated-to-rules
+// replacement for haGroupState. Follows the same typed-struct shape (a
+// rule has a small, fixed set of fields, same as a group).
+type haRuleState struct {
+	id        string
+	typ       string
+	resources []string
+	nodes     string // node-affinity rules only
+	affinity  string // resource-affinity rules only
+	strict    bool
+	disable   bool
+	comment   string
 }
 
 // storageState is one storage as seen from a single node.
@@ -160,6 +183,7 @@ func newClusterState() *clusterState {
 		name:     "fakeapi",
 		nodes:    map[string]*nodeState{},
 		haGroups: map[string]*haGroupState{},
+		haRules:  map[string]*haRuleState{},
 		tasks:    map[string]*taskState{},
 	}
 }
