@@ -68,7 +68,8 @@ type ClientConfig struct {
 	Proxy       string
 
 	Insecure bool
-	CACert   string
+	// CACerts sets the trusted CA bundle(s); see WithCACert.
+	CACerts []string
 
 	timeout          time.Duration
 	retryCount       int
@@ -97,7 +98,7 @@ func (c ClientConfig) ToRESTConfig() ClientConfig {
 		UserAgent:        c.UserAgent,
 		Proxy:            c.Proxy,
 		Insecure:         c.Insecure,
-		CACert:           c.CACert,
+		CACerts:          c.CACerts,
 		timeout:          c.timeout,
 		retryCount:       c.retryCount,
 		retryWaitTime:    c.retryWaitTime,
@@ -187,8 +188,8 @@ func New(cfg ClientConfig, opts ...Option) (*Client, error) {
 		rc.SetLogger(cfg.logger)
 	}
 
-	if cfg.CACert != "" {
-		rc.SetRootCertificates(cfg.CACert)
+	if paths := nonEmptyStrings(cfg.CACerts); len(paths) > 0 {
+		rc.SetRootCertificates(paths...)
 	}
 
 	if cfg.Insecure {
@@ -204,6 +205,24 @@ func New(cfg ClientConfig, opts ...Option) (*Client, error) {
 	return c, nil
 }
 
+// nonEmptyStrings returns ss with every "" element removed, preserving
+// order. Used to guard WithCACert: CACert (a single string) used to be
+// skipped when empty via a plain != "" check; CACerts ([]string) needs the
+// same no-op-on-empty guarantee, since resty.Client.SetRootCertificates
+// treats "" as a file path, logs an error trying to read it, and — worse —
+// stops processing the remaining paths in the same call the moment one
+// os.ReadFile fails, so a single blank entry (e.g. from an unset env var
+// passed straight to WithCACert) would silently drop every CA after it too.
+func nonEmptyStrings(ss []string) []string {
+	out := make([]string, 0, len(ss))
+	for _, s := range ss {
+		if s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 // ToRESTConfig returns a copy of the client's configuration suitable for use
 // with the REST client. Modifications to the returned config do not affect
 // the original client.
@@ -217,7 +236,7 @@ func (c *Client) ToRESTConfig() ClientConfig {
 		UserAgent:        c.cfg.UserAgent,
 		Proxy:            c.cfg.Proxy,
 		Insecure:         c.cfg.Insecure,
-		CACert:           c.cfg.CACert,
+		CACerts:          c.cfg.CACerts,
 		timeout:          c.cfg.timeout,
 		retryCount:       c.cfg.retryCount,
 		retryWaitTime:    c.cfg.retryWaitTime,
