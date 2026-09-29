@@ -71,7 +71,36 @@ func newRouter(state *clusterState) http.Handler {
 	reg("GET /nodes/{node}/tasks/{upid}/status", withNode(state, handleTaskStatus))
 	reg("DELETE /nodes/{node}/tasks/{upid}", withNode(state, handleTaskStop))
 
-	return mux
+	return stripAPIPrefix(mux)
+}
+
+// apiPrefix is the standard Proxmox API path prefix a real pveproxy serves
+// at. Every route above is registered bare (e.g. "/cluster/status"), which
+// is what Cluster.Client's unprefixed WithURL has always sent. A caller
+// that goes through a load balancer (e.g. proxmox.WithNodeAffinity) gets
+// that prefix applied automatically — see Client.path — so stripAPIPrefix
+// accepts it too, transparently, without disturbing any existing caller
+// that omits it.
+const apiPrefix = "/api2/json"
+
+// stripAPIPrefix removes a leading apiPrefix from the request path before
+// dispatching to next, leaving every other request untouched.
+func stripAPIPrefix(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if rest, ok := strings.CutPrefix(r.URL.Path, apiPrefix); ok {
+			if rest == "" {
+				rest = "/"
+			}
+
+			r2 := r.Clone(r.Context())
+			r2.URL.Path = rest
+			next.ServeHTTP(w, r2)
+
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 // requireAuth accepts any request carrying a non-empty PVEAPIToken

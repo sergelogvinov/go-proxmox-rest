@@ -230,6 +230,13 @@ func (cl *Cluster) Close() {
 	cl.server.Close()
 }
 
+// URL returns the base URL of the underlying httptest.Server, e.g. for
+// building a proxmox.Client by hand (proxmox.WithNodeEndpoints, a custom
+// load balancer's base URLs, ...) rather than through Client.
+func (cl *Cluster) URL() string {
+	return cl.server.URL
+}
+
 // Client returns a *proxmox.Client wired to this cluster over the
 // underlying httptest.Server, using a fixed fake API token. Safe to call
 // more than once; each call returns an independent *proxmox.Client

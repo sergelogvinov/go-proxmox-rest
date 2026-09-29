@@ -106,6 +106,37 @@ Available API areas include:
 Many write operations return a task identifier (UPID). Use the node task client
 to inspect or wait for the task when the API operation is asynchronous.
 
+## Load balancing and node affinity
+
+`WithRoundRobin`, `WithWeightedRoundRobin`, `WithSRVWeightedRoundRobin`, and
+`WithLoadBalancer` distribute requests across a Proxmox cluster's members.
+Any of them also gets **node affinity automatically**: `/nodes/{node}/...`
+requests are routed directly at the node they name (matched against the
+configured pool by name), instead of letting another node's `pveproxy` relay
+them — cheaper, and it turns a dead node into a plain transport error
+instead of a relayed 5xx. It always falls back to the configured algorithm
+when a node's endpoint is unknown or unreachable, so it never changes what a
+call returns, only which host serves it.
+
+```go
+client, err := proxmox.New(proxmox.ClientConfig{},
+	proxmox.WithRoundRobin(
+		"https://pve1.example.com:8006",
+		"https://pve2.example.com:8006",
+		"https://pve3.example.com:8006",
+	),
+	proxmox.WithTokenAuth(tokenID, secret),
+	// Node affinity is already active here — node endpoints are inferred
+	// from the pool above. WithNodeAffinity is only needed to configure an
+	// explicit endpoint source, health tuning, a routing-decision callback,
+	// or to enable the feature on a client with no balancer (WithURL alone).
+)
+```
+
+See [docs/node-lb.md](docs/node-lb.md) for the full design, including the
+static-map and DNS-template endpoint sources, health/circuit-breaker
+behavior, and the TLS caveats of connecting to nodes directly.
+
 ## Testing with the fake API
 
 The `fakeapi` package starts an in-memory HTTP server that behaves like a small

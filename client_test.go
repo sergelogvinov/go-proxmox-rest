@@ -124,3 +124,54 @@ func readAllString(r io.Reader) (string, error) {
 	b, err := io.ReadAll(r)
 	return string(b), err
 }
+
+// TestClientToRESTConfigCopiesBasePath guards against the regression noted
+// in docs/node-lb.md §9: Client.ToRESTConfig used to drop basePath while
+// ClientConfig.ToRESTConfig kept it, silently losing a custom API prefix
+// for any client derived from it.
+func TestClientToRESTConfigCopiesBasePath(t *testing.T) {
+	c, err := New(ClientConfig{}, WithBasePath("/pve/api2/json"), WithRoundRobin("https://pve1.example.com:8006"))
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	defer c.Close()
+
+	cfg := c.ToRESTConfig()
+	if cfg.basePath != "/pve/api2/json" {
+		t.Fatalf("ToRESTConfig().basePath = %q, want %q", cfg.basePath, "/pve/api2/json")
+	}
+	if len(cfg.lbURLs) != 1 || cfg.lbURLs[0] != "https://pve1.example.com:8006" {
+		t.Fatalf("ToRESTConfig().lbURLs = %v, want [https://pve1.example.com:8006]", cfg.lbURLs)
+	}
+}
+
+// TestAutomaticNodeAffinity asserts node affinity wraps any configured
+// balancer automatically — no WithNodeAffinity call needed — per
+// docs/node-lb.md §13 open question 1 ("turn on automatically").
+func TestAutomaticNodeAffinity(t *testing.T) {
+	c, err := New(ClientConfig{}, WithRoundRobin("https://pve1.example.com:8006"))
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	defer c.Close()
+
+	if _, ok := c.cfg.lb.(*NodeBalancer); !ok {
+		t.Fatalf("cfg.lb = %T, want *NodeBalancer (automatic node affinity)", c.cfg.lb)
+	}
+}
+
+// TestNoAutomaticNodeAffinityWithoutBalancer asserts a plain WithURL client
+// (no balancer configured) is left alone: there is no pool to route within,
+// so New must not install a balancer — and therefore not a NodeBalancer —
+// where none existed before.
+func TestNoAutomaticNodeAffinityWithoutBalancer(t *testing.T) {
+	c, err := New(ClientConfig{}, WithURL("https://pve1.example.com:8006/api2/json"))
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	defer c.Close()
+
+	if c.cfg.lb != nil {
+		t.Fatalf("cfg.lb = %v, want nil for a plain WithURL client", c.cfg.lb)
+	}
+}

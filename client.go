@@ -83,6 +83,22 @@ type ClientConfig struct {
 	// when a load balancer is used, since LB endpoints carry no path.
 	basePath string
 
+	// lbURLs is the pool of base URLs behind lb, stashed at option-apply
+	// time because resty.RoundRobin/WeightedRoundRobin expose no getter for
+	// them. Used as the default node-affinity endpoint source (pool name
+	// matching, see loadbalancer_disco.go).
+	lbURLs []string
+
+	// nodeAffinity holds WithNodeAffinity's sub-options (endpoint sources,
+	// health tuning, OnRoute). It is non-nil only once WithNodeAffinity is
+	// called; a nil value still gets node affinity (see New) whenever a
+	// balancer is configured, just with zero-config pool matching (§6.3) as
+	// its only source. WithNodeAffinity's other job is enabling the feature
+	// with no balancer at all — WithURL plus WithNodeAffinity is a supported
+	// combination (§8.1 of docs/node-lb.md), synthesizing a single-URL
+	// delegate from BaseURL.
+	nodeAffinity *nodeAffinityConfig
+
 	logger resty.Logger
 }
 
@@ -105,6 +121,8 @@ func (c ClientConfig) ToRESTConfig() ClientConfig {
 		retryMaxWaitTime: c.retryMaxWaitTime,
 		lb:               c.lb,
 		basePath:         c.basePath,
+		lbURLs:           c.lbURLs,
+		nodeAffinity:     c.nodeAffinity,
 		logger:           c.logger,
 	}
 }
@@ -164,6 +182,33 @@ func New(cfg ClientConfig, opts ...Option) (*Client, error) {
 	rc.SetRetryWaitTime(cfg.retryWaitTime)
 	rc.SetRetryMaxWaitTime(cfg.retryMaxWaitTime)
 	rc.AddRetryConditions(retryCondition)
+
+	switch {
+	case cfg.nodeAffinity != nil && cfg.lb == nil:
+		// WithNodeAffinity was called with no balancer configured: synthesize
+		// a single-URL delegate from BaseURL. WithURL plus WithNodeAffinity is
+		// a supported combination (§8.1 of docs/node-lb.md).
+		delegate, err := resty.NewRoundRobin(cfg.BaseURL)
+		if err != nil {
+			return nil, fmt.Errorf("node affinity: building delegate balancer: %w", err)
+		}
+		cfg.lb = newNodeBalancer(delegate, cfg.nodeAffinity, cfg.lbURLs)
+
+	case cfg.lb != nil:
+		// Any real balancer (WithRoundRobin, WithWeightedRoundRobin,
+		// WithSRVWeightedRoundRobin, WithLoadBalancer) gets node affinity
+		// wrapped in automatically — using WithNodeAffinity's sub-options if
+		// it was called, or zero-config pool matching (§6.3) otherwise.
+		// Falling back is the only behavior on a miss (§5), so this is safe
+		// even when pool matching finds nothing to match (a VIP, a custom
+		// balancer, an SRV-resolved pool): every request is then simply
+		// delegated, exactly as it would be without this wrapping.
+		naCfg := cfg.nodeAffinity
+		if naCfg == nil {
+			naCfg = &nodeAffinityConfig{}
+		}
+		cfg.lb = newNodeBalancer(cfg.lb, naCfg, cfg.lbURLs)
+	}
 
 	if cfg.lb != nil {
 		rc.SetLoadBalancer(cfg.lb)
@@ -242,6 +287,9 @@ func (c *Client) ToRESTConfig() ClientConfig {
 		retryWaitTime:    c.cfg.retryWaitTime,
 		retryMaxWaitTime: c.cfg.retryMaxWaitTime,
 		lb:               c.cfg.lb,
+		basePath:         c.cfg.basePath,
+		lbURLs:           c.cfg.lbURLs,
+		nodeAffinity:     c.cfg.nodeAffinity,
 		logger:           c.cfg.logger,
 	}
 }
@@ -353,6 +401,15 @@ func (c *Client) send(ctx context.Context, method, path string, out any, req *re
 			req.SetHeader("CSRFPreventionToken", c.session.CSRFPreventionToken)
 		}
 		c.sessionMux.Unlock()
+	}
+
+	if node, ok := nodeFromPath(path); ok {
+		req.SetContext(withRoute(ctx, &route{node: node}))
+
+		if method == http.MethodPost && c.cfg.nodeAffinity != nil && c.cfg.nodeAffinity.safePOSTFailover {
+			req.SetRetryAllowNonIdempotent(true)
+			req.SetRetryConditions(safePOSTRetryCondition)
+		}
 	}
 
 	res, err := req.Execute(method, c.path(path))

@@ -252,6 +252,15 @@ func WithRoundRobin(urls ...string) Option          // NewRoundRobin
 func WithWeightedRoundRobin(hosts []resty.Host) Option // NewWeightedRoundRobin
 func WithSRVWeightedRoundRobin(service, proto, domain, scheme string) Option // NewSRVWeightedRoundRobin
 func WithLoadBalancer(lb resty.LoadBalancer) Option // any custom implementation
+
+// Any of the above balancers gets node affinity automatically: /nodes/{node}/...
+// requests are routed directly at the node they name instead of relying on
+// another node's pveproxy to relay them, falling back to the configured
+// algorithm when the node's endpoint is unknown or unreachable. WithNodeAffinity
+// is for configuring it (an explicit endpoint source, health tuning, a routing
+// callback) or for enabling it on a client with no balancer (WithURL alone).
+// See docs/node-lb.md for the full design.
+func WithNodeAffinity(opts ...NodeAffinityOption) Option
 ```
 
 Precedence is `New(cfg, opts...)` → each `Option` mutates a copy of `cfg` (last one
