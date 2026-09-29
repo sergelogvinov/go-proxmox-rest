@@ -95,9 +95,15 @@ func WithInsecure(skip bool) Option {
 	return func(c *ClientConfig) { c.Insecure = skip }
 }
 
-// WithCACert sets the path to a PEM CA bundle to trust.
-func WithCACert(path string) Option {
-	return func(c *ClientConfig) { c.CACert = path }
+// WithCACert adds the path(s) to one or more PEM CA bundles to trust.
+// Supplying any CA replaces the system trust store rather than adding to
+// it, so a cluster fronted by a VIP/ingress certificate that differs from
+// its nodes' own CA-signed certificates (a split trust chain) needs both:
+// WithCACert(vipCA, pveCA). WithCACert can also be called multiple times;
+// each call appends to the previously configured bundles rather than
+// replacing them.
+func WithCACert(paths ...string) Option {
+	return func(c *ClientConfig) { c.CACerts = append(c.CACerts, paths...) }
 }
 
 // WithProxy sets an optional proxy URL.

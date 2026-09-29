@@ -242,7 +242,7 @@ func WithRetryWaitTime(d time.Duration) Option
 func WithRetryMaxWaitTime(d time.Duration) Option
 func WithUserAgent(ua string) Option
 func WithInsecure(skip bool) Option
-func WithCACert(path string) Option // path to a PEM CA bundle to trust
+func WithCACert(paths ...string) Option // one or more PEM CA bundles to trust (replaces the system pool)
 func WithProxy(p string) Option
 func WithLogger(l resty.Logger) Option
 

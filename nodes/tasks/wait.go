@@ -151,6 +151,8 @@ func isNoSuchTask(err error) bool {
 //
 // Lists against upid's own node (see taskNode/Status's doc comment) —
 // c.node itself may not even be the node that ran this task.
+//
+//nolint:nilerr
 func (c *Client) taskFromHistory(ctx context.Context, upid string) (done bool, err error) {
 	scoped := c
 	if node := taskNode(c.node, upid); node != c.node {
