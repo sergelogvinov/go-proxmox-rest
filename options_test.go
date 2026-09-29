@@ -99,27 +99,6 @@ func TestBasePathResolution(t *testing.T) {
 	}
 }
 
-// TestWithCACert asserts a single path still works (back-compat with the
-// pre-variadic signature) and that repeated calls accumulate bundles rather
-// than replacing the previously configured ones.
-func TestWithCACert(t *testing.T) {
-	cfg := ClientConfig{}
-	opts := []Option{WithCACert("/single.pem"), WithCACert("/a.pem", "/b.pem")}
-	for _, opt := range opts {
-		opt(&cfg)
-	}
-
-	want := []string{"/single.pem", "/a.pem", "/b.pem"}
-	if len(cfg.CACerts) != len(want) {
-		t.Fatalf("CACerts = %v, want %v", cfg.CACerts, want)
-	}
-	for i, p := range want {
-		if cfg.CACerts[i] != p {
-			t.Fatalf("CACerts = %v, want %v", cfg.CACerts, want)
-		}
-	}
-}
-
 // TestLBURLsClearedByOpaqueBalancer guards against a stale pool: pool
 // matching (§6.3 of docs/node-lb.md) is documented as yielding nothing for
 // WithLoadBalancer and WithSRVWeightedRoundRobin, since a custom balancer is

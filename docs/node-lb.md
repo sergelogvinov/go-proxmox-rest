@@ -6,11 +6,12 @@
 Status: **Phases 1–3 implemented** (§11): `nodeFromPath`, the route context,
 `NodeBalancer` with delegate fallback, the static-map/template/`WithNodeResolver`/
 pool-matching endpoint sources, passive health, first-attempt-only direct routing,
-`OnRoute`, the `basePath`/`WithCACert` fixes from §9, and `WithSafePOSTFailover`'s
+`OnRoute`, the `basePath` fix from §9, and `WithSafePOSTFailover`'s
 provably-unsent-only POST retry. It applies automatically to any configured balancer
 (§13 item 1) — `WithNodeAffinity` is now for configuring it, not turning it on. Phase 4
 (guest→node affinity, websocket pinning) remains deferred; see §1's non-goals.
-Section 13's questions are decided except item 5, for the same reason.
+Section 13's questions are decided except item 5, for the same reason. The
+`WithCACert` multi-CA fix from §9 ships separately, in `feat/multi-ca-cert`.
 
 ---
 
@@ -700,7 +701,7 @@ feature is transparent.
 
 | Phase | Content | Status |
 |---|---|---|
-| 1 | `nodeFromPath`, route context, `NodeBalancer` with delegate, static map + template + pool matching, passive health, first-attempt-only direct routing, `OnRoute`. The `basePath` and `WithCACert` fixes from §9. Unit + fakeapi tests. | Done |
+| 1 | `nodeFromPath`, route context, `NodeBalancer` with delegate, static map + template + pool matching, passive health, first-attempt-only direct routing, `OnRoute`. The `basePath` fix from §9. Unit + fakeapi tests. | Done |
 | 2 | `WithNodeResolver` and its refresh goroutine, for callers with a dynamic mapping of their own. | Done |
 | 3 | Safe POST failover on provably-unsent transport errors (§7.2), via `WithSafePOSTFailover`. | Done |
 | 4 | Deferred: guest→node affinity via `/cluster/resources`; pinning for websocket endpoints once they exist. | Deferred |
@@ -736,7 +737,8 @@ today while `ClientConfig.ToRESTConfig` keeps it (§9).
 Make it variadic (or add `WithCACerts(...string)`), store `CACerts []string`, and pass
 them through to the already-variadic `rc.SetRootCertificates(cfg.CACerts...)`. Document
 that supplying any CA *replaces* the system pool — resty's `handleCAs` starts from a
-fresh `x509.NewCertPool()` (§9). Independent of the rest; can land first.
+fresh `x509.NewCertPool()` (§9). Independent of the rest; can land first — and did,
+as its own `feat/multi-ca-cert` branch rather than part of this one.
 
 **4. Routing hint** (new `loadbalancer.go`).
 `nodeFromPath(p string) (string, bool)` per §4.1, plus the `route` struct, an
@@ -832,8 +834,9 @@ degrades cleanly if the interface ever widens.
    tuning, `WithOnRoute`) or, for a client with no balancer at all (`WithURL` alone),
    is what turns it on. This reverses the original proposal (opt-in, on the grounds
    that rerouting traffic based on an *inferred* node map shouldn't happen silently)
-   — the TLS objection that motivated "off" was already retired once `WithCACert`
-   supported multiple CAs (§9); what's left is that pool matching degrades to a
+   — the TLS objection that motivated "off" is retired once `WithCACert` supports
+   multiple CAs (§9; ships as `feat/multi-ca-cert`, not part of this branch — this
+   decision assumes that branch lands too); what's left is that pool matching degrades to a
    no-op rather than breaking on a miss (§5, §13 item 2), which makes "on by
    default" safe rather than merely convenient. A pool that pool matching
    misinterprets (an external LB/VIP whose host happens to collide with a real node

@@ -178,14 +178,9 @@ any other:
 proxmox.WithCACert("/etc/pve/pve-root-ca.pem")
 ```
 
-`WithCACert` accepts one or more paths. Supplying any CA **replaces** the
-system trust store rather than adding to it, so a cluster fronted by a
-VIP/ingress certificate that differs from the nodes' own PVE-CA-signed
-certificates needs both listed:
-
-```go
-proxmox.WithCACert("/etc/ssl/certs/vip-ca.pem", "/etc/pve/pve-root-ca.pem")
-```
+A cluster fronted by a VIP/ingress certificate that differs from the nodes'
+own PVE-CA-signed certificates needs both trusted at once; `WithCACert`
+trusting more than one CA is tracked separately (see `feat/multi-ca-cert`).
 
 ## 8. Full example
 
