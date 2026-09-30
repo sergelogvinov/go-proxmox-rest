@@ -130,8 +130,7 @@ type Session struct {
 }
 
 // New builds a Client from the given config, applying the options on a copy
-// (last one wins). Either a base URL or a load balancer must be provided,
-// otherwise the default https://127.0.0.1:8006/api2/json is used.
+// (last one wins). Either a base URL or a load balancer must be provided.
 func New(cfg ClientConfig, opts ...Option) (*Client, error) {
 	for _, opt := range opts {
 		if opt != nil {
