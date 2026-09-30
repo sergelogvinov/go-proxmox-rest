@@ -141,7 +141,7 @@ func New(cfg ClientConfig, opts ...Option) (*Client, error) {
 	if cfg.timeout <= 0 {
 		cfg.timeout = defaultTimeout
 	}
-	if cfg.retryCount < 0 {
+	if cfg.retryCount <= 0 {
 		cfg.retryCount = defaultRetryCount
 	}
 	if cfg.retryWaitTime <= 0 {
