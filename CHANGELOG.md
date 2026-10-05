@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.1](https://github.com/sergelogvinov/go-proxmox-rest/compare/v0.1.0...v0.1.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* comment ([a5d009e](https://github.com/sergelogvinov/go-proxmox-rest/commit/a5d009e1053b7ab3d5d8a46de661521ad39683ba))
+* gh-actions ([b90116c](https://github.com/sergelogvinov/go-proxmox-rest/commit/b90116c0c4e6905946691dbfe389812150853311))
+* retryCount validation ([f15b4d9](https://github.com/sergelogvinov/go-proxmox-rest/commit/f15b4d91fcb5d708cea542335326c9099cb38d18))
+
 ## [0.1.0](https://github.com/sergelogvinov/go-proxmox-rest/compare/v0.0.1...v0.1.0) (2026-09-20)
 
 
