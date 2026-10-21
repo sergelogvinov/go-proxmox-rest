@@ -44,13 +44,18 @@ func (e *APIError) Error() string {
 func newAPIError(res *resty.Response) error {
 	e := &APIError{StatusCode: res.StatusCode(), Message: res.Status()}
 
+	// A reverse proxy rewrites pveproxy's reason phrase to the standard
+	// text, so prefer the envelope's own message when the body carries one.
 	var env struct {
-		Errors map[string]string `json:"errors"`
+		Errors  map[string]string `json:"errors"`
+		Message string            `json:"message"`
 	}
 	if json.Unmarshal(res.Bytes(), &env) == nil {
 		e.Errors = env.Errors
 		if len(e.Errors) > 0 {
 			e.Message = http.StatusText(e.StatusCode)
+		} else if msg := strings.TrimSpace(env.Message); msg != "" {
+			e.Message = msg
 		}
 	}
 

@@ -594,3 +594,27 @@ func TestHAGroupsMigrated(t *testing.T) {
 		t.Fatalf("expected only rule-a, got %+v", rules)
 	}
 }
+
+// TestHAGroupsMigratedBehindReverseProxy covers WithHAGroupsMigrated with
+// WithReverseProxy: the proxy replaces pveproxy's reason phrase with the
+// standard text, so the migration message must come from the JSON body.
+func TestHAGroupsMigratedBehindReverseProxy(t *testing.T) {
+	cl := fakeapi.NewCluster(t, fakeapi.WithNodes("pve1"),
+		fakeapi.WithReverseProxy(),
+		fakeapi.WithHAGroupsMigrated(),
+	)
+	c := cl.Client(t)
+
+	_, err := c.Cluster().HA().Groups().List(context.Background())
+
+	var apiErr *proxmox.APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *proxmox.APIError, got %v (%T)", err, err)
+	}
+	if apiErr.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", apiErr.StatusCode)
+	}
+	if !strings.Contains(apiErr.Message, "ha groups have been migrated to rules") {
+		t.Fatalf("expected migrated-groups message, got %q", apiErr.Message)
+	}
+}

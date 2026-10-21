@@ -191,6 +191,16 @@ func WithHAGroupsMigrated() ClusterOption {
 	return func(s *clusterState) { s.haGroupsMigrated = true }
 }
 
+// WithReverseProxy makes the cluster respond the way it does behind a
+// reverse proxy (Traefik, nginx, HAProxy, ...), which replaces pveproxy's
+// custom reason phrase with the standard text for the status. Errors a
+// direct connection conveys in the reason phrase (e.g.
+// WithHAGroupsMigrated's) arrive with the message in the JSON body
+// instead. Without it, the cluster models a direct pveproxy connection.
+func WithReverseProxy() ClusterOption {
+	return func(s *clusterState) { s.reverseProxy = true }
+}
+
 // WithManualTasks disables the default instant-completion behavior for
 // async operations (status actions, config updates via POST, ...): tasks
 // stay "running" until a test explicitly completes them via
