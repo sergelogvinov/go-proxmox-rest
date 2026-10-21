@@ -196,7 +196,7 @@ Additional storage-specific cases:
 | 7. delete | `Pools().Delete(ctx, name)` | no error |
 | 8. list | `Pools().List(ctx)` | `name` absent |
 
-### 5.3 `cluster/` — status/resources read-only; HA groups full CRUD
+### 5.3 `cluster/` — status/resources read-only; HA groups/resources/rules full CRUD
 
 Cluster status and resources are read-only; no create/update/delete.
 
@@ -220,10 +220,29 @@ the node named by `PVE_E2E_NODE` (the test is skipped when unset):
 | 7. delete | `HA().Groups().Delete(ctx, name)` | no error |
 | 8. list | `HA().Groups().List(ctx)` | `name` absent |
 
+The groups test is skipped once the cluster's HA groups have been migrated
+to HA rules (Proxmox VE 9), since every groups endpoint then fails.
+
+`Cluster().HA().Resources()` supports the full CRUD lifecycle against a
+real, diskless guest created on `PVE_E2E_NODE` and kept in the `stopped`
+HA state, so the CRM never starts it:
+
+| Step | Call | Verify |
+|------|------|--------|
+| 1. list | `HA().Resources().List(ctx, "")` | `vm:<id>` absent |
+| 2. get (absent) | `HA().Resources().Get(ctx, sid)` | error |
+| 3. create | `HA().Resources().Create(ctx, &ResourceOptions{SID, State: stopped, Comment})` | no error |
+| 4. get | `HA().Resources().Get(ctx, sid)` | `SID`/`State`/`Comment` match |
+| 5. update | `HA().Resources().Update(ctx, sid, &ResourceOptions{Comment, MaxRestart})` | no error |
+| 6. get | `HA().Resources().Get(ctx, sid)` | `Comment`/`MaxRestart` updated, `State` unchanged |
+| type filter | `HA().Resources().List(ctx, "vm")` vs `"ct"` | resource present only under `vm` |
+| 7. delete | `HA().Resources().Delete(ctx, sid, true)` | no error |
+| 8. list | `HA().Resources().List(ctx, "")` | `sid` absent |
+
 `Cluster().HA().Rules()` also supports the full CRUD lifecycle, using a
-node-affinity rule bound to `PVE_E2E_NODE` and a synthetic (non-existent)
-`vm:<id>` resource — HA rules are plain configuration entries, so Proxmox
-does not require the referenced guest to exist:
+node-affinity rule bound to `PVE_E2E_NODE`. Proxmox rejects rules that name
+unmanaged resources, so each rule test first places a fresh stopped guest
+under HA management, as above, and removes both afterwards:
 
 | Step | Call | Verify |
 |------|------|--------|

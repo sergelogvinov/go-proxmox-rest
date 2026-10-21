@@ -3,10 +3,8 @@
 package cluster_e2e
 
 import (
-	"fmt"
 	"slices"
 	"testing"
-	"time"
 
 	"github.com/sergelogvinov/go-proxmox-rest/cluster/ha"
 	e2e "github.com/sergelogvinov/go-proxmox-rest/tests/e2e"
@@ -17,9 +15,8 @@ import (
 //
 //	list → get(absent) → create → get → update → get → delete → list
 //
-// The rule references a synthetic (non-existent) VMID: HA rules are plain
-// configuration entries, so Proxmox does not require the referenced guest
-// to exist.
+// The rule references a stopped, diskless guest placed under HA
+// management: Proxmox rejects rules naming unmanaged resources.
 func TestHARulesLifecycle(t *testing.T) {
 	cfg := e2e.MustConfig(t)
 	if cfg.Parallel {
@@ -34,7 +31,7 @@ func TestHARulesLifecycle(t *testing.T) {
 	ctx := t.Context()
 
 	name := e2e.UniqueName(cfg.Prefix)
-	resource := uniqueVMResource()
+	resource := newHAResource(t, cfg, client)
 
 	// Cleanup registry: delete the rule even if the test fails mid-way,
 	// unless the caller asked to keep resources for debugging.
@@ -64,7 +61,7 @@ func TestHARulesLifecycle(t *testing.T) {
 	// configured node.
 	comment := "e2e lifecycle"
 	nodes := cfg.Node
-	rule, err := hr.Create(ctx, &ha.RuleOptions{
+	err = hr.Create(ctx, &ha.RuleOptions{
 		ID:        name,
 		Type:      ha.RuleTypeNodeAffinity,
 		Resources: []string{resource},
@@ -72,12 +69,9 @@ func TestHARulesLifecycle(t *testing.T) {
 		Comment:   &comment,
 	})
 	e2e.RequireNoError(t, "create ha rule", err)
-	if rule.Rule != name {
-		t.Errorf("create: Rule = %q, want %q", rule.Rule, name)
-	}
 
 	// 4. get — verify the create.
-	rule, err = hr.Get(ctx, name)
+	rule, err := hr.Get(ctx, name)
 	e2e.RequireNoError(t, "get ha rule after create", err)
 	if rule.Rule != name {
 		t.Errorf("get: Rule = %q, want %q", rule.Rule, name)
@@ -99,7 +93,7 @@ func TestHARulesLifecycle(t *testing.T) {
 	// resent (Proxmox requires it on every update).
 	newComment := "e2e updated"
 	disabled := true
-	_, err = hr.Update(ctx, name, &ha.RuleOptions{
+	err = hr.Update(ctx, name, &ha.RuleOptions{
 		Type:    ha.RuleTypeNodeAffinity,
 		Comment: &newComment,
 		Disable: &disabled,
@@ -151,7 +145,7 @@ func TestHARulesListTypeFilter(t *testing.T) {
 	ctx := t.Context()
 
 	name := e2e.UniqueName(cfg.Prefix)
-	resource := uniqueVMResource()
+	resource := newHAResource(t, cfg, client)
 	nodes := cfg.Node
 
 	if cfg.CleanupOnFailure {
@@ -165,7 +159,7 @@ func TestHARulesListTypeFilter(t *testing.T) {
 		})
 	}
 
-	_, err := hr.Create(ctx, &ha.RuleOptions{
+	err := hr.Create(ctx, &ha.RuleOptions{
 		ID:        name,
 		Type:      ha.RuleTypeNodeAffinity,
 		Resources: []string{resource},
@@ -208,38 +202,32 @@ func TestHARulesValidation(t *testing.T) {
 	hr := client.Cluster().HA().Rules()
 	ctx := t.Context()
 
-	_, err := hr.Create(ctx, nil)
+	err := hr.Create(ctx, nil)
 	e2e.RequireError(t, "create with nil options", err)
 
-	_, err = hr.Create(ctx, &ha.RuleOptions{
+	err = hr.Create(ctx, &ha.RuleOptions{
 		Type:      ha.RuleTypeNodeAffinity,
 		Resources: []string{"vm:100"},
 	})
 	e2e.RequireError(t, "create with missing id", err)
 
-	_, err = hr.Create(ctx, &ha.RuleOptions{
+	err = hr.Create(ctx, &ha.RuleOptions{
 		ID:        "does-not-matter",
 		Resources: []string{"vm:100"},
 	})
 	e2e.RequireError(t, "create with missing type", err)
 
-	_, err = hr.Create(ctx, &ha.RuleOptions{
+	err = hr.Create(ctx, &ha.RuleOptions{
 		ID:   "does-not-matter",
 		Type: ha.RuleTypeNodeAffinity,
 	})
 	e2e.RequireError(t, "create with missing resources", err)
 
-	_, err = hr.Update(ctx, "does-not-matter", nil)
+	err = hr.Update(ctx, "does-not-matter", nil)
 	e2e.RequireError(t, "update with nil options", err)
 
-	_, err = hr.Update(ctx, "does-not-matter", &ha.RuleOptions{})
+	err = hr.Update(ctx, "does-not-matter", &ha.RuleOptions{})
 	e2e.RequireError(t, "update with missing type", err)
-}
-
-// uniqueVMResource returns a syntactically valid, unlikely-to-collide HA
-// resource ID ("vm:<digits>") for a guest that does not need to exist.
-func uniqueVMResource() string {
-	return fmt.Sprintf("vm:%d", 100000+time.Now().UnixNano()%800000)
 }
 
 // containsHARule reports whether the slice contains an HA rule with the

@@ -72,31 +72,26 @@ func (r *rulesResource) List(ctx context.Context, ruleType RuleType, resource st
 // Create creates a new HA rule via POST /cluster/ha/rules.
 //
 // +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
-func (r *rulesResource) Create(ctx context.Context, opts *RuleOptions) (*Rule, error) {
+func (r *rulesResource) Create(ctx context.Context, opts *RuleOptions) error {
 	if opts == nil {
-		return nil, fmt.Errorf("ha: rule options are required")
+		return fmt.Errorf("ha: rule options are required")
 	}
 	if opts.ID == "" {
-		return nil, fmt.Errorf("ha: rule id is required")
+		return fmt.Errorf("ha: rule id is required")
 	}
 	if opts.Type == "" {
-		return nil, fmt.Errorf("ha: rule type is required")
+		return fmt.Errorf("ha: rule type is required")
 	}
 	if len(opts.Resources) == 0 {
-		return nil, fmt.Errorf("ha: rule resources are required")
+		return fmt.Errorf("ha: rule resources are required")
 	}
 
 	params, err := opts.encode()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var hr Rule
-	if err := r.client.Create(ctx, "/cluster/ha/rules", &hr, params); err != nil {
-		return nil, err
-	}
-
-	return &hr, nil
+	return r.client.Create(ctx, "/cluster/ha/rules", nil, params)
 }
 
 // Update modifies an existing HA rule via PUT /cluster/ha/rules/{rule}.
@@ -104,25 +99,20 @@ func (r *rulesResource) Create(ctx context.Context, opts *RuleOptions) (*Rule, e
 // type itself cannot change.
 //
 // +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
-func (r *rulesResource) Update(ctx context.Context, rule string, opts *RuleOptions) (*Rule, error) {
+func (r *rulesResource) Update(ctx context.Context, rule string, opts *RuleOptions) error {
 	if opts == nil {
-		return nil, fmt.Errorf("ha: rule options are required")
+		return fmt.Errorf("ha: rule options are required")
 	}
 	if opts.Type == "" {
-		return nil, fmt.Errorf("ha: rule type is required")
+		return fmt.Errorf("ha: rule type is required")
 	}
 
 	params, err := opts.encode()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var hr Rule
-	if err := r.client.Update(ctx, "/cluster/ha/rules/"+rule, &hr, params); err != nil {
-		return nil, err
-	}
-
-	return &hr, nil
+	return r.client.Update(ctx, "/cluster/ha/rules/"+rule, nil, params)
 }
 
 // Delete removes an HA rule via DELETE /cluster/ha/rules/{rule}.
