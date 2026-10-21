@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/sergelogvinov/go-proxmox-rest/cluster"
+	"github.com/sergelogvinov/go-proxmox-rest/internal/apierr"
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes"
 	"github.com/sergelogvinov/go-proxmox-rest/pools"
@@ -534,35 +535,33 @@ func (c *Client) Close() error {
 	return nil
 }
 
-// retryCondition retries only on explicit Proxmox "SlowDown" responses,
-// 5xx server errors and connectivity errors.
+// retryCondition retries connectivity errors, rate limiting (429 or a
+// Proxmox "SlowDown" response) and 500/502/503/504 server errors, except
+// a 500 that apierr classifies as not found ("... does not exist"): that
+// answer is final, and retrying it only delays the caller's IsNotFound
+// check by the full backoff. resty itself never retries non-idempotent
+// methods (POST), whatever this returns.
 func retryCondition(res *resty.Response, err error) bool {
 	if err != nil {
 		return true
 	}
-	if res == nil {
+	if res == nil || res.StatusCode() < http.StatusBadRequest {
 		return false
 	}
 
-	switch res.StatusCode() {
-	case http.StatusInternalServerError,
-		http.StatusBadGateway,
-		http.StatusServiceUnavailable,
-		http.StatusGatewayTimeout,
-		http.StatusTooManyRequests:
+	switch newAPIError(res).Kind() { //nolint:exhaustive
+	case apierr.RateLimited:
 		return true
-	}
-
-	var e struct {
-		Errors map[string]string `json:"errors"`
-	}
-	if json.Unmarshal(res.Bytes(), &e) == nil {
-		for _, msg := range e.Errors {
-			if strings.Contains(msg, "SlowDown") {
-				return true
-			}
+	case apierr.ServerError:
+		switch res.StatusCode() {
+		case http.StatusInternalServerError,
+			http.StatusBadGateway,
+			http.StatusServiceUnavailable,
+			http.StatusGatewayTimeout:
+			return true
 		}
 	}
+
 	return false
 }
 
