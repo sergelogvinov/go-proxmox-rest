@@ -20,8 +20,9 @@ limitations under the License.
 // full design rationale; this package follows it with one implementation
 // deviation, noted on vmState/containerState in state.go: guest
 // configuration is stored as the same flat wire-parameter map the real
-// client sends/receives, not as a live qemu.Config/lxc.Config, since the
-// encode/decode helpers for those types are unexported in their packages.
+// client sends/receives (params.Encode's output), not as a live
+// qemu.Config/lxc.Config, so update handlers can merge raw request
+// parameters into it.
 //
 // A NewCluster call starts an httptest.Server; Cluster.Client returns an
 // ordinary *proxmox.Client wired to it, so every subpackage's

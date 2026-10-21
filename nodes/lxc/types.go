@@ -161,14 +161,12 @@ func (m *MountPoint) UnmarshalJSON(data []byte) error {
 // Client.UpdateConfig (PUT to the same path).
 //
 // Three numerically-suffixed families hold the container's mount points
-// and network interfaces (net0-31, mp0-255, unused0-255): each is a
-// map[int]string keyed by index, holding Proxmox's own property-string
-// value verbatim (e.g. Net[0] == "name=eth0,bridge=vmbr0,ip=dhcp").
-// RootFS (the container's root mount point) is a singular field, not
-// part of this indexing — it's always exactly one entry. Parsing these
-// property strings further is out of scope here — see
-// PVE::LXC::Config's mount point / network format definitions for the
-// authoritative grammar.
+// and network interfaces (net0-31, mp0-255, unused0-255): each is a map
+// keyed by index, tagged `url:"<prefix>,indexed"` so internal/params
+// encodes and decodes it like any other field. Net and MP hold typed
+// property-string values; Unused holds Proxmox's value verbatim. RootFS
+// (the container's root mount point) is a singular field, not part of
+// this indexing — it's always exactly one entry.
 //
 // Fields tagged "readonly" are populated from a GET response but never
 // sent by UpdateConfig, even if a caller round-trips a fetched Config
@@ -281,12 +279,12 @@ type Config struct {
 	// -- numerically-indexed hardware families, keyed by index --
 
 	// Net holds netN entries (network interfaces), N in 0-31.
-	Net map[int]Net `json:"-" url:"-"`
+	Net map[int]Net `json:"-" url:"net,indexed"`
 	// MP holds mpN entries (additional mount points), N in 0-255.
-	MP map[int]MountPoint `json:"-" url:"-"`
+	MP map[int]MountPoint `json:"-" url:"mp,indexed"`
 	// Unused holds unusedN entries (mount points detached from the
 	// config but not deleted), N in 0-255.
-	Unused map[int]string `json:"-" url:"-"`
+	Unused map[int]string `json:"-" url:"unused,indexed"`
 
 	// -- write-only (never appear in a GET response) --
 

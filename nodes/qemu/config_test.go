@@ -20,7 +20,25 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+
+	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
 )
+
+// decodeConfig decodes raw the way Client.Config does: the root client
+// hands the response's data object to params.Decode.
+func decodeConfig(raw map[string]json.RawMessage) (*Config, error) {
+	b, err := json.Marshal(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	var cfg Config
+	if err := params.Decode(b, &cfg); err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
+}
 
 func TestDecodeConfigTags(t *testing.T) {
 	raw := map[string]json.RawMessage{
@@ -72,7 +90,7 @@ func TestEncodeConfigNoTags(t *testing.T) {
 	}
 }
 
-// TestDecodeConfigNet guards against decodeConfig (via setIndexedNet)
+// TestDecodeConfigNet guards against config decoding
 // dropping the model=macaddr alias — property.Unmarshal alone can't
 // recognize it since the model name ("virtio") is a dynamic key, not one
 // of Net's cfg tags. A regression here silently strips Model/MACAddr, so
@@ -100,5 +118,56 @@ func TestDecodeConfigNet(t *testing.T) {
 
 	if got := got.String(); got != "virtio=BC:24:11:CD:B9:41,bridge=vmbr0" {
 		t.Fatalf("Net[0].String() = %q, want round-trip of the original value", got)
+	}
+}
+
+// TestConfigIndexedRoundTrip checks that every indexed family survives
+// decode -> encode unchanged, and that families sharing a prefix
+// (virtio/virtiofs) and indexed-looking scalars (efidisk0, smbios1)
+// don't claim each other's keys.
+func TestConfigIndexedRoundTrip(t *testing.T) {
+	wire := map[string]string{
+		"net0":      "virtio=BC:24:11:CD:B9:41,bridge=vmbr0",
+		"ide2":      "local:iso/debian.iso,media=cdrom",
+		"sata1":     "local-lvm:vm-100-disk-2,size=8G",
+		"scsi0":     "local-lvm:vm-100-disk-0,size=32G",
+		"virtio3":   "local-lvm:vm-100-disk-1,size=4G",
+		"virtiofs0": "share",
+		"unused0":   "local-lvm:vm-100-disk-9",
+		"usb1":      "1234:5678",
+		"hostpci0":  "0000:01:00.0",
+		"serial0":   "socket",
+		"parallel1": "/dev/parport0",
+		"ipconfig0": "ip=dhcp",
+		"numa0":     "cpus=0-3,memory=2048",
+		"efidisk0":  "local-lvm:vm-100-disk-3,efitype=4m",
+	}
+
+	raw := map[string]json.RawMessage{}
+	for k, v := range wire {
+		b, _ := json.Marshal(v) //nolint:errchkjson
+		raw[k] = b
+	}
+
+	cfg, err := decodeConfig(raw)
+	if err != nil {
+		t.Fatalf("decodeConfig() error = %v", err)
+	}
+
+	if len(cfg.VirtIO) != 1 || len(cfg.VirtioFS) != 1 {
+		t.Fatalf("VirtIO = %v, VirtioFS = %v; want one entry each", cfg.VirtIO, cfg.VirtioFS)
+	}
+
+	if got := cfg.Parallel[1]; got != "/dev/parport0" {
+		t.Fatalf("Parallel[1] = %q, want %q", got, "/dev/parport0")
+	}
+
+	p, err := encodeConfig(cfg)
+	if err != nil {
+		t.Fatalf("encodeConfig() error = %v", err)
+	}
+
+	if !reflect.DeepEqual(p, wire) {
+		t.Fatalf("round trip mismatch:\n got  %v\n want %v", p, wire)
 	}
 }

@@ -27,84 +27,20 @@ import (
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/qemu"
 )
 
-// flattenQemuConfig converts cfg into the same flat wire-parameter map
-// nodes/qemu's own (unexported) encodeConfig builds: params.Encode(cfg)
-// covers every ordinary named field (including property-string-valued
-// ones like Memory/CPU/Machine, which implement fmt.Stringer), and the
-// loops below add one "prefix+index" entry per populated indexed-family
-// map, mirroring nodes/qemu/config.go's addIndexedXxx helpers field for
-// field. See vmState's doc comment (state.go) for why this map — not a
-// live qemu.Config — is what's actually stored.
-func flattenQemuConfig(cfg *qemu.Config) map[string]string {
+// flattenConfig converts a *qemu.Config or *lxc.Config into the same flat
+// wire-parameter map the client sends for a config write: params.Encode
+// handles every field, including the indexed netN/scsiN/mpN/... families
+// (tagged `url:"<prefix>,indexed"`) and property-string values. See
+// vmState's doc comment (state.go) for why this map — not a live
+// qemu.Config — is what's actually stored. A nil cfg yields an empty map.
+func flattenConfig[T qemu.Config | lxc.Config](cfg *T) map[string]string {
 	if cfg == nil {
 		return map[string]string{}
 	}
 
 	p, err := params.Encode(cfg)
 	if err != nil {
-		p = map[string]string{}
-	}
-
-	for idx, v := range cfg.Net {
-		p["net"+strconv.Itoa(idx)] = v.String()
-	}
-	for idx, v := range cfg.IDE {
-		p["ide"+strconv.Itoa(idx)] = v.String()
-	}
-	for idx, v := range cfg.SATA {
-		p["sata"+strconv.Itoa(idx)] = v.String()
-	}
-	for idx, v := range cfg.SCSI {
-		p["scsi"+strconv.Itoa(idx)] = v.String()
-	}
-	for idx, v := range cfg.VirtIO {
-		p["virtio"+strconv.Itoa(idx)] = v.String()
-	}
-	for idx, v := range cfg.VirtioFS {
-		p["virtiofs"+strconv.Itoa(idx)] = v.String()
-	}
-	for idx, v := range cfg.Unused {
-		p["unused"+strconv.Itoa(idx)] = v
-	}
-	for idx, v := range cfg.USB {
-		p["usb"+strconv.Itoa(idx)] = v.String()
-	}
-	for idx, v := range cfg.HostPCI {
-		p["hostpci"+strconv.Itoa(idx)] = v.String()
-	}
-	for idx, v := range cfg.Serial {
-		p["serial"+strconv.Itoa(idx)] = v
-	}
-	for idx, v := range cfg.IPConfig {
-		p["ipconfig"+strconv.Itoa(idx)] = v.String()
-	}
-	for idx, v := range cfg.NUMA {
-		p["numa"+strconv.Itoa(idx)] = v.String()
-	}
-
-	return p
-}
-
-// flattenLXCConfig is flattenQemuConfig's LXC counterpart, mirroring
-// nodes/lxc/config.go's (unexported) encodeConfig.
-func flattenLXCConfig(cfg *lxc.Config) map[string]string {
-	if cfg == nil {
 		return map[string]string{}
-	}
-
-	p, err := params.Encode(cfg)
-	if err != nil {
-		p = map[string]string{}
-	}
-
-	for idx, v := range cfg.Net {
-		p["net"+strconv.Itoa(idx)] = v.String()
-	}
-	for idx, v := range cfg.MP {
-		p["mp"+strconv.Itoa(idx)] = v.String()
-	}
-	for idx, v := range cfg.Unused {
-		p["unused"+strconv.Itoa(idx)] = v
 	}
 
 	return p
