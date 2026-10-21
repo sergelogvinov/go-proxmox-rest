@@ -42,6 +42,11 @@ func TestClassify(t *testing.T) {
 			&APIError{StatusCode: 500, Message: "no such security group 'web'"},
 			NotFound,
 		},
+		{
+			"500 unmanaged ha resource",
+			&APIError{StatusCode: 500, Message: "cannot delete service 'vm:104', not HA managed!"},
+			NotFound,
+		},
 		{"500 missing binary", &APIError{StatusCode: 500, Message: "500 binary not installed: /usr/bin/ceph-mon"}, NotFound},
 		{
 			"500 not-found text only in per-field errors",

@@ -79,6 +79,7 @@ var notFoundTexts = []string{
 	"does not exist",
 	"no such ", // "no such resource", "no such file or directory", ...
 	"binary not installed:",
+	"not ha managed", // "cannot delete service 'vm:100', not HA managed!"
 }
 
 // Classify reports what err means. It looks through wrapped errors for
