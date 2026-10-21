@@ -130,7 +130,7 @@ func (n *Node) AddVM(vmid int, cfg *qemu.Config, opts ...VMOption) *VM {
 	vm := &vmState{
 		vmid:   vmid,
 		node:   n.node.name,
-		cfg:    flattenQemuConfig(cfg),
+		cfg:    flattenConfig(cfg),
 		status: qemu.VMStatusStopped,
 	}
 	for _, opt := range opts {
@@ -176,7 +176,7 @@ func (n *Node) AddContainer(vmid int, cfg *lxc.Config, opts ...ContainerOption) 
 	ct := &containerState{
 		vmid:   vmid,
 		node:   n.node.name,
-		cfg:    flattenLXCConfig(cfg),
+		cfg:    flattenConfig(cfg),
 		status: lxc.StateStopped,
 	}
 	for _, opt := range opts {

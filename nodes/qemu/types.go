@@ -448,31 +448,18 @@ func (n Net) String() string {
 	}
 }
 
-// UnmarshalJSON converts Proxmox's netN property string into Net.
+// UnmarshalJSON converts Proxmox's netN property string into Net,
+// pulling out the "<model>=<macaddr>" alias component (an arbitrary,
+// dynamic key not covered by Net's cfg tags) before handing the rest to
+// property.Unmarshal, which would otherwise silently drop the
+// model/macaddr pair.
 func (n *Net) UnmarshalJSON(data []byte) error {
 	var value string
 	if err := json.Unmarshal(data, &value); err != nil {
 		return fmt.Errorf("qemu: net must be a property string: %w", err)
 	}
 
-	parsed, err := parseNet(value)
-	if err != nil {
-		return err
-	}
-
-	*n = parsed
-
-	return nil
-}
-
-// parseNet parses a netN property string into a Net, pulling out the
-// "<model>=<macaddr>" alias component (an arbitrary, dynamic key not
-// covered by Net's cfg tags) before handing the rest to property.Unmarshal.
-// Used both by UnmarshalJSON and by config.go's setIndexedNet, which must
-// not fall back to the alias-unaware property.Unmarshal directly or it
-// silently drops the model/macaddr pair.
-func parseNet(value string) (Net, error) {
-	n := Net{}
+	parsed := Net{}
 
 	var rest []string
 	for item := range strings.SplitSeq(value, ",") {
@@ -481,18 +468,20 @@ func parseNet(value string) (Net, error) {
 			continue
 		}
 		if key, val, ok := strings.Cut(item, "="); ok && !netKnownKeys[key] {
-			n.Model = key
-			n.MACAddr = val
+			parsed.Model = key
+			parsed.MACAddr = val
 			continue
 		}
 		rest = append(rest, item)
 	}
 
-	if err := property.Unmarshal(strings.Join(rest, ","), &n); err != nil {
-		return Net{}, err
+	if err := property.Unmarshal(strings.Join(rest, ","), &parsed); err != nil {
+		return err
 	}
 
-	return n, nil
+	*n = parsed
+
+	return nil
 }
 
 // Watchdog describes a virtual hardware watchdog device. Proxmox
@@ -636,13 +625,7 @@ func (s SMBios1) String() string {
 
 // UnmarshalJSON converts Proxmox's SMBIOS property string into SMBios1.
 func (s *SMBios1) UnmarshalJSON(data []byte) error {
-	var value string
-	if err := json.Unmarshal(data, &value); err != nil {
-		return fmt.Errorf("qemu: smbios1 must be a property string: %w", err)
-	}
-
-	*s = SMBios1{}
-	return property.Unmarshal(value, s)
+	return unmarshalPropertyJSON(data, s, "smbios1")
 }
 
 // Tags is identical between this package and nodes/lxc (and, more
@@ -658,12 +641,11 @@ type Tags = types.Tags
 // attachment families (net0, net1, ..., ide0-3, sata0-5, scsi0-30,
 // virtio0-15, unused0-255, usb0-13, hostpci0-15, serial0-3, parallel0-2,
 // numa0-7, virtiofs0-N, ipconfig0-31): rather than a field per possible
-// index (thousands of fields, most always unset), each family is a
-// map[int]string keyed by index, holding Proxmox's own property-string
-// value verbatim (e.g. Net[0] == "virtio=AA:BB:...,bridge=vmbr0").
-// Parsing those property strings further (disk size/format/cache flags,
-// NIC model/bridge/vlan, ...) is out of scope here — see
-// PVE::QemuServer::Drive / ::Network for the authoritative grammar.
+// index (thousands of fields, most always unset), each family is a map
+// keyed by index, tagged `url:"<prefix>,indexed"` so internal/params
+// encodes and decodes it like any other field. Families with a known
+// property-string grammar hold a typed value (Net, Drive, USB, ...);
+// the rest (unused, serial, parallel) hold Proxmox's value verbatim.
 //
 // Fields tagged "readonly" are populated from a GET response but never
 // sent by Update/UpdateAsync, even if a caller round-trips a fetched
@@ -884,33 +866,36 @@ type Config struct {
 	// -- numerically-indexed hardware families, keyed by index --
 
 	// Net holds netN entries (network interfaces), N in 0-31.
-	Net map[int]Net `json:"-" url:"-"`
+	Net map[int]Net `json:"-" url:"net,indexed"`
 	// IDE holds ideN entries (IDE drives), N in 0-3.
-	IDE map[int]Drive `json:"-" url:"-"`
+	IDE map[int]Drive `json:"-" url:"ide,indexed"`
 	// SATA holds sataN entries (SATA drives), N in 0-5.
-	SATA map[int]Drive `json:"-" url:"-"`
+	SATA map[int]Drive `json:"-" url:"sata,indexed"`
 	// SCSI holds scsiN entries (SCSI drives), N in 0-30.
-	SCSI map[int]Drive `json:"-" url:"-"`
+	SCSI map[int]Drive `json:"-" url:"scsi,indexed"`
 	// VirtIO holds virtioN entries (VirtIO block drives), N in 0-15.
-	VirtIO map[int]Drive `json:"-" url:"-"`
+	VirtIO map[int]Drive `json:"-" url:"virtio,indexed"`
 	// VirtioFS holds virtiofsN entries (virtiofs shares).
-	VirtioFS map[int]VirtioFS `json:"-" url:"-"`
+	VirtioFS map[int]VirtioFS `json:"-" url:"virtiofs,indexed"`
 	// Unused holds unusedN entries (disks detached from the config but
 	// not deleted), N in 0-255.
-	Unused map[int]string `json:"-" url:"-"`
+	Unused map[int]string `json:"-" url:"unused,indexed"`
 	// USB holds usbN entries (USB device passthrough), N in 0-13.
-	USB map[int]USB `json:"-" url:"-"`
+	USB map[int]USB `json:"-" url:"usb,indexed"`
 	// HostPCI holds hostpciN entries (PCI(e) device passthrough), N in
 	// 0-15.
-	HostPCI map[int]HostPCI `json:"-" url:"-"`
+	HostPCI map[int]HostPCI `json:"-" url:"hostpci,indexed"`
 	// Serial holds serialN entries (serial devices), N in 0-3.
-	Serial map[int]string `json:"-" url:"-"`
+	Serial map[int]string `json:"-" url:"serial,indexed"`
+	// Parallel holds parallelN entries (host parallel device
+	// passthrough, e.g. "/dev/parport0"), N in 0-2.
+	Parallel map[int]string `json:"-" url:"parallel,indexed"`
 	// IPConfig holds ipconfigN entries (cloud-init per-NIC IP
 	// configuration), N in 0-31.
-	IPConfig map[int]IPConfig `json:"-" url:"-"`
+	IPConfig map[int]IPConfig `json:"-" url:"ipconfig,indexed"`
 	// NUMA holds numaN entries (per-NUMA-node CPU/memory pinning), N in
 	// 0-7. Not to be confused with NUMAEnabled above.
-	NUMA map[int]NUMA `json:"-" url:"-"`
+	NUMA map[int]NUMA `json:"-" url:"numa,indexed"`
 
 	// -- write-only (never appear in a GET response) --
 

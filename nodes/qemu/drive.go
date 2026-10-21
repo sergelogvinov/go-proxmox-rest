@@ -19,6 +19,8 @@ package qemu
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strconv"
 )
 
 // AttachDriveOptions holds the parameters for Client.AttachDrive.
@@ -132,4 +134,25 @@ func setConfigDrive(cfg *Config, prefix string, index int, d Drive) bool {
 	}
 
 	return true
+}
+
+// driveKeyRe splits a drive config key into its bus prefix and slot
+// index, e.g. "scsi3" -> ("scsi", "3").
+var driveKeyRe = regexp.MustCompile(`^([a-z]+)(\d+)$`)
+
+// splitIndexedKey splits a numerically-suffixed config key such as
+// "scsi3" into its family prefix and index. Callers check the prefix
+// against the families they accept (see isDriveFamily).
+func splitIndexedKey(key string) (prefix string, index int, ok bool) {
+	m := driveKeyRe.FindStringSubmatch(key)
+	if m == nil {
+		return "", 0, false
+	}
+
+	idx, err := strconv.Atoi(m[2])
+	if err != nil {
+		return "", 0, false
+	}
+
+	return m[1], idx, true
 }

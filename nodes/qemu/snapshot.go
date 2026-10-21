@@ -18,7 +18,6 @@ package qemu
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -137,12 +136,12 @@ func (r *snapshotResource) Create(ctx context.Context, vmid int, opts *CreateSna
 //
 // +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Snapshot;VM.Snapshot.Rollback;VM.Audit,match=any
 func (r *snapshotResource) GetConfig(ctx context.Context, vmid int, snapname string) (*Config, error) {
-	var raw map[string]json.RawMessage
-	if err := r.client.Get(ctx, snapshotPath(r.node, vmid, snapname, "config"), &raw, nil); err != nil {
+	var cfg Config
+	if err := r.client.Get(ctx, snapshotPath(r.node, vmid, snapname, "config"), &cfg, nil); err != nil {
 		return nil, err
 	}
 
-	return decodeConfig(raw)
+	return &cfg, nil
 }
 
 // UpdateConfig replaces a snapshot's description via

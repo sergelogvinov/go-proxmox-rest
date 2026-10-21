@@ -133,17 +133,14 @@ type storageState struct {
 // vmState is one QEMU guest.
 //
 // docs/fakeapi.md §6 sketches cfg as a live qemu.Config so "a guest's disks
-// are not a separate model." In practice qemu.Config's own encode/decode
-// (the numerically-suffixed netN/scsiN/... families, property-string
-// scalars) lives in unexported functions in nodes/qemu/config.go, so this
-// package cannot reuse them directly. Storing the same flat
-// wire-parameter map[string]string the client itself sends
-// (params.Encode's output, plus one "prefix+index" entry per indexed
-// family — see flattenQemuConfig) achieves the same goal by construction:
-// GET just re-serves the map as a JSON object of strings, which
-// decodeConfig/params.Decode parse exactly as they would a real
-// Proxmox response (params.Decode already tolerates numbers/bools
-// arriving as JSON strings). No config grammar is duplicated here.
+// are not a separate model." It is stored instead as the same flat
+// wire-parameter map[string]string the client itself sends (params.Encode's
+// output — see flattenConfig), which achieves the same goal by
+// construction: update handlers merge the request's parameters into it
+// key by key, and GET just re-serves the map as a JSON object of strings,
+// which params.Decode parses exactly as it would a real Proxmox response
+// (it already tolerates numbers/bools arriving as JSON strings). No config
+// grammar is duplicated here.
 type vmState struct {
 	vmid      int
 	node      string
