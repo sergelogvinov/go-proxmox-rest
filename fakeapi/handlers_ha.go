@@ -38,8 +38,8 @@ func haGroupToWire(g *haGroupState) ha.Group {
 	}
 }
 
-// haGroupsMigratedMessage is the status-line reason phrase a real Proxmox
-// cluster sends back from GET /cluster/ha/groups once its HA groups have
+// haGroupsMigratedMessage is the error message a real Proxmox cluster
+// sends back from GET /cluster/ha/groups once its HA groups have
 // been migrated to HA rules. See WithHAGroupsMigrated and
 // writeStatusLineError.
 const haGroupsMigratedMessage = "cannot index groups: ha groups have been migrated to rules"
@@ -52,8 +52,9 @@ func handleHAGroupsCollection(state *clusterState) http.HandlerFunc {
 		case http.MethodGet:
 			state.mu.Lock()
 			if state.haGroupsMigrated {
+				reverseProxy := state.reverseProxy
 				state.mu.Unlock()
-				writeStatusLineError(w, http.StatusInternalServerError, haGroupsMigratedMessage)
+				writeStatusLineError(w, reverseProxy, http.StatusInternalServerError, haGroupsMigratedMessage)
 
 				return
 			}

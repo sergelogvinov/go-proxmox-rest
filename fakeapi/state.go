@@ -54,6 +54,12 @@ type clusterState struct {
 	// been migrated to rules", instead of the seeded haGroups. See
 	// WithHAGroupsMigrated.
 	haGroupsMigrated bool
+
+	// reverseProxy models a reverse proxy in front of the cluster: errors
+	// pveproxy sends in the status line's reason phrase arrive with the
+	// standard reason text instead, their message in the JSON body. See
+	// WithReverseProxy.
+	reverseProxy bool
 }
 
 // nodeState is one cluster member: its online/failure state, seeded

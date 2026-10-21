@@ -152,6 +152,12 @@ func WithNodes(names ...string) ClusterOption
 // completes them via Cluster.Tasks().Complete/Fail.
 func WithManualTasks() ClusterOption
 
+// WithReverseProxy models a reverse proxy in front of the cluster: errors
+// a direct pveproxy connection conveys in the status line's reason phrase
+// (e.g. WithHAGroupsMigrated's) arrive with the standard reason text and
+// their message in the JSON body instead.
+func WithReverseProxy() ClusterOption
+
 // Cluster is the in-memory Proxmox cluster and its HTTP frontend.
 type Cluster struct{ /* ... */ }
 
