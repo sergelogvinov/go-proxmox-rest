@@ -314,8 +314,10 @@ Key resty wiring (resty v3 API):
 - **Auth**: resty `SetAuthToken()` with `PVEAPIToken=<token>=<secret>`; optionally
   `--with-header` alternative for ticket auth on legacy setups.
 - **Retry**: `SetRetryCount(cfg.RetryCount)` + `SetRetryWaitTime(cfg.RetryWaitTime)` +
-  `SetRetryMaxWaitTime(cfg.RetryMaxWaitTime)` with a predicate that only retries on
-  the explicit Proxmox `SlowDown` (task queue) response, plus 5xx and connectivity.
+  `SetRetryMaxWaitTime(cfg.RetryMaxWaitTime)` with a predicate that retries
+  connectivity errors, rate limiting (429 or a Proxmox `SlowDown` response) and
+  500/502/503/504 — except a 500 classified as not found (§8), which is final.
+  resty never retries POST.
 - **Logging**: `SetLogger(cfg.Logger)`; sensitive headers (token/secret) masked.
 - **Timeout**: `SetTimeout(cfg.Timeout)` from config.
 - **TLS**: `SetTLSClientConfig(...)` built from `cfg` — if `WithCACert` was set, the
@@ -636,10 +638,17 @@ func (e *APIError) Error() string { ... }
 
 Helper predicates for callers:
 ```go
-func IsNotFound(err error) bool
-func IsRateLimited(err error) bool   // maps to Proxmox "SlowDown"
+func IsNotFound(err error) bool      // 404, a 500 saying "does not exist"/"no such ...", a missing task
+func IsRateLimited(err error) bool   // 429 or Proxmox "SlowDown"
 func IsUnexpected(err error) bool
 ```
+
+`APIError` and the classification behind these predicates live in
+`internal/apierr` (`APIError` is re-exported from the root package as an
+alias). The retry predicate, `task.Wait`'s "no such task" check, and
+packages that detect a missing resource client-side (`pools.Get` wraps
+`apierr.ErrNotFound`) all classify through the same `apierr.Classify`, so
+Proxmox's error texts are matched in one table.
 
 ---
 

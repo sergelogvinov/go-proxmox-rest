@@ -93,14 +93,15 @@ func CleanupContext() (context.Context, context.CancelFunc) {
 // longer exists, so RetryCleanup should stop without retrying or reporting
 // a failure.
 //
-// Most Proxmox delete endpoints signal this with a proper 404
-// (proxmox.IsNotFound). Others instead respond 500 with a plain die()
-// message — e.g. "no such <resource> '<name>'" from
+// proxmox.IsNotFound covers a 404 and a 500 whose message says the target
+// is gone — e.g. "no such <resource> '<name>'" from
 // DELETE .../firewall/groups/{group}, or "custom CPU model '<name>' does
-// not exist" from DELETE .../qemu/custom-cpu-models/{cputype} — on a
-// resource already removed by the test's own happy path. Matching these
-// message shapes is scoped to cleanup idempotency only; it does not change
-// proxmox.IsNotFound's general, status-code-based semantics used elsewhere.
+// not exist" from DELETE .../qemu/custom-cpu-models/{cputype}. Some delete
+// endpoints instead reject an already-removed target as a 400 parameter
+// error ("no such job ..."); IsNotFound deliberately leaves 400s alone,
+// since a 400 naming a missing *referenced* resource (a storage, a bridge)
+// is not "this resource is gone". Matching that shape too is scoped to
+// cleanup idempotency only.
 func alreadyGone(err error) bool {
 	if proxmox.IsNotFound(err) {
 		return true

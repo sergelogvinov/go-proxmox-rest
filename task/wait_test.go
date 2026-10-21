@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/sergelogvinov/go-proxmox-rest/internal/apierr"
 )
 
 // fakeGetter feeds Client.Status and Client.List independent, scripted
@@ -66,6 +68,14 @@ func (f *fakeGetter) Delete(context.Context, string, any, map[string]string) err
 	return nil
 }
 
+// errNoSuchTask is the error the root client returns for a UPID pvedaemon
+// doesn't (yet) know: a 400 parameter error naming the upid.
+var errNoSuchTask = &apierr.APIError{
+	StatusCode: 400,
+	Message:    "Bad Request",
+	Errors:     map[string]string{"upid": "no such task"},
+}
+
 const testUPID = "UPID:node1:00000001:00000001:00000000:upload:100:root@pam:"
 
 // TestWaitRecoversFromNoSuchTask guards against a regression where Wait
@@ -81,7 +91,7 @@ func TestWaitRecoversFromNoSuchTask(t *testing.T) {
 	getter := &fakeGetter{
 		statusStages: []func(out any) error{
 			func(_ any) error {
-				return errors.New("proxmox API error 400: Bad Request: map[upid:no such task]")
+				return errNoSuchTask
 			},
 			func(out any) error {
 				*out.(*Status) = Status{Status: StateStopped, ExitStatus: taskExitOK}
@@ -113,7 +123,7 @@ func TestWaitRecoversFromNoSuchTaskViaHistory(t *testing.T) {
 	getter := &fakeGetter{
 		statusStages: []func(out any) error{
 			func(_ any) error {
-				return errors.New("proxmox API error 400: Bad Request: map[upid:no such task]")
+				return errNoSuchTask
 			},
 		},
 		listStages: []func(out any) error{
@@ -144,7 +154,7 @@ func TestWaitFailedTaskViaHistory(t *testing.T) {
 	getter := &fakeGetter{
 		statusStages: []func(out any) error{
 			func(_ any) error {
-				return errors.New("proxmox API error 400: Bad Request: map[upid:no such task]")
+				return errNoSuchTask
 			},
 		},
 		listStages: []func(out any) error{

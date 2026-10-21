@@ -21,6 +21,8 @@ package pools
 import (
 	"context"
 	"fmt"
+
+	"github.com/sergelogvinov/go-proxmox-rest/internal/apierr"
 )
 
 // Getter is the subset of the root client used by this package. It is
@@ -44,6 +46,7 @@ func New(c Getter) *Client {
 }
 
 // Get retrieves a single pool configuration via GET /pools/?poolid={poolid}.
+// An unknown poolID yields an error proxmox.IsNotFound recognizes.
 //
 // +proxmox:rbac:path=/pool/{poolid},method=GET,privs=Pool.Audit,match=all
 func (c *Client) Get(ctx context.Context, poolID string) (*Pool, error) {
@@ -54,7 +57,7 @@ func (c *Client) Get(ctx context.Context, poolID string) (*Pool, error) {
 
 	switch len(pools) {
 	case 0:
-		return nil, fmt.Errorf("pool not found")
+		return nil, fmt.Errorf("pool %q: %w", poolID, apierr.ErrNotFound)
 	case 1:
 		return &pools[0], nil
 	}

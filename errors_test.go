@@ -24,6 +24,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/sergelogvinov/go-proxmox-rest/internal/apierr"
 )
 
 func TestIsNotFound(t *testing.T) {
@@ -49,6 +51,16 @@ func TestIsNotFound(t *testing.T) {
 			name: "other 500",
 			err:  &APIError{StatusCode: http.StatusInternalServerError, Message: "internal error"},
 			want: false,
+		},
+		{
+			name: "missing task",
+			err:  &APIError{StatusCode: http.StatusBadRequest, Message: "Bad Request", Errors: map[string]string{"upid": "no such task"}},
+			want: true,
+		},
+		{
+			name: "client-side not found (pools.Get on an unknown pool)",
+			err:  fmt.Errorf("pool %q: %w", "dev", apierr.ErrNotFound),
+			want: true,
 		},
 	}
 
@@ -201,6 +213,55 @@ func TestIsNotFoundBehindReverseProxy(t *testing.T) {
 			err := getRawResponse(t, http.StatusInternalServerError, "Internal Server Error", tt.body)
 			if got := IsNotFound(err); got != tt.want {
 				t.Fatalf("IsNotFound(%v) = %v, want %v", err, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestRetryCondition counts the attempts the client makes for each kind
+// of error response: a final not-found 500 must not burn the retry
+// budget, while rate limiting and other server errors still retry.
+func TestRetryCondition(t *testing.T) {
+	const retries = 2
+
+	tests := []struct {
+		name         string
+		status       int
+		body         string
+		wantAttempts int
+	}{
+		{"500 does not exist is final", 500, `{"data":null,"message":"Configuration file 'x' does not exist\n"}`, 1},
+		{"404 is final", 404, `{"data":null}`, 1},
+		{"400 is final", 400, `{"data":null,"errors":{"vmid":"invalid format"}}`, 1},
+		{"plain 500 retries", 500, `{"data":null,"message":"got timeout\n"}`, 1 + retries},
+		{"503 retries", 503, `{"data":null}`, 1 + retries},
+		{"429 retries", 429, `{"data":null}`, 1 + retries},
+		{"SlowDown retries", 400, `{"data":null,"errors":{"api":"SlowDown"}}`, 1 + retries},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			attempts := 0
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				attempts++
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.status)
+				_, _ = w.Write([]byte(tt.body))
+			}))
+			defer srv.Close()
+
+			c, err := New(ClientConfig{}, WithURL(srv.URL), WithRetryCount(retries),
+				WithRetryWaitTime(time.Millisecond), WithRetryMaxWaitTime(time.Millisecond))
+			if err != nil {
+				t.Fatalf("New() error = %v", err)
+			}
+			defer c.Close()
+
+			if err := c.Get(context.Background(), "/version", nil, nil); err == nil {
+				t.Fatal("Get() succeeded, want an error")
+			}
+			if attempts != tt.wantAttempts {
+				t.Fatalf("attempts = %d, want %d", attempts, tt.wantAttempts)
 			}
 		})
 	}

@@ -19,8 +19,9 @@ package task
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
+
+	"github.com/sergelogvinov/go-proxmox-rest/internal/apierr"
 )
 
 const (
@@ -141,7 +142,7 @@ func (t *Task) Wait(ctx context.Context, opts *WaitOptions) error {
 // back to the node's task history rather than failing a request that in
 // fact succeeded — see fromHistory.
 func isNoSuchTask(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "no such task")
+	return apierr.Classify(err) == apierr.NoSuchTask
 }
 
 // fromHistory looks upid up via List (which, unlike Status, also
