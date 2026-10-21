@@ -103,21 +103,21 @@ func TestQemuStatusActionsAbsentAsyncTask(t *testing.T) {
 	sc := client.Nodes(cfg.Node).Qemu()
 	ctx := t.Context()
 
-	upid, err := sc.Start(ctx, nonexistentVMID, nil)
+	tk, err := sc.Start(ctx, nonexistentVMID, nil)
 	e2e.RequireNoError(t, "start absent guest", err)
-	if upid == "" {
+	if tk.UPID() == "" {
 		t.Errorf("start absent guest: got empty UPID")
 	}
 
-	upid, err = sc.Stop(ctx, nonexistentVMID, nil)
+	tk, err = sc.Stop(ctx, nonexistentVMID, nil)
 	e2e.RequireNoError(t, "stop absent guest", err)
-	if upid == "" {
+	if tk.UPID() == "" {
 		t.Errorf("stop absent guest: got empty UPID")
 	}
 
-	upid, err = sc.Shutdown(ctx, nonexistentVMID, nil)
+	tk, err = sc.Shutdown(ctx, nonexistentVMID, nil)
 	e2e.RequireNoError(t, "shutdown absent guest", err)
-	if upid == "" {
+	if tk.UPID() == "" {
 		t.Errorf("shutdown absent guest: got empty UPID")
 	}
 }
@@ -157,11 +157,11 @@ func TestQemuStatusStartOptions(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	upid, err := client.Nodes(cfg.Node).Qemu().Start(ctx, nonexistentVMID, &qemu.StartOptions{
+	tk, err := client.Nodes(cfg.Node).Qemu().Start(ctx, nonexistentVMID, &qemu.StartOptions{
 		Timeout: 5,
 	})
 	e2e.RequireNoError(t, "start absent guest with options", err)
-	if upid == "" {
+	if tk.UPID() == "" {
 		t.Errorf("start absent guest with options: got empty UPID")
 	}
 }

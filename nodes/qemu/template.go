@@ -19,16 +19,18 @@ package qemu
 import (
 	"context"
 	"strconv"
+
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // Template converts a stopped guest into a template via
 // POST /nodes/{node}/qemu/{vmid}/template. disk restricts the conversion
 // to a single disk (e.g. "scsi0"), converting only that disk to a base
 // image instead of the whole guest; pass "" to convert the whole guest.
-// Returns the conversion task's UPID.
+// Returns a *task.Task handle for the conversion task.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Allocate,match=all
-func (c *Client) Template(ctx context.Context, vmid int, disk string) (string, error) {
+func (c *Client) Template(ctx context.Context, vmid int, disk string) (*task.Task, error) {
 	var p map[string]string
 	if disk != "" {
 		p = map[string]string{"disk": disk}
@@ -36,8 +38,8 @@ func (c *Client) Template(ctx context.Context, vmid int, disk string) (string, e
 
 	var upid string
 	if err := c.client.Create(ctx, "/nodes/"+c.node+"/qemu/"+strconv.Itoa(vmid)+"/template", &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }

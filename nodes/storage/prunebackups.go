@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // pruneBackupsResource provides access to
@@ -58,27 +59,27 @@ func (r *pruneBackupsResource) DryRun(ctx context.Context, storageID string, opt
 // removing every volume DryRun would mark PruneMarkRemove. Unlike
 // DryRun, opts.PruneBackups is required here — Proxmox does not fall
 // back to the storage's configured retention for the real prune.
-// Returns the pruning task's UPID.
+// Returns a *task.Task handle for the pruning task.
 // This user=>all endpoint has no fixed privilege. With vmid, it requires both
 // Datastore.AllocateSpace and VM.Backup; without vmid, Datastore.Allocate applies.
 // The marker records the no-vmid branch; the vmid-specific alternative is
 // documented above.
 //
 // +proxmox:rbac:path=/storage/{storage},method=DELETE,privs=Datastore.Allocate,match=all
-func (r *pruneBackupsResource) Delete(ctx context.Context, storageID string, opts *PruneOptions) (string, error) {
+func (r *pruneBackupsResource) Delete(ctx context.Context, storageID string, opts *PruneOptions) (*task.Task, error) {
 	if opts == nil || opts.PruneBackups == "" {
-		return "", fmt.Errorf("storage: prune-backups retention is required")
+		return nil, fmt.Errorf("storage: prune-backups retention is required")
 	}
 
 	p, err := params.Encode(opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var upid string
 	if err := r.client.Delete(ctx, "/nodes/"+r.node+"/storage/"+storageID+"/prunebackups", &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(r.client, r.node, upid), nil
 }

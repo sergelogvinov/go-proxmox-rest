@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tasks
+package task
 
 import (
 	"context"
@@ -89,9 +89,9 @@ const mismatchedUPID = "UPID:rnd-2:001523F4:00ECA3F2:6AB4F552:imgcopy::root@pam:
 
 func TestStatusUsesUPIDNode(t *testing.T) {
 	getter := &pathRecordingGetter{}
-	c := New(getter, "rnd-3")
+	c := New(getter, "rnd-3", mismatchedUPID)
 
-	if _, err := c.Status(context.Background(), mismatchedUPID); err != nil {
+	if _, err := c.Status(context.Background()); err != nil {
 		t.Fatalf("Status() error = %v", err)
 	}
 
@@ -102,9 +102,9 @@ func TestStatusUsesUPIDNode(t *testing.T) {
 
 func TestLogUsesUPIDNode(t *testing.T) {
 	getter := &pathRecordingGetter{}
-	c := New(getter, "rnd-3")
+	c := New(getter, "rnd-3", mismatchedUPID)
 
-	if _, err := c.Log(context.Background(), mismatchedUPID, nil); err != nil {
+	if _, err := c.Log(context.Background(), nil); err != nil {
 		t.Fatalf("Log() error = %v", err)
 	}
 
@@ -115,9 +115,9 @@ func TestLogUsesUPIDNode(t *testing.T) {
 
 func TestStopUsesUPIDNode(t *testing.T) {
 	getter := &pathRecordingGetter{}
-	c := New(getter, "rnd-3")
+	c := New(getter, "rnd-3", mismatchedUPID)
 
-	if err := c.Stop(context.Background(), mismatchedUPID); err != nil {
+	if err := c.Stop(context.Background()); err != nil {
 		t.Fatalf("Stop() error = %v", err)
 	}
 
@@ -126,14 +126,12 @@ func TestStopUsesUPIDNode(t *testing.T) {
 	}
 }
 
-// TestListUsesClientNode ensures List — which has no upid to derive a
+// TestListUsesGivenNode ensures List — which has no upid to derive a
 // node from — is untouched by the taskNode fix and still lists the
-// client's own node's task history.
-func TestListUsesClientNode(t *testing.T) {
+// given node's task history.
+func TestListUsesGivenNode(t *testing.T) {
 	getter := &pathRecordingGetter{}
-	c := New(getter, "rnd-3")
-
-	if _, err := c.List(context.Background(), nil); err != nil {
+	if _, err := List(context.Background(), getter, "rnd-3", nil); err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
 

@@ -15,26 +15,50 @@ limitations under the License.
 */
 
 // Package tasks provides access to the Proxmox VE per-node task API
-// (endpoints under /nodes/{node}/tasks): the node's task history, a
-// single task's log/status/stop, and Wait, a client-side blocking helper
-// that polls Status until the task finishes (Proxmox has no
-// server-side "block until done" endpoint of its own).
+// (endpoints under /nodes/{node}/tasks): the node's task history, and a
+// single task's log/status/stop/wait addressed by its UPID string.
+//
+// The per-task operations are implemented by the task package: every
+// endpoint that starts a background task already returns a *task.Task
+// handle with the same methods. Use this package when all you hold is
+// a UPID (e.g. one read from List).
 package tasks
 
 import (
 	"context"
-	"strings"
 
-	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // Getter is the subset of the root client used by this package. It is
 // satisfied by *proxmox.Client, which keeps the tasks package decoupled
 // from the root package (no import cycle).
-type Getter interface {
-	Get(ctx context.Context, path string, out any, params map[string]string) error
-	Delete(ctx context.Context, path string, out any, params map[string]string) error
-}
+type Getter = task.Getter
+
+// State, Source, Task (a history entry), ListOptions, LogEntry,
+// LogOptions, Status, WaitOptions and FailedError are defined in the
+// task package and re-exported here so existing call sites keep
+// working.
+type (
+	State       = task.State
+	Source      = task.Source
+	Task        = task.Entry
+	ListOptions = task.ListOptions
+	LogEntry    = task.LogEntry
+	LogOptions  = task.LogOptions
+	Status      = task.Status
+	WaitOptions = task.WaitOptions
+	FailedError = task.FailedError
+)
+
+const (
+	StateRunning = task.StateRunning
+	StateStopped = task.StateStopped
+
+	SourceArchive = task.SourceArchive
+	SourceActive  = task.SourceActive
+	SourceAll     = task.SourceAll
+)
 
 // Client provides access to the /nodes/{node}/tasks resource tree, scoped
 // to the node given to New.
@@ -49,6 +73,13 @@ func New(c Getter, node string) *Client {
 	return &Client{client: c, node: node}
 }
 
+// Task returns the handle for the task upid. Its per-task requests are
+// addressed to the node embedded in upid, not necessarily this Client's
+// node — see task.Task.Node.
+func (c *Client) Task(upid string) *task.Task {
+	return task.New(c.client, c.node, upid)
+}
+
 // List retrieves the node's task history via GET /nodes/{node}/tasks.
 // opts may be nil to request Proxmox's defaults (the most recent 50
 // archived tasks, filtered to those the caller may see).
@@ -57,92 +88,31 @@ func New(c Getter, node string) *Client {
 //
 // +proxmox:rbac:path=/nodes/{node},method=GET,privs=Sys.Audit,match=any
 func (c *Client) List(ctx context.Context, opts *ListOptions) ([]Task, error) {
-	var p map[string]string
-	if opts != nil {
-		var err error
-		p, err = params.Encode(opts)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	var list []Task
-	if err := c.client.Get(ctx, "/nodes/"+c.node+"/tasks", &list, p); err != nil {
-		return nil, err
-	}
-
-	return list, nil
+	return task.List(ctx, c.client, c.node, opts)
 }
 
-// Status retrieves a single task's current status via
-// GET /nodes/{node}/tasks/{upid}/status. {node} is the node embedded in
-// upid itself (see taskNode), which does not always match the node this
-// Client is scoped to — e.g. a storage upload's imgcopy task can end up
-// running on whichever node actually hosts that storage, not the node
-// the upload request's own URL named. Addressing the wrong node fails
-// with "Parameter verification failed" (upid doesn't match {node}) or
-// "no such task" (right node, but it never ran this upid).
-// This user=>all endpoint has no fixed privilege for the UPID owner; a non-owner
-// conditionally requires Sys.Audit on /nodes/{node}.
+// Status retrieves a single task's current status; see task.Task.Status.
 //
 // +proxmox:rbac:path=/nodes/{node},method=GET,privs=Sys.Audit,match=any
 func (c *Client) Status(ctx context.Context, upid string) (*Status, error) {
-	status := &Status{}
-	if err := c.client.Get(ctx, "/nodes/"+taskNode(c.node, upid)+"/tasks/"+upid+"/status", status, nil); err != nil {
-		return nil, err
-	}
-
-	return status, nil
+	return c.Task(upid).Status(ctx)
 }
 
-// Log retrieves a single task's log via GET /nodes/{node}/tasks/{upid}/log.
-// {node} is upid's own node — see Status's doc comment. opts may be nil
-// to request Proxmox's default window (the first 50 lines).
-// This user=>all endpoint has no fixed privilege for the UPID owner; a non-owner
-// conditionally requires Sys.Audit on /nodes/{node}.
+// Log retrieves a single task's log; see task.Task.Log.
 //
 // +proxmox:rbac:path=/nodes/{node},method=GET,privs=Sys.Audit,match=any
 func (c *Client) Log(ctx context.Context, upid string, opts *LogOptions) ([]LogEntry, error) {
-	var p map[string]string
-	if opts != nil {
-		var err error
-		p, err = params.Encode(opts)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	var entries []LogEntry
-	if err := c.client.Get(ctx, "/nodes/"+taskNode(c.node, upid)+"/tasks/"+upid+"/log", &entries, p); err != nil {
-		return nil, err
-	}
-
-	return entries, nil
+	return c.Task(upid).Log(ctx, opts)
 }
 
-// Stop terminates a running task via DELETE /nodes/{node}/tasks/{upid}.
-// {node} is upid's own node — see Status's doc comment.
-// This user=>all endpoint has no fixed privilege for the UPID owner; a non-owner
-// conditionally requires Sys.Modify on /nodes/{node}.
+// Stop terminates a running task; see task.Task.Stop.
 //
 // +proxmox:rbac:path=/nodes/{node},method=DELETE,privs=Sys.Modify,match=any
 func (c *Client) Stop(ctx context.Context, upid string) error {
-	return c.client.Delete(ctx, "/nodes/"+taskNode(c.node, upid)+"/tasks/"+upid, nil, nil)
+	return c.Task(upid).Stop(ctx)
 }
 
-// taskNode returns the node embedded in upid — a UPID's format is
-// "UPID:{node}:{pid}:{pstart}:{starttime}:{type}:{id}:{user}:" — falling
-// back to defaultNode if upid isn't in the expected format. Per-task
-// endpoints (status/log/stop) must address this node, which is not
-// necessarily the node a Client happens to be scoped to (see Status's
-// doc comment): Proxmox spawns a task's worker process on whichever node
-// actually performs the work, and that's the only node that can answer
-// for it.
-func taskNode(defaultNode, upid string) string {
-	parts := strings.SplitN(upid, ":", 3)
-	if len(parts) < 2 || parts[0] != "UPID" || parts[1] == "" {
-		return defaultNode
-	}
-
-	return parts[1]
+// Wait blocks until the task upid stops running; see task.Task.Wait.
+func (c *Client) Wait(ctx context.Context, upid string, opts *WaitOptions) error {
+	return c.Task(upid).Wait(ctx, opts)
 }

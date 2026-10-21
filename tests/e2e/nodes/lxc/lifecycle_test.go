@@ -123,7 +123,6 @@ func TestLXCLifecycleCreateResizeDelete(t *testing.T) {
 
 	storageName := newRootDirStorage(t, cfg, client)
 	lc := client.Nodes(cfg.Node).LXC()
-	tc := client.Nodes(cfg.Node).Tasks()
 
 	vmid, err := client.Cluster().NextID(ctx, 0)
 	e2e.RequireNoError(t, "allocate next vmid", err)
@@ -132,7 +131,7 @@ func TestLXCLifecycleCreateResizeDelete(t *testing.T) {
 
 	// 1. create — a minimal container with a 1G rootfs on the scratch
 	// storage, left in the off state.
-	createUPID, err := lc.Create(ctx, &lxc.CreateOptions{
+	createTask, err := lc.Create(ctx, &lxc.CreateOptions{
 		VMID:       vmid,
 		OSTemplate: templateVolID,
 		Config: lxc.Config{
@@ -150,17 +149,17 @@ func TestLXCLifecycleCreateResizeDelete(t *testing.T) {
 			defer cancel()
 
 			e2e.RetryCleanup(t, "delete container", func() error {
-				deleteUPID, delErr := lc.Delete(cleanupCtx, vmid, nil)
+				deleteTask, delErr := lc.Delete(cleanupCtx, vmid, nil)
 				if delErr != nil {
 					return delErr
 				}
 
-				return tc.Wait(cleanupCtx, deleteUPID, &tasks.WaitOptions{Timeout: taskTimeout})
+				return deleteTask.Wait(cleanupCtx, &tasks.WaitOptions{Timeout: taskTimeout})
 			})
 		})
 	}
 
-	err = tc.Wait(ctx, createUPID, &tasks.WaitOptions{Timeout: taskTimeout})
+	err = createTask.Wait(ctx, &tasks.WaitOptions{Timeout: taskTimeout})
 	e2e.RequireNoError(t, "wait for container creation", err)
 
 	// 2. status — verify the container exists, is off, and its rootfs
@@ -175,16 +174,15 @@ func TestLXCLifecycleCreateResizeDelete(t *testing.T) {
 	}
 
 	// 3. resize — grow the rootfs by 1G, to 2G.
-	resizeUPID, err := lc.Resize(ctx, vmid, &lxc.ResizeOptions{
+	resizeTask, err := lc.Resize(ctx, vmid, &lxc.ResizeOptions{
 		Disk: "rootfs",
 		Size: "+1G",
 	})
 	e2e.RequireNoError(t, "resize rootfs", err)
 
-	if resizeUPID != "" {
-		err = tc.Wait(ctx, resizeUPID, &tasks.WaitOptions{Timeout: taskTimeout})
-		e2e.RequireNoError(t, "wait for resize", err)
-	}
+	// Wait returns at once if Proxmox resized synchronously (no task).
+	err = resizeTask.Wait(ctx, &tasks.WaitOptions{Timeout: taskTimeout})
+	e2e.RequireNoError(t, "wait for resize", err)
 
 	// 4. status — verify the resize took effect.
 	status, err = lc.Status(ctx, vmid)
@@ -194,10 +192,10 @@ func TestLXCLifecycleCreateResizeDelete(t *testing.T) {
 	}
 
 	// 5. delete.
-	deleteUPID, err := lc.Delete(ctx, vmid, nil)
+	deleteTask, err := lc.Delete(ctx, vmid, nil)
 	e2e.RequireNoError(t, "delete container", err)
 
-	err = tc.Wait(ctx, deleteUPID, &tasks.WaitOptions{Timeout: taskTimeout})
+	err = deleteTask.Wait(ctx, &tasks.WaitOptions{Timeout: taskTimeout})
 	e2e.RequireNoError(t, "wait for container deletion", err)
 
 	// 6. status — verify the delete.

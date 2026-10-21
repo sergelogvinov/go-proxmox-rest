@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tasks
+package task
 
 import (
 	"context"
@@ -50,7 +50,7 @@ func (f *fakeGetter) Get(_ context.Context, path string, out any, _ map[string]s
 
 	f.listCalls++
 	if len(f.listStages) == 0 {
-		*out.(*[]Task) = nil //nolint:errcheck
+		*out.(*[]Entry) = nil //nolint:errcheck
 		return nil
 	}
 
@@ -90,9 +90,9 @@ func TestWaitRecoversFromNoSuchTask(t *testing.T) {
 		},
 	}
 
-	c := New(getter, "node1")
+	t0 := New(getter, "node1", testUPID)
 
-	err := c.Wait(context.Background(), testUPID, &WaitOptions{PollInterval: 10 * time.Millisecond, Timeout: time.Second})
+	err := t0.Wait(context.Background(), &WaitOptions{PollInterval: 10 * time.Millisecond, Timeout: time.Second})
 	if err != nil {
 		t.Fatalf("Wait() error = %v, want nil", err)
 	}
@@ -102,7 +102,7 @@ func TestWaitRecoversFromNoSuchTask(t *testing.T) {
 }
 
 // TestWaitRecoversFromNoSuchTaskViaHistory covers the case that motivated
-// taskFromHistory: a task so fast it finishes before Status ever has a
+// fromHistory: a task so fast it finishes before Status ever has a
 // window to see it, so Status reports "no such task" for as long as Wait
 // keeps asking (it never becomes queryable) — previously this meant Wait
 // always ran out the full Timeout and returned a misleading "context
@@ -118,17 +118,17 @@ func TestWaitRecoversFromNoSuchTaskViaHistory(t *testing.T) {
 		},
 		listStages: []func(out any) error{
 			func(out any) error {
-				*out.(*[]Task) = []Task{{UPID: testUPID, EndTime: 1000, Status: taskExitOK}}
+				*out.(*[]Entry) = []Entry{{UPID: testUPID, EndTime: 1000, Status: taskExitOK}}
 				return nil
 			},
 		},
 	}
 
-	c := New(getter, "node1")
+	t0 := New(getter, "node1", testUPID)
 
 	start := time.Now()
 
-	err := c.Wait(context.Background(), testUPID, &WaitOptions{PollInterval: 200 * time.Millisecond, Timeout: 2 * time.Second})
+	err := t0.Wait(context.Background(), &WaitOptions{PollInterval: 200 * time.Millisecond, Timeout: 2 * time.Second})
 	if err != nil {
 		t.Fatalf("Wait() error = %v, want nil", err)
 	}
@@ -138,7 +138,7 @@ func TestWaitRecoversFromNoSuchTaskViaHistory(t *testing.T) {
 }
 
 // TestWaitFailedTaskViaHistory mirrors TestWaitRecoversFromNoSuchTaskViaHistory
-// for a task history shows as failed, confirming taskFromHistory's outcome
+// for a task history shows as failed, confirming fromHistory's outcome
 // (not just its presence) is honored.
 func TestWaitFailedTaskViaHistory(t *testing.T) {
 	getter := &fakeGetter{
@@ -149,15 +149,15 @@ func TestWaitFailedTaskViaHistory(t *testing.T) {
 		},
 		listStages: []func(out any) error{
 			func(out any) error {
-				*out.(*[]Task) = []Task{{UPID: testUPID, EndTime: 1000, Status: "some error"}}
+				*out.(*[]Entry) = []Entry{{UPID: testUPID, EndTime: 1000, Status: "some error"}}
 				return nil
 			},
 		},
 	}
 
-	c := New(getter, "node1")
+	t0 := New(getter, "node1", testUPID)
 
-	err := c.Wait(context.Background(), testUPID, &WaitOptions{PollInterval: 200 * time.Millisecond, Timeout: 2 * time.Second})
+	err := t0.Wait(context.Background(), &WaitOptions{PollInterval: 200 * time.Millisecond, Timeout: 2 * time.Second})
 
 	var failedErr *FailedError
 	if !errors.As(err, &failedErr) {
@@ -179,9 +179,9 @@ func TestWaitPropagatesOtherErrors(t *testing.T) {
 		},
 	}
 
-	c := New(getter, "node1")
+	t0 := New(getter, "node1", testUPID)
 
-	err := c.Wait(context.Background(), testUPID, nil)
+	err := t0.Wait(context.Background(), nil)
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("Wait() error = %v, want %v", err, wantErr)
 	}
@@ -203,9 +203,9 @@ func TestWaitFailedTask(t *testing.T) {
 		},
 	}
 
-	c := New(getter, "node1")
+	t0 := New(getter, "node1", testUPID)
 
-	err := c.Wait(context.Background(), testUPID, nil)
+	err := t0.Wait(context.Background(), nil)
 
 	var failedErr *FailedError
 	if !errors.As(err, &failedErr) {
@@ -213,5 +213,27 @@ func TestWaitFailedTask(t *testing.T) {
 	}
 	if failedErr.ExitStatus != "some error" {
 		t.Fatalf("FailedError.ExitStatus = %q, want %q", failedErr.ExitStatus, "some error")
+	}
+}
+
+// TestWaitSynchronous covers a handle with no UPID — returned when the
+// triggering request completed synchronously: Wait must succeed without
+// querying Proxmox, and the per-task queries must refuse rather than
+// address a malformed /tasks//status URL.
+func TestWaitSynchronous(t *testing.T) {
+	getter := &fakeGetter{}
+	done := New(getter, "node1", "")
+
+	if err := done.Wait(context.Background(), nil); err != nil {
+		t.Fatalf("Wait() error = %v, want nil", err)
+	}
+	if getter.statusCalls != 0 || getter.listCalls != 0 {
+		t.Fatalf("Wait() sent requests (status %d, list %d), want none", getter.statusCalls, getter.listCalls)
+	}
+	if _, err := done.Status(context.Background()); err == nil {
+		t.Fatal("Status() on a synchronous handle succeeded, want error")
+	}
+	if err := done.Stop(context.Background()); err == nil {
+		t.Fatal("Stop() on a synchronous handle succeeded, want error")
 	}
 }

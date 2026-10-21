@@ -76,12 +76,12 @@ func TestAttachISORequest(t *testing.T) {
 		g := &recordingGetter{}
 		c := New(g, "pve1")
 
-		upid, err := c.AttachISO(t.Context(), 100, &AttachISOOptions{Drive: tc.drive, Volume: "local:iso/debian.iso"})
+		tk, err := c.AttachISO(t.Context(), 100, &AttachISOOptions{Drive: tc.drive, Volume: "local:iso/debian.iso"})
 		if err != nil {
 			t.Fatalf("AttachISO(%q): unexpected error: %v", tc.drive, err)
 		}
-		if upid != "UPID:fake" {
-			t.Errorf("AttachISO(%q): upid = %q, want %q", tc.drive, upid, "UPID:fake")
+		if tk.UPID() != "UPID:fake" {
+			t.Errorf("AttachISO(%q): upid = %q, want %q", tc.drive, tk.UPID(), "UPID:fake")
 		}
 
 		const want = "/nodes/pve1/qemu/100/config"
@@ -107,12 +107,12 @@ func TestDetachISO(t *testing.T) {
 		t.Error("DetachISO with no drive: got nil error, want one")
 	}
 
-	upid, err := c.DetachISO(t.Context(), 100, "ide2")
+	tk, err := c.DetachISO(t.Context(), 100, "ide2")
 	if err != nil {
 		t.Fatalf("DetachISO: unexpected error: %v", err)
 	}
-	if upid != "UPID:fake" {
-		t.Errorf("DetachISO: upid = %q, want %q", upid, "UPID:fake")
+	if tk.UPID() != "UPID:fake" {
+		t.Errorf("DetachISO: upid = %q, want %q", tk.UPID(), "UPID:fake")
 	}
 
 	const want = "none,media=cdrom"

@@ -123,15 +123,15 @@ func TestLXCStatusActionsAbsentAsyncTask(t *testing.T) {
 	lc := client.Nodes(cfg.Node).LXC()
 	ctx := t.Context()
 
-	upid, err := lc.Start(ctx, nonexistentVMID, nil)
+	tk, err := lc.Start(ctx, nonexistentVMID, nil)
 	e2e.RequireNoError(t, "start absent container", err)
-	if upid == "" {
+	if tk.UPID() == "" {
 		t.Errorf("start absent container: got empty UPID")
 	}
 
-	upid, err = lc.Resume(ctx, nonexistentVMID)
+	tk, err = lc.Resume(ctx, nonexistentVMID)
 	e2e.RequireNoError(t, "resume absent container", err)
-	if upid == "" {
+	if tk.UPID() == "" {
 		t.Errorf("resume absent container: got empty UPID")
 	}
 }

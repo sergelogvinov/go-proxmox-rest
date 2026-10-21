@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // CreateOptions holds the parameters for Client.Create
@@ -40,8 +42,8 @@ type CreateOptions struct {
 	Start bool
 }
 
-// Create creates a new guest via POST /nodes/{node}/qemu. Returns the
-// creation task's UPID.
+// Create creates a new guest via POST /nodes/{node}/qemu. Returns a
+// *task.Task handle for the creation task.
 //
 // Create issues a single HTTP call and does not convert the result into
 // a template: pass Config.Template to mark it as one directly, or call
@@ -49,17 +51,17 @@ type CreateOptions struct {
 // specific disk.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Allocate,match=all
-func (c *Client) Create(ctx context.Context, opts *CreateOptions) (string, error) {
+func (c *Client) Create(ctx context.Context, opts *CreateOptions) (*task.Task, error) {
 	if opts == nil {
-		return "", fmt.Errorf("qemu: create options are required")
+		return nil, fmt.Errorf("qemu: create options are required")
 	}
 	if opts.VMID == 0 {
-		return "", fmt.Errorf("qemu: create vmid is required")
+		return nil, fmt.Errorf("qemu: create vmid is required")
 	}
 
 	p, err := encodeConfig(&opts.Config)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	p["vmid"] = strconv.Itoa(opts.VMID)
@@ -73,8 +75,8 @@ func (c *Client) Create(ctx context.Context, opts *CreateOptions) (string, error
 
 	var upid string
 	if err := c.client.Create(ctx, "/nodes/"+c.node+"/qemu", &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }

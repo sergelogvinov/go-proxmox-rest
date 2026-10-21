@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // ChecksumAlgorithm identifies the hash algorithm used to verify a
@@ -65,7 +66,7 @@ type DownloadURLOptions struct {
 
 // DownloadURL fetches a file from a URL directly into storage via
 // POST /nodes/{node}/storage/{storage}/download-url, without routing the
-// content through the client. Returns the download task's UPID.
+// content through the client. Returns a *task.Task handle for the download task.
 // Besides Datastore.AllocateTemplate on the storage, Proxmox also treats
 // this as a (local!) network probe: it additionally requires either
 // Sys.AccessNetwork on the node or, for backwards compatibility,
@@ -74,29 +75,29 @@ type DownloadURLOptions struct {
 // annotation format has no way to express a second, ANDed path.
 //
 // +proxmox:rbac:path=/storage/{storage},method=POST,privs=Datastore.AllocateTemplate,match=all
-func (c *Client) DownloadURL(ctx context.Context, storageID string, opts *DownloadURLOptions) (string, error) {
+func (c *Client) DownloadURL(ctx context.Context, storageID string, opts *DownloadURLOptions) (*task.Task, error) {
 	if opts == nil {
-		return "", fmt.Errorf("storage: download-url options are required")
+		return nil, fmt.Errorf("storage: download-url options are required")
 	}
 	if opts.Content == "" {
-		return "", fmt.Errorf("storage: download-url content is required")
+		return nil, fmt.Errorf("storage: download-url content is required")
 	}
 	if opts.Filename == "" {
-		return "", fmt.Errorf("storage: download-url filename is required")
+		return nil, fmt.Errorf("storage: download-url filename is required")
 	}
 	if opts.URL == "" {
-		return "", fmt.Errorf("storage: download-url url is required")
+		return nil, fmt.Errorf("storage: download-url url is required")
 	}
 
 	p, err := params.Encode(opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var upid string
 	if err := c.client.Create(ctx, "/nodes/"+c.node+"/storage/"+storageID+"/download-url", &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }

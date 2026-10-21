@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tasks
+package task
 
 import (
 	"context"
@@ -24,11 +24,11 @@ import (
 )
 
 const (
-	// defaultWaitPollInterval is Client.Wait's poll interval when
+	// defaultWaitPollInterval is Task.Wait's poll interval when
 	// WaitOptions is nil or its PollInterval is zero.
 	defaultWaitPollInterval = 5 * time.Second
 
-	// defaultWaitTimeout is Client.Wait's timeout when WaitOptions is nil
+	// defaultWaitTimeout is Task.Wait's timeout when WaitOptions is nil
 	// or its Timeout is zero. Deliberately short (Proxmox's own quick
 	// actions finish well within it); callers waiting on a long-running
 	// task (a migration, a large clone, a disk resize, ...) should pass
@@ -40,17 +40,17 @@ const (
 	taskExitOK = "OK"
 )
 
-// WaitOptions configures Client.Wait.
+// WaitOptions configures Task.Wait.
 type WaitOptions struct {
 	// PollInterval is how often Wait re-checks the task's status via
-	// Client.Status. Zero uses defaultWaitPollInterval (5s).
+	// Task.Status. Zero uses defaultWaitPollInterval (5s).
 	PollInterval time.Duration
 	// Timeout bounds how long Wait polls before giving up on a task
 	// still running. Zero uses defaultWaitTimeout (30s).
 	Timeout time.Duration
 }
 
-// FailedError is Client.Wait's error when a task finishes with an
+// FailedError is Task.Wait's error when a task finishes with an
 // ExitStatus other than "OK" (e.g. an errored or manually stopped task).
 // Use errors.As to recover UPID/ExitStatus from a Wait error.
 type FailedError struct {
@@ -63,23 +63,28 @@ type FailedError struct {
 
 // Error implements the error interface.
 func (e *FailedError) Error() string {
-	return fmt.Sprintf("tasks: task %s failed: %s", e.UPID, e.ExitStatus)
+	return fmt.Sprintf("task: %s failed: %s", e.UPID, e.ExitStatus)
 }
 
-// Wait blocks until the task named by upid stops running, polling its
-// status via Client.Status every opts.PollInterval. opts may be nil to
+// Wait blocks until the task stops running, polling its status via
+// Task.Status every opts.PollInterval. A Task with no UPID (the request
+// that returned it completed synchronously) returns nil immediately. opts may be nil to
 // use the defaults (5s poll interval, 30s timeout) — pass an explicit
 // Timeout for any task expected to run longer than that.
 //
 // Returns a *FailedError if the task finished with an ExitStatus other
 // than "OK"; a wrapped context error if ctx or opts.Timeout is exceeded
 // while the task is still running, or its outcome still can't be
-// determined (see isNoSuchTask/taskFromHistory below) — unwraps to
+// determined (see isNoSuchTask/fromHistory below) — unwraps to
 // context.DeadlineExceeded or context.Canceled via errors.Is, same as a
 // bare ctx timeout would; or whatever error the underlying Status call
 // itself returns (e.g. a transient network error, or proxmox.IsNotFound
 // for an unknown upid).
-func (c *Client) Wait(ctx context.Context, upid string, opts *WaitOptions) error {
+func (t *Task) Wait(ctx context.Context, opts *WaitOptions) error {
+	if t.upid == "" {
+		return nil
+	}
+
 	interval := defaultWaitPollInterval
 	timeout := defaultWaitTimeout
 
@@ -99,10 +104,10 @@ func (c *Client) Wait(ctx context.Context, upid string, opts *WaitOptions) error
 	defer ticker.Stop()
 
 	for {
-		status, err := c.Status(ctx, upid)
+		status, err := t.Status(ctx)
 		switch {
 		case err != nil && isNoSuchTask(err):
-			if done, herr := c.taskFromHistory(ctx, upid); done {
+			if done, herr := t.fromHistory(ctx); done {
 				return herr
 			}
 			// Not found in history either (yet) — keep polling below.
@@ -110,7 +115,7 @@ func (c *Client) Wait(ctx context.Context, upid string, opts *WaitOptions) error
 			return err
 		case status.Status != StateRunning:
 			if status.ExitStatus != "" && status.ExitStatus != taskExitOK {
-				return &FailedError{UPID: upid, ExitStatus: status.ExitStatus}
+				return &FailedError{UPID: t.upid, ExitStatus: status.ExitStatus}
 			}
 
 			return nil
@@ -120,7 +125,7 @@ func (c *Client) Wait(ctx context.Context, upid string, opts *WaitOptions) error
 
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("tasks: waiting for %s: %w", upid, ctx.Err())
+			return fmt.Errorf("task: waiting for %s: %w", t.upid, ctx.Err())
 		case <-ticker.C:
 		}
 	}
@@ -134,12 +139,12 @@ func (c *Client) Wait(ctx context.Context, upid string, opts *WaitOptions) error
 // time Status is asked, the task has already both started and finished,
 // and Status may never have had a window in which to see it). Wait falls
 // back to the node's task history rather than failing a request that in
-// fact succeeded — see taskFromHistory.
+// fact succeeded — see fromHistory.
 func isNoSuchTask(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "no such task")
 }
 
-// taskFromHistory looks upid up via List (which, unlike Status, also
+// fromHistory looks upid up via List (which, unlike Status, also
 // covers tasks too short-lived for Status to ever have found) as a
 // fallback for Status reporting "no such task". done reports whether a
 // *finished* task entry was found; err then mirrors Status's own
@@ -149,28 +154,23 @@ func isNoSuchTask(err error) bool {
 // such case, since List is a best-effort fallback, not the source of
 // truth Status is.
 //
-// Lists against upid's own node (see taskNode/Status's doc comment) —
-// c.node itself may not even be the node that ran this task.
+// Lists against the UPID's own node (see Task.Node) — the node the
+// triggering request named may not be the node that ran this task.
 //
 //nolint:nilerr
-func (c *Client) taskFromHistory(ctx context.Context, upid string) (done bool, err error) {
-	scoped := c
-	if node := taskNode(c.node, upid); node != c.node {
-		scoped = &Client{client: c.client, node: node}
-	}
-
-	list, err := scoped.List(ctx, &ListOptions{Source: SourceAll, Limit: 50})
+func (t *Task) fromHistory(ctx context.Context) (done bool, err error) {
+	list, err := List(ctx, t.client, t.Node(), &ListOptions{Source: SourceAll, Limit: 50})
 	if err != nil {
 		return false, nil
 	}
 
-	for _, t := range list {
-		if t.UPID != upid || t.EndTime == 0 {
+	for _, e := range list {
+		if e.UPID != t.upid || e.EndTime == 0 {
 			continue
 		}
 
-		if t.Status != "" && t.Status != taskExitOK {
-			return true, &FailedError{UPID: upid, ExitStatus: t.Status}
+		if e.Status != "" && e.Status != taskExitOK {
+			return true, &FailedError{UPID: t.upid, ExitStatus: e.Status}
 		}
 
 		return true, nil

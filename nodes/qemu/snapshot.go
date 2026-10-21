@@ -22,6 +22,7 @@ import (
 	"strconv"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // Snapshot describes one guest snapshot, as returned by
@@ -104,29 +105,28 @@ func (r *snapshotResource) List(ctx context.Context, vmid int) ([]Snapshot, erro
 }
 
 // Create takes a new snapshot via
-// POST /nodes/{node}/qemu/{vmid}/snapshot. Returns the snapshot task's
-// UPID.
+// POST /nodes/{node}/qemu/{vmid}/snapshot. Returns a *task.Task handle for the snapshot task.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Snapshot,match=all
-func (r *snapshotResource) Create(ctx context.Context, vmid int, opts *CreateSnapshotOptions) (string, error) {
+func (r *snapshotResource) Create(ctx context.Context, vmid int, opts *CreateSnapshotOptions) (*task.Task, error) {
 	if opts == nil {
-		return "", fmt.Errorf("qemu: snapshot create options are required")
+		return nil, fmt.Errorf("qemu: snapshot create options are required")
 	}
 	if opts.Snapname == "" {
-		return "", fmt.Errorf("qemu: snapshot create snapname is required")
+		return nil, fmt.Errorf("qemu: snapshot create snapname is required")
 	}
 
 	p, err := params.Encode(opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var upid string
 	if err := r.client.Create(ctx, snapshotPath(r.node, vmid, "", ""), &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(r.client, r.node, upid), nil
 }
 
 // GetConfig retrieves the guest configuration as it was captured in a
@@ -159,11 +159,11 @@ func (r *snapshotResource) UpdateConfig(ctx context.Context, vmid int, snapname,
 // POST /nodes/{node}/qemu/{vmid}/snapshot/{snapname}/rollback. start
 // requests the guest be started afterwards if it wasn't already
 // (Proxmox always starts it automatically when the snapshot includes
-// RAM). Returns the rollback task's UPID.
+// RAM). Returns a *task.Task handle for the rollback task.
 // Starting after rollback conditionally also requires VM.PowerMgmt.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Snapshot;VM.Snapshot.Rollback,match=any
-func (r *snapshotResource) Rollback(ctx context.Context, vmid int, snapname string, start bool) (string, error) {
+func (r *snapshotResource) Rollback(ctx context.Context, vmid int, snapname string, start bool) (*task.Task, error) {
 	var p map[string]string
 	if start {
 		p = map[string]string{"start": "1"}
@@ -171,19 +171,19 @@ func (r *snapshotResource) Rollback(ctx context.Context, vmid int, snapname stri
 
 	var upid string
 	if err := r.client.Create(ctx, snapshotPath(r.node, vmid, snapname, "rollback"), &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(r.client, r.node, upid), nil
 }
 
 // Delete removes a snapshot via
 // DELETE /nodes/{node}/qemu/{vmid}/snapshot/{snapname}. force removes
 // the snapshot from the configuration even if deleting its underlying
-// disk snapshots fails. Returns the deletion task's UPID.
+// disk snapshots fails. Returns a *task.Task handle for the deletion task.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=DELETE,privs=VM.Snapshot,match=all
-func (r *snapshotResource) Delete(ctx context.Context, vmid int, snapname string, force bool) (string, error) {
+func (r *snapshotResource) Delete(ctx context.Context, vmid int, snapname string, force bool) (*task.Task, error) {
 	var p map[string]string
 	if force {
 		p = map[string]string{"force": "1"}
@@ -191,8 +191,8 @@ func (r *snapshotResource) Delete(ctx context.Context, vmid int, snapname string
 
 	var upid string
 	if err := r.client.Delete(ctx, snapshotPath(r.node, vmid, snapname, ""), &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(r.client, r.node, upid), nil
 }

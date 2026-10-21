@@ -53,15 +53,15 @@ func TestAttachDriveRequest(t *testing.T) {
 		c := New(g, "pve1")
 
 		ssd := true
-		upid, err := c.AttachDrive(t.Context(), 100, &AttachDriveOptions{
+		tk, err := c.AttachDrive(t.Context(), 100, &AttachDriveOptions{
 			Drive:   tc.drive,
 			Options: Drive{File: "local-lvm:vm-100-disk-0", SSD: &ssd},
 		})
 		if err != nil {
 			t.Fatalf("AttachDrive(%q): unexpected error: %v", tc.drive, err)
 		}
-		if upid != "UPID:fake" {
-			t.Errorf("AttachDrive(%q): upid = %q, want %q", tc.drive, upid, "UPID:fake")
+		if tk.UPID() != "UPID:fake" {
+			t.Errorf("AttachDrive(%q): upid = %q, want %q", tc.drive, tk.UPID(), "UPID:fake")
 		}
 
 		const want = "/nodes/pve1/qemu/100/config"
@@ -101,12 +101,12 @@ func TestDetachDriveRequest(t *testing.T) {
 	g := &recordingGetter{}
 	c := New(g, "pve1")
 
-	upid, err := c.DetachDrive(t.Context(), 100, &DetachDriveOptions{Drive: "scsi0", Force: true})
+	tk, err := c.DetachDrive(t.Context(), 100, &DetachDriveOptions{Drive: "scsi0", Force: true})
 	if err != nil {
 		t.Fatalf("DetachDrive: unexpected error: %v", err)
 	}
-	if upid != "UPID:fake" {
-		t.Errorf("DetachDrive: upid = %q, want %q", upid, "UPID:fake")
+	if tk.UPID() != "UPID:fake" {
+		t.Errorf("DetachDrive: upid = %q, want %q", tk.UPID(), "UPID:fake")
 	}
 
 	if got := g.params["delete"]; got != "scsi0" {

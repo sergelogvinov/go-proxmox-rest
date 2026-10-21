@@ -23,6 +23,7 @@ import (
 	"github.com/sergelogvinov/go-proxmox-rest/fakeapi"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/lxc"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/qemu"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // guestRef identifies one seeded guest so the start/verify loops below
@@ -142,28 +143,26 @@ func seedGuests(cl *fakeapi.Cluster, nodeNames []string) []guestRef {
 
 // startGuests starts every guest and confirms both its start task and
 // its resulting runtime status. fakeapi completes tasks instantly by
-// default (see fakeapi.WithManualTasks for the opposite), so
-// waitForTask returns on its first check here — it's written as a poll
-// loop anyway since that's the shape real code (and code exercising
-// WithManualTasks) needs.
+// default (see fakeapi.WithManualTasks for the opposite), so Wait
+// returns on its first check here.
 func startGuests(ctx context.Context, c *proxmox.Client, guests []guestRef) {
 	for _, g := range guests {
 		var (
-			upid string
-			err  error
+			t   *task.Task
+			err error
 		)
 
 		switch g.kind {
 		case "qemu":
-			upid, err = c.Nodes(g.node).Qemu().Start(ctx, g.vmid, nil)
+			t, err = c.Nodes(g.node).Qemu().Start(ctx, g.vmid, nil)
 		case "lxc":
-			upid, err = c.Nodes(g.node).LXC().Start(ctx, g.vmid, nil)
+			t, err = c.Nodes(g.node).LXC().Start(ctx, g.vmid, nil)
 		}
 		if err != nil {
 			log.Fatalf("starting %s %s (vmid %d) on %s: %v", g.kind, g.name, g.vmid, g.node, err)
 		}
 
-		if err := waitForTask(ctx, c, g.node, upid); err != nil {
+		if err := t.Wait(ctx, &task.WaitOptions{PollInterval: 50 * time.Millisecond, Timeout: time.Second}); err != nil {
 			log.Fatalf("waiting for %s %s (vmid %d) to start: %v", g.kind, g.name, g.vmid, err)
 		}
 
@@ -177,28 +176,6 @@ func startGuests(ctx context.Context, c *proxmox.Client, guests []guestRef) {
 
 		fmt.Printf("started %-5s %-14s vmid=%-4d node=%s\n", g.kind, g.name, g.vmid, g.node)
 	}
-}
-
-// waitForTask polls a task's status until it stops running, or ctx's
-// deadline (none, here) / a bounded number of attempts is exhausted.
-func waitForTask(ctx context.Context, c *proxmox.Client, node, upid string) error {
-	for range 20 {
-		status, err := c.Nodes(node).Tasks().Status(ctx, upid)
-		if err != nil {
-			return err
-		}
-
-		if status.Status != "running" {
-			if status.ExitStatus != "OK" {
-				return fmt.Errorf("task %s finished with %q", upid, status.ExitStatus)
-			}
-			return nil
-		}
-
-		time.Sleep(50 * time.Millisecond)
-	}
-
-	return fmt.Errorf("task %s did not finish in time", upid)
 }
 
 func isRunning(ctx context.Context, c *proxmox.Client, g guestRef) (bool, error) {

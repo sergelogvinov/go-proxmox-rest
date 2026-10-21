@@ -20,6 +20,8 @@ package network
 
 import (
 	"context"
+
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // Getter is the subset of the root client used by this package. It is
@@ -140,8 +142,8 @@ func (c *Client) RevertChanges(ctx context.Context) error {
 }
 
 // Reload applies pending network configuration changes via
-// PUT /nodes/{node}/network ("ifreload -a"), returning the UPID of the
-// background task. regenerateFRR, when non-nil, overrides whether FRR
+// PUT /nodes/{node}/network ("ifreload -a"), returning a *task.Task
+// handle for the background task. regenerateFRR, when non-nil, overrides whether FRR
 // (routing daemon) configuration is regenerated as part of the reload;
 // nil lets Proxmox decide based on whether the SDN config uses FRR.
 //
@@ -149,7 +151,7 @@ func (c *Client) RevertChanges(ctx context.Context) error {
 // otherwise.
 //
 // +proxmox:rbac:path=/nodes/{node},method=PUT,privs=Sys.Modify,match=all
-func (c *Client) Reload(ctx context.Context, regenerateFRR *bool) (string, error) {
+func (c *Client) Reload(ctx context.Context, regenerateFRR *bool) (*task.Task, error) {
 	var p map[string]string
 	if regenerateFRR != nil {
 		p = map[string]string{"regenerate-frr": "0"}
@@ -160,8 +162,8 @@ func (c *Client) Reload(ctx context.Context, regenerateFRR *bool) (string, error
 
 	var upid string
 	if err := c.client.Update(ctx, "/nodes/"+c.node+"/network", &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }

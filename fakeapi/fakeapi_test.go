@@ -89,15 +89,15 @@ func TestQemuLifecycle(t *testing.T) {
 		t.Fatalf("expected stopped, got %s", status.Status)
 	}
 
-	upid, err := c.Nodes("pve1").Qemu().Start(ctx, 100, nil)
+	tk, err := c.Nodes("pve1").Qemu().Start(ctx, 100, nil)
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}
-	if upid == "" {
+	if tk.UPID() == "" {
 		t.Fatal("expected non-empty UPID")
 	}
 
-	taskStatus, err := c.Nodes("pve1").Tasks().Status(ctx, upid)
+	taskStatus, err := tk.Status(ctx)
 	if err != nil {
 		t.Fatalf("task status: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestQemuCreate(t *testing.T) {
 
 	cores := 2
 	memory := 2048
-	upid, err := c.Nodes("pve1").Qemu().Create(ctx, &qemu.CreateOptions{
+	tk, err := c.Nodes("pve1").Qemu().Create(ctx, &qemu.CreateOptions{
 		VMID: 300,
 		Config: qemu.Config{
 			Name:   "created-01",
@@ -134,11 +134,11 @@ func TestQemuCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if upid == "" {
+	if tk.UPID() == "" {
 		t.Fatal("expected non-empty UPID")
 	}
 
-	taskStatus, err := c.Nodes("pve1").Tasks().Status(ctx, upid)
+	taskStatus, err := tk.Status(ctx)
 	if err != nil {
 		t.Fatalf("task status: %v", err)
 	}
@@ -191,7 +191,7 @@ func TestLXCLifecycle(t *testing.T) {
 		t.Fatalf("expected IsNotFound for an unseeded container, got %v", err)
 	}
 
-	upid, err := c.Nodes("pve1").LXC().Start(ctx, 200, nil)
+	tk, err := c.Nodes("pve1").LXC().Start(ctx, 200, nil)
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}
@@ -206,7 +206,7 @@ func TestLXCLifecycle(t *testing.T) {
 	if status.Name != "ct-01" {
 		t.Fatalf("expected hostname to round-trip, got %q", status.Name)
 	}
-	_ = upid
+	_ = tk
 }
 
 func TestLXCCreate(t *testing.T) {
@@ -216,7 +216,7 @@ func TestLXCCreate(t *testing.T) {
 
 	cores := 2
 	memory := 512
-	upid, err := c.Nodes("pve1").LXC().Create(ctx, &lxc.CreateOptions{
+	tk, err := c.Nodes("pve1").LXC().Create(ctx, &lxc.CreateOptions{
 		VMID:       300,
 		OSTemplate: "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst",
 		Config: lxc.Config{
@@ -230,11 +230,11 @@ func TestLXCCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if upid == "" {
+	if tk.UPID() == "" {
 		t.Fatal("expected non-empty UPID")
 	}
 
-	taskStatus, err := c.Nodes("pve1").Tasks().Status(ctx, upid)
+	taskStatus, err := tk.Status(ctx)
 	if err != nil {
 		t.Fatalf("task status: %v", err)
 	}
@@ -319,17 +319,17 @@ func TestStorageContentCopy(t *testing.T) {
 	ctx := context.Background()
 
 	// Same-node copy to a new volume name.
-	upid, err := c.Nodes("pve1").Storage().Content("shared").Copy(ctx, "vm-100-disk-0", &storage.CopyOptions{
+	tk, err := c.Nodes("pve1").Storage().Content("shared").Copy(ctx, "vm-100-disk-0", &storage.CopyOptions{
 		Target: "vm-100-disk-1",
 	})
 	if err != nil {
 		t.Fatalf("copy: %v", err)
 	}
-	if upid == "" {
+	if tk.UPID() == "" {
 		t.Fatal("expected non-empty UPID")
 	}
 
-	taskStatus, err := c.Nodes("pve1").Tasks().Status(ctx, upid)
+	taskStatus, err := tk.Status(ctx)
 	if err != nil {
 		t.Fatalf("task status: %v", err)
 	}
@@ -376,7 +376,7 @@ func TestManualTasks(t *testing.T) {
 	c := cl.Client(t)
 	ctx := context.Background()
 
-	upid, err := c.Nodes("pve1").Qemu().Start(ctx, 100, nil)
+	tk, err := c.Nodes("pve1").Qemu().Start(ctx, 100, nil)
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}
@@ -389,7 +389,7 @@ func TestManualTasks(t *testing.T) {
 		t.Fatalf("expected the manual task to not have applied yet, got %s", status.Status)
 	}
 
-	cl.Tasks().Complete(upid)
+	cl.Tasks().Complete(tk.UPID())
 
 	status, err = c.Nodes("pve1").Qemu().Status(ctx, 100)
 	if err != nil {
@@ -409,12 +409,12 @@ func TestTasksWait(t *testing.T) {
 
 	// Instant mode: the task is already stopped by the time Start
 	// returns, so Wait must return immediately without ever polling.
-	upid, err := c.Nodes("pve1").Qemu().Start(ctx, 100, nil)
+	tk, err := c.Nodes("pve1").Qemu().Start(ctx, 100, nil)
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}
 
-	if err := c.Nodes("pve1").Tasks().Wait(ctx, upid, nil); err != nil {
+	if err := tk.Wait(ctx, nil); err != nil {
 		t.Fatalf("wait: %v", err)
 	}
 }
@@ -426,21 +426,21 @@ func TestTasksWaitFailed(t *testing.T) {
 	c := cl.Client(t)
 	ctx := context.Background()
 
-	upid, err := c.Nodes("pve1").Qemu().Start(ctx, 100, nil)
+	tk, err := c.Nodes("pve1").Qemu().Start(ctx, 100, nil)
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}
 
 	waitErr := make(chan error, 1)
 	go func() {
-		waitErr <- c.Nodes("pve1").Tasks().Wait(ctx, upid, &tasks.WaitOptions{
+		waitErr <- tk.Wait(ctx, &tasks.WaitOptions{
 			PollInterval: 20 * time.Millisecond,
 			Timeout:      2 * time.Second,
 		})
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	cl.Tasks().Fail(upid, "boom")
+	cl.Tasks().Fail(tk.UPID(), "boom")
 
 	err = <-waitErr
 
@@ -448,7 +448,7 @@ func TestTasksWaitFailed(t *testing.T) {
 	if !errors.As(err, &failed) {
 		t.Fatalf("expected a *tasks.FailedError, got %v", err)
 	}
-	if failed.UPID != upid || failed.ExitStatus != "boom" {
+	if failed.UPID != tk.UPID() || failed.ExitStatus != "boom" {
 		t.Fatalf("unexpected FailedError: %+v", failed)
 	}
 }
@@ -461,12 +461,12 @@ func TestTasksWaitTimeout(t *testing.T) {
 	ctx := context.Background()
 
 	// Never completed: Wait must give up once its Timeout elapses.
-	upid, err := c.Nodes("pve1").Qemu().Start(ctx, 100, nil)
+	tk, err := c.Nodes("pve1").Qemu().Start(ctx, 100, nil)
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}
 
-	err = c.Nodes("pve1").Tasks().Wait(ctx, upid, &tasks.WaitOptions{
+	err = tk.Wait(ctx, &tasks.WaitOptions{
 		PollInterval: 10 * time.Millisecond,
 		Timeout:      50 * time.Millisecond,
 	})

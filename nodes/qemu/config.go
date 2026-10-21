@@ -22,6 +22,7 @@ import (
 	"strconv"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // configPath builds the /nodes/{node}/qemu/{vmid}/config URL for the
@@ -74,23 +75,23 @@ func (c *Client) UpdateConfig(ctx context.Context, vmid int, cfg *Config) error 
 // UpdateConfigAsync sets a guest's configuration via
 // POST /nodes/{node}/qemu/{vmid}/config, as a background task — the
 // endpoint to prefer for changes involving hotplug or storage
-// allocation. Returns the task's UPID.
+// allocation. Returns a *task.Task handle for the task.
 // The endpoint gate accepts any listed privilege; changed fields trigger the
 // additional field-, storage-, mapping-, and SDN-dependent checks documented above.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Disk;VM.Config.CDROM;VM.Config.CPU;VM.Config.Memory;VM.Config.Network;VM.Config.HWType;VM.Config.Options;VM.Config.Cloudinit,match=any
-func (c *Client) UpdateConfigAsync(ctx context.Context, vmid int, cfg *Config) (string, error) {
+func (c *Client) UpdateConfigAsync(ctx context.Context, vmid int, cfg *Config) (*task.Task, error) {
 	p, err := encodeConfig(cfg)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var upid string
 	if err := c.client.Create(ctx, configPath(c.node, vmid), &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }
 
 // encodeConfig encodes cfg for a config write. The indexed hardware

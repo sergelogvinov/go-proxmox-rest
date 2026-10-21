@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // CopyOptions holds the parameters for Client.Content(storageID).Copy
@@ -39,8 +40,8 @@ type CopyOptions struct {
 // different node via
 // POST /nodes/{node}/storage/{storage}/content/{volume}. volume may be a
 // bare volume name (resolved against the resource's storageID) or a
-// full "storage:name" volume id, matching Get's convention. Returns the
-// copy task's UPID.
+// full "storage:name" volume id, matching Get's convention. Returns a
+// *task.Task handle for the copy task.
 //
 // Proxmox itself marks this endpoint experimental ("Copy a volume. This
 // is experimental code - do not use.") — it has shipped unchanged across
@@ -48,23 +49,23 @@ type CopyOptions struct {
 // it accordingly.
 //
 // +proxmox:rbac:path=/storage/{storage},method=POST,privs=Datastore.AllocateSpace,match=all
-func (r *contentResource) Copy(ctx context.Context, volume string, opts *CopyOptions) (string, error) {
+func (r *contentResource) Copy(ctx context.Context, volume string, opts *CopyOptions) (*task.Task, error) {
 	if opts == nil {
-		return "", fmt.Errorf("storage: content copy options are required")
+		return nil, fmt.Errorf("storage: content copy options are required")
 	}
 	if opts.Target == "" {
-		return "", fmt.Errorf("storage: content copy target is required")
+		return nil, fmt.Errorf("storage: content copy target is required")
 	}
 
 	p, err := params.Encode(opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var upid string
 	if err := r.client.Create(ctx, "/nodes/"+r.node+"/storage/"+r.storageID+"/content/"+volume, &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(r.client, r.node, upid), nil
 }

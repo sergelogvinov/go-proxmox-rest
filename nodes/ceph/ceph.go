@@ -27,6 +27,7 @@ import (
 	"context"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // Getter is the subset of the root client used by this package. It is
@@ -35,6 +36,9 @@ import (
 type Getter interface {
 	Get(ctx context.Context, path string, out any, params map[string]string) error
 	Create(ctx context.Context, path string, out any, params map[string]string) error
+	// Delete is used only by the *task.Task handles this package
+	// returns (Task.Stop).
+	Delete(ctx context.Context, path string, out any, params map[string]string) error
 }
 
 // Client provides access to the /nodes/{node}/ceph resource tree, scoped
@@ -72,34 +76,33 @@ func (c *Client) Status(ctx context.Context) (*Status, error) {
 // ("ceph", "mon", "mds", "osd", "mgr" — see the Service constants) to
 // affect every instance of that kind, "kind.instance" (e.g. "mon.pve1")
 // to target one instance, or "" for Proxmox's own default ("ceph.target",
-// every service). Returns the start task's UPID.
+// every service). Returns a *task.Task handle for the start task.
 //
 // +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
-func (c *Client) Start(ctx context.Context, service Service) (string, error) {
+func (c *Client) Start(ctx context.Context, service Service) (*task.Task, error) {
 	return c.serviceCmd(ctx, "start", service)
 }
 
 // Stop stops Ceph services on the node via POST /nodes/{node}/ceph/stop.
-// service has the same meaning as in Start. Returns the stop task's
-// UPID.
+// service has the same meaning as in Start. Returns a *task.Task handle for the stop task.
 //
 // +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
-func (c *Client) Stop(ctx context.Context, service Service) (string, error) {
+func (c *Client) Stop(ctx context.Context, service Service) (*task.Task, error) {
 	return c.serviceCmd(ctx, "stop", service)
 }
 
 // Restart restarts Ceph services on the node via
 // POST /nodes/{node}/ceph/restart. service has the same meaning as in
-// Start. Returns the restart task's UPID.
+// Start. Returns a *task.Task handle for the restart task.
 //
 // +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
-func (c *Client) Restart(ctx context.Context, service Service) (string, error) {
+func (c *Client) Restart(ctx context.Context, service Service) (*task.Task, error) {
 	return c.serviceCmd(ctx, "restart", service)
 }
 
 // serviceCmd POSTs to /nodes/{node}/ceph/{action}, optionally scoped to
-// service, and returns the resulting task's UPID.
-func (c *Client) serviceCmd(ctx context.Context, action string, service Service) (string, error) {
+// service, and returns a *task.Task handle for the resulting task.
+func (c *Client) serviceCmd(ctx context.Context, action string, service Service) (*task.Task, error) {
 	var p map[string]string
 	if service != "" {
 		p = map[string]string{"service": string(service)}
@@ -107,10 +110,10 @@ func (c *Client) serviceCmd(ctx context.Context, action string, service Service)
 
 	var upid string
 	if err := c.client.Create(ctx, "/nodes/"+c.node+"/ceph/"+action, &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }
 
 // Releases lists every known Ceph release, marking which ones can be

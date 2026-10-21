@@ -22,6 +22,7 @@ import (
 	"strconv"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // DiskFormat is a target disk image format, used by both Client.Clone
@@ -68,28 +69,28 @@ type CloneOptions struct {
 }
 
 // Clone creates a copy of a guest (or template) via
-// POST /nodes/{node}/qemu/{vmid}/clone. Returns the clone task's UPID.
+// POST /nodes/{node}/qemu/{vmid}/clone. Returns a *task.Task handle for the clone task.
 // Target allocation is an alternative: VM.Allocate on /vms/{newid}, or on
 // /pool/{pool} when a pool is supplied. Storage, mapping, and SDN checks are conditional.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Clone,match=all
-func (c *Client) Clone(ctx context.Context, vmid int, opts *CloneOptions) (string, error) {
+func (c *Client) Clone(ctx context.Context, vmid int, opts *CloneOptions) (*task.Task, error) {
 	if opts == nil {
-		return "", fmt.Errorf("qemu: clone options are required")
+		return nil, fmt.Errorf("qemu: clone options are required")
 	}
 	if opts.NewID == 0 {
-		return "", fmt.Errorf("qemu: clone newid is required")
+		return nil, fmt.Errorf("qemu: clone newid is required")
 	}
 
 	p, err := params.Encode(opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var upid string
 	if err := c.client.Create(ctx, "/nodes/"+c.node+"/qemu/"+strconv.Itoa(vmid)+"/clone", &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }
