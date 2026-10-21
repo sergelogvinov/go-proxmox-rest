@@ -19,22 +19,26 @@ package firewall
 import (
 	"context"
 	"fmt"
+
+	"github.com/sergelogvinov/go-proxmox-rest/types"
 )
 
-// ipsetResource provides access to GET/POST {base} and
-// DELETE {base}/{name}, a guest's IP set index. A given set's members
-// are reached via Entries(name). Obtain it via Client.IPSet(vmid).
-type ipsetResource struct {
+// IPSets provides access to an IP set index: GET/POST {base} and
+// DELETE {base}/{name}. A given set's members are reached via
+// Entries(name).
+type IPSets struct {
 	client Getter
 	base   string
 }
 
+// NewIPSets returns the IP set index rooted at base.
+func NewIPSets(c Getter, base string) *IPSets {
+	return &IPSets{client: c, base: base}
+}
+
 // List retrieves all IP sets via GET {base}.
-// GET /nodes/{node}/lxc/{vmid}/firewall/ipset.
-//
-// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
-func (s *ipsetResource) List(ctx context.Context) ([]IPSet, error) {
-	var sets []IPSet
+func (s *IPSets) List(ctx context.Context) ([]types.IPSet, error) {
+	var sets []types.IPSet
 	if err := s.client.Get(ctx, s.base, &sets, nil); err != nil {
 		return nil, err
 	}
@@ -43,13 +47,11 @@ func (s *ipsetResource) List(ctx context.Context) ([]IPSet, error) {
 }
 
 // Create creates a new IP set via POST {base}.
-// POST /nodes/{node}/lxc/{vmid}/firewall/ipset.
-//
-// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Network,match=all
-func (s *ipsetResource) Create(ctx context.Context, opts *IPSetOptions) error {
+func (s *IPSets) Create(ctx context.Context, opts *types.IPSetOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: ipset options are required")
 	}
+
 	if opts.Name == "" {
 		return fmt.Errorf("firewall: ipset name is required")
 	}
@@ -73,10 +75,7 @@ func (s *ipsetResource) Create(ctx context.Context, opts *IPSetOptions) error {
 // update Comment without renaming, or to a different value to rename
 // the set. If opts.Name is left empty, it defaults to name so the set
 // keeps its current name.
-// POST /nodes/{node}/lxc/{vmid}/firewall/ipset.
-//
-// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Network,match=all
-func (s *ipsetResource) Update(ctx context.Context, name string, opts *IPSetOptions) error {
+func (s *IPSets) Update(ctx context.Context, name string, opts *types.IPSetOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: ipset options are required")
 	}
@@ -97,10 +96,7 @@ func (s *ipsetResource) Update(ctx context.Context, name string, opts *IPSetOpti
 // Delete removes an IP set via DELETE {base}/{name}. If force is true,
 // any remaining members of the set are deleted along with it;
 // otherwise Proxmox refuses to delete a non-empty set.
-// DELETE /nodes/{node}/lxc/{vmid}/firewall/ipset/{name}.
-//
-// +proxmox:rbac:path=/vms/{vmid},method=DELETE,privs=VM.Config.Network,match=all
-func (s *ipsetResource) Delete(ctx context.Context, name string, force bool) error {
+func (s *IPSets) Delete(ctx context.Context, name string, force bool) error {
 	var params map[string]string
 	if force {
 		params = map[string]string{"force": "1"}
@@ -111,13 +107,13 @@ func (s *ipsetResource) Delete(ctx context.Context, name string, force bool) err
 
 // Entries returns an accessor for the members (CIDR entries) of the IP
 // set identified by name, under {base}/{name}.
-func (s *ipsetResource) Entries(name string) *ipsetEntriesResource {
-	return &ipsetEntriesResource{client: s.client, base: s.base + "/" + name}
+func (s *IPSets) Entries(name string) *IPSetEntries {
+	return &IPSetEntries{client: s.client, base: s.base + "/" + name}
 }
 
-// ipsetEntriesResource provides access to the members of a single IP
-// set: GET/POST {base} and GET/PUT/DELETE {base}/{cidr}.
-type ipsetEntriesResource struct {
+// IPSetEntries provides access to the members of a single IP set:
+// GET/POST {base} and GET/PUT/DELETE {base}/{cidr}.
+type IPSetEntries struct {
 	client Getter
 	// base is the owning IP set's own collection path, e.g.
 	// ".../firewall/ipset/my-ipset".
@@ -125,11 +121,8 @@ type ipsetEntriesResource struct {
 }
 
 // List retrieves all members of the IP set via GET {base}.
-// GET /nodes/{node}/lxc/{vmid}/firewall/ipset/{name}.
-//
-// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
-func (e *ipsetEntriesResource) List(ctx context.Context) ([]IPSetEntry, error) {
-	var entries []IPSetEntry
+func (e *IPSetEntries) List(ctx context.Context) ([]types.IPSetEntry, error) {
+	var entries []types.IPSetEntry
 	if err := e.client.Get(ctx, e.base, &entries, nil); err != nil {
 		return nil, err
 	}
@@ -138,11 +131,8 @@ func (e *ipsetEntriesResource) List(ctx context.Context) ([]IPSetEntry, error) {
 }
 
 // Get retrieves a single member via GET {base}/{cidr}.
-// GET /nodes/{node}/lxc/{vmid}/firewall/ipset/{name}/{cidr}.
-//
-// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
-func (e *ipsetEntriesResource) Get(ctx context.Context, cidr string) (*IPSetEntry, error) {
-	var entry IPSetEntry
+func (e *IPSetEntries) Get(ctx context.Context, cidr string) (*types.IPSetEntry, error) {
+	var entry types.IPSetEntry
 	if err := e.client.Get(ctx, e.base+"/"+cidr, &entry, nil); err != nil {
 		return nil, err
 	}
@@ -151,13 +141,11 @@ func (e *ipsetEntriesResource) Get(ctx context.Context, cidr string) (*IPSetEntr
 }
 
 // Create adds a new member to the IP set via POST {base}.
-// POST /nodes/{node}/lxc/{vmid}/firewall/ipset/{name}.
-//
-// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Network,match=all
-func (e *ipsetEntriesResource) Create(ctx context.Context, opts *IPSetEntryOptions) error {
+func (e *IPSetEntries) Create(ctx context.Context, opts *types.IPSetEntryOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: ipset entry options are required")
 	}
+
 	if opts.CIDR == "" {
 		return fmt.Errorf("firewall: ipset entry cidr is required")
 	}
@@ -175,13 +163,11 @@ func (e *ipsetEntriesResource) Create(ctx context.Context, opts *IPSetEntryOptio
 // opts.CIDR must still be set (Proxmox requires it to be resent even
 // when unchanged) and, if different from cidr, changes the member's
 // address.
-// PUT /nodes/{node}/lxc/{vmid}/firewall/ipset/{name}/{cidr}.
-//
-// +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Config.Network,match=all
-func (e *ipsetEntriesResource) Update(ctx context.Context, cidr string, opts *IPSetEntryOptions) error {
+func (e *IPSetEntries) Update(ctx context.Context, cidr string, opts *types.IPSetEntryOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: ipset entry options are required")
 	}
+
 	if opts.CIDR == "" {
 		return fmt.Errorf("firewall: ipset entry cidr is required")
 	}
@@ -198,10 +184,7 @@ func (e *ipsetEntriesResource) Update(ctx context.Context, cidr string, opts *IP
 // cidr to be resent as a parameter even though it is already part of
 // the URL path; digest, when non-empty, guards against a concurrent
 // modification of the member.
-// DELETE /nodes/{node}/lxc/{vmid}/firewall/ipset/{name}/{cidr}.
-//
-// +proxmox:rbac:path=/vms/{vmid},method=DELETE,privs=VM.Config.Network,match=all
-func (e *ipsetEntriesResource) Delete(ctx context.Context, cidr string, digest string) error {
+func (e *IPSetEntries) Delete(ctx context.Context, cidr string, digest string) error {
 	params := map[string]string{"cidr": cidr}
 	if digest != "" {
 		params["digest"] = digest

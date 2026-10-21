@@ -113,6 +113,15 @@ kept as opaque property strings). Sharing only the parts that are
 genuinely identical, down to individual enums within an otherwise-diverged
 pair of types, is the norm — dedupe what matches, leave the rest local.
 
+The firewall goes one step further and shares *behaviour*, not just
+types: the rules/aliases/ipset/options/refs/log resources are implemented
+once in `internal/firewall`, parameterised by base path, and
+`cluster/firewall`, `nodes/qemu/firewall` and `nodes/lxc/firewall` are
+thin adapters that supply `/cluster/firewall` or
+`/nodes/{node}/{qemu,lxc}/{vmid}/firewall` (plus, for the cluster scope,
+security groups and its own `Options`). Like `types`, it is a leaf the
+siblings import, so the dependency rule above still holds.
+
 `types/qemu.go` adds a wrinkle worth calling out explicitly: `cluster/qemu`
 and `nodes/capabilities` both define a `CPUModel` type, but they are *not*
 the same shape — `cluster/qemu.CPUModel` is a custom CPU model's full

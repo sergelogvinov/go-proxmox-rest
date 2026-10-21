@@ -158,12 +158,3 @@ type Options struct {
 	// objects (e.g. cluster.Options.Digest).
 	Digest string `json:"digest,omitempty" url:"digest,omitempty"`
 }
-
-// encode converts the options to form parameters.
-func (o *Options) encode() (map[string]string, error) {
-	if o == nil {
-		return nil, fmt.Errorf("firewall: options are required")
-	}
-
-	return params.Encode(o)
-}
