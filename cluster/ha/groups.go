@@ -59,45 +59,35 @@ func (g *groupsResource) List(ctx context.Context) ([]Group, error) {
 // Create creates a new HA group via POST /cluster/ha/groups.
 //
 // +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
-func (g *groupsResource) Create(ctx context.Context, opts *GroupOptions) (*Group, error) {
+func (g *groupsResource) Create(ctx context.Context, opts *GroupOptions) error {
 	if opts == nil {
-		return nil, fmt.Errorf("ha: group options are required")
+		return fmt.Errorf("ha: group options are required")
 	}
 	if opts.ID == "" {
-		return nil, fmt.Errorf("ha: group id is required")
+		return fmt.Errorf("ha: group id is required")
 	}
 	if opts.Nodes == nil {
-		return nil, fmt.Errorf("ha: group nodes are required")
+		return fmt.Errorf("ha: group nodes are required")
 	}
 
 	params, err := opts.encode()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var hg Group
-	if err := g.client.Create(ctx, "/cluster/ha/groups", &hg, params); err != nil {
-		return nil, err
-	}
-
-	return &hg, nil
+	return g.client.Create(ctx, "/cluster/ha/groups", nil, params)
 }
 
 // Update modifies an existing HA group via PUT /cluster/ha/groups/{group}.
 //
 // +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
-func (g *groupsResource) Update(ctx context.Context, group string, opts *GroupOptions) (*Group, error) {
+func (g *groupsResource) Update(ctx context.Context, group string, opts *GroupOptions) error {
 	params, err := opts.encode()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var hg Group
-	if err := g.client.Update(ctx, "/cluster/ha/groups/"+group, &hg, params); err != nil {
-		return nil, err
-	}
-
-	return &hg, nil
+	return g.client.Update(ctx, "/cluster/ha/groups/"+group, nil, params)
 }
 
 // Delete removes an HA group via DELETE /cluster/ha/groups/{group}.

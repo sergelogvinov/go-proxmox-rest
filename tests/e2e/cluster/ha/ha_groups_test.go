@@ -28,14 +28,16 @@ func TestHAGroupsLifecycle(t *testing.T) {
 
 	client := e2e.NewE2EClient(t, cfg)
 
-	v, err := client.Version(ctx)
-	e2e.RequireNoError(t, "get version", err)
-
-	if strings.HasPrefix(v.Version, "8.") {
-		t.Skip("Proxmox version < 9; skipping HA group tests")
-	}
-
 	hg := client.Cluster().HA().Groups()
+
+	// 1. list — baseline: our group must not exist yet. Proxmox VE 9 migrates
+	// HA groups to HA rules once the whole cluster is upgraded, after which
+	// every groups endpoint fails; probe before registering cleanup.
+	listed, err := hg.List(ctx)
+	if err != nil && strings.Contains(err.Error(), "migrated to rules") {
+		t.Skip("HA groups have been migrated to rules; skipping HA group tests")
+	}
+	e2e.RequireNoError(t, "list ha groups", err)
 
 	name := e2e.UniqueName(cfg.Prefix)
 
@@ -52,9 +54,6 @@ func TestHAGroupsLifecycle(t *testing.T) {
 		})
 	}
 
-	// 1. list — baseline: our group must not exist yet.
-	listed, err := hg.List(ctx)
-	e2e.RequireNoError(t, "list ha groups", err)
 	if containsHAGroup(listed, name) {
 		t.Fatalf("list: ha group %q already exists before create", name)
 	}
@@ -66,18 +65,15 @@ func TestHAGroupsLifecycle(t *testing.T) {
 	// 3. create — a uniquely-named group bound to the configured node.
 	comment := "e2e lifecycle"
 	nodes := cfg.Node
-	group, err := hg.Create(ctx, &ha.GroupOptions{
+	err = hg.Create(ctx, &ha.GroupOptions{
 		ID:      name,
 		Nodes:   &nodes,
 		Comment: &comment,
 	})
 	e2e.RequireNoError(t, "create ha group", err)
-	if group.Group != name {
-		t.Errorf("create: Group = %q, want %q", group.Group, name)
-	}
 
 	// 4. get — verify the create.
-	group, err = hg.Get(ctx, name)
+	group, err := hg.Get(ctx, name)
 	e2e.RequireNoError(t, "get ha group after create", err)
 	if group.Group != name {
 		t.Errorf("get: Group = %q, want %q", group.Group, name)
@@ -92,7 +88,7 @@ func TestHAGroupsLifecycle(t *testing.T) {
 	// 5. update — mutate the comment and enable restricted/nofailback.
 	newComment := "e2e updated"
 	trueVal := true
-	_, err = hg.Update(ctx, name, &ha.GroupOptions{
+	err = hg.Update(ctx, name, &ha.GroupOptions{
 		Comment:    &newComment,
 		Restricted: &trueVal,
 		Nofailback: &trueVal,
@@ -143,17 +139,17 @@ func TestHAGroupsValidation(t *testing.T) {
 	hg := client.Cluster().HA().Groups()
 	ctx := t.Context()
 
-	_, err := hg.Create(ctx, nil)
+	err := hg.Create(ctx, nil)
 	e2e.RequireError(t, "create with nil options", err)
 
 	nodes := "does-not-matter"
-	_, err = hg.Create(ctx, &ha.GroupOptions{Nodes: &nodes})
+	err = hg.Create(ctx, &ha.GroupOptions{Nodes: &nodes})
 	e2e.RequireError(t, "create with missing id", err)
 
-	_, err = hg.Create(ctx, &ha.GroupOptions{ID: "does-not-matter"})
+	err = hg.Create(ctx, &ha.GroupOptions{ID: "does-not-matter"})
 	e2e.RequireError(t, "create with missing nodes", err)
 
-	_, err = hg.Update(ctx, "does-not-matter", nil)
+	err = hg.Update(ctx, "does-not-matter", nil)
 	e2e.RequireError(t, "update with nil options", err)
 }
 
