@@ -11,7 +11,10 @@ import (
 
 // TestLXCInterfacesAbsent verifies that GET
 // /nodes/{node}/lxc/{vmid}/interfaces on a nonexistent container returns
-// an error.
+// no interfaces. Proxmox never loads the container config here: it looks
+// up the container's running process and answers 200 with null data when
+// there is none, so a missing container is indistinguishable from a
+// stopped one.
 func TestLXCInterfacesAbsent(t *testing.T) {
 	cfg := e2e.MustConfig(t)
 	if cfg.Parallel {
@@ -24,8 +27,11 @@ func TestLXCInterfacesAbsent(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	_, err := client.Nodes(cfg.Node).LXC().Interfaces(ctx, nonexistentVMID)
-	e2e.RequireError(t, "interfaces of absent container", err)
+	ifaces, err := client.Nodes(cfg.Node).LXC().Interfaces(ctx, nonexistentVMID)
+	e2e.RequireNoError(t, "interfaces of absent container", err)
+	if len(ifaces) != 0 {
+		t.Errorf("interfaces of absent container: got %d, want none", len(ifaces))
+	}
 }
 
 // TestLXCInterfacesOpportunistic lists a real, running container's
