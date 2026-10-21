@@ -25,7 +25,8 @@ import (
 // interfaces via GET /nodes/{node}/lxc/{vmid}/interfaces. Unlike
 // nodes/qemu/agent's NetworkGetInterfaces, this does not require a guest
 // agent — Proxmox reads the addresses directly from the container's
-// network namespace.
+// network namespace. A container that is stopped or does not exist yields
+// no interfaces and no error: Proxmox does not check the config here.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (c *Client) Interfaces(ctx context.Context, vmid int) ([]Interface, error) {
