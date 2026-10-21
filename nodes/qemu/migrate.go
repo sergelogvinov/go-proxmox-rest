@@ -22,6 +22,7 @@ import (
 	"strconv"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 	"github.com/sergelogvinov/go-proxmox-rest/types"
 )
 
@@ -169,29 +170,28 @@ type MigrateOptions struct {
 }
 
 // Migrate starts a guest migration via
-// POST /nodes/{node}/qemu/{vmid}/migrate. Returns the migration task's
-// UPID.
+// POST /nodes/{node}/qemu/{vmid}/migrate. Returns a *task.Task handle for the migration task.
 // Non-identity target storage conditionally requires VM.Config.Disk and
 // Datastore.AllocateSpace on each target storage.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Migrate,match=all
-func (c *Client) Migrate(ctx context.Context, vmid int, opts *MigrateOptions) (string, error) {
+func (c *Client) Migrate(ctx context.Context, vmid int, opts *MigrateOptions) (*task.Task, error) {
 	if opts == nil {
-		return "", fmt.Errorf("qemu: migrate options are required")
+		return nil, fmt.Errorf("qemu: migrate options are required")
 	}
 	if opts.Target == "" {
-		return "", fmt.Errorf("qemu: migrate target is required")
+		return nil, fmt.Errorf("qemu: migrate target is required")
 	}
 
 	p, err := params.Encode(opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var upid string
 	if err := c.client.Create(ctx, "/nodes/"+c.node+"/qemu/"+strconv.Itoa(vmid)+"/migrate", &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }

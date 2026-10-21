@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // CreateOptions holds the parameters for Client.Create
@@ -47,26 +49,26 @@ type CreateOptions struct {
 }
 
 // Create creates a new container via POST /nodes/{node}/lxc. Returns
-// the creation task's UPID.
+// a *task.Task handle for the creation task.
 //
 // Create issues a single HTTP call and does not convert the result into
 // a template: pass Config.Template to mark it as one directly.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Allocate,match=all
-func (c *Client) Create(ctx context.Context, opts *CreateOptions) (string, error) {
+func (c *Client) Create(ctx context.Context, opts *CreateOptions) (*task.Task, error) {
 	if opts == nil {
-		return "", fmt.Errorf("lxc: create options are required")
+		return nil, fmt.Errorf("lxc: create options are required")
 	}
 	if opts.VMID == 0 {
-		return "", fmt.Errorf("lxc: create vmid is required")
+		return nil, fmt.Errorf("lxc: create vmid is required")
 	}
 	if opts.OSTemplate == "" {
-		return "", fmt.Errorf("lxc: create ostemplate is required")
+		return nil, fmt.Errorf("lxc: create ostemplate is required")
 	}
 
 	p, err := encodeConfig(&opts.Config)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	p["vmid"] = strconv.Itoa(opts.VMID)
@@ -81,8 +83,8 @@ func (c *Client) Create(ctx context.Context, opts *CreateOptions) (string, error
 
 	var upid string
 	if err := c.client.Create(ctx, "/nodes/"+c.node+"/lxc", &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }

@@ -21,6 +21,7 @@ import (
 	"strconv"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // DeleteOptions holds the parameters for Client.Delete
@@ -42,23 +43,23 @@ type DeleteOptions struct {
 
 // Delete destroys a container and all files it owns via
 // DELETE /nodes/{node}/lxc/{vmid}. opts may be nil to use Proxmox's
-// defaults. Returns the destroy task's UPID.
+// defaults. Returns a *task.Task handle for the destroy task.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=DELETE,privs=VM.Allocate,match=all
-func (c *Client) Delete(ctx context.Context, vmid int, opts *DeleteOptions) (string, error) {
+func (c *Client) Delete(ctx context.Context, vmid int, opts *DeleteOptions) (*task.Task, error) {
 	var p map[string]string
 	if opts != nil {
 		var err error
 		p, err = params.Encode(opts)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
 	var upid string
 	if err := c.client.Delete(ctx, "/nodes/"+c.node+"/lxc/"+strconv.Itoa(vmid), &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }

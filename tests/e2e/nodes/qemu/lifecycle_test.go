@@ -84,7 +84,6 @@ func TestQemuLifecycleCreateResizeDelete(t *testing.T) {
 
 	storageName := newImagesStorage(t, cfg, client)
 	qc := client.Nodes(cfg.Node).Qemu()
-	tc := client.Nodes(cfg.Node).Tasks()
 
 	vmid, err := client.Cluster().NextID(ctx, 0)
 	e2e.RequireNoError(t, "allocate next vmid", err)
@@ -93,7 +92,7 @@ func TestQemuLifecycleCreateResizeDelete(t *testing.T) {
 
 	// 1. create — a minimal guest with a single 1G disk on the scratch
 	// storage, left in the off state.
-	createUPID, err := qc.Create(ctx, &qemu.CreateOptions{
+	createTask, err := qc.Create(ctx, &qemu.CreateOptions{
 		VMID: vmid,
 		Config: qemu.Config{
 			Name:   name,
@@ -111,17 +110,17 @@ func TestQemuLifecycleCreateResizeDelete(t *testing.T) {
 			defer cancel()
 
 			e2e.RetryCleanup(t, "delete vm", func() error {
-				deleteUPID, delErr := qc.Delete(cleanupCtx, vmid, nil)
+				deleteTask, delErr := qc.Delete(cleanupCtx, vmid, nil)
 				if delErr != nil {
 					return delErr
 				}
 
-				return tc.Wait(cleanupCtx, deleteUPID, &tasks.WaitOptions{Timeout: taskTimeout})
+				return deleteTask.Wait(cleanupCtx, &tasks.WaitOptions{Timeout: taskTimeout})
 			})
 		})
 	}
 
-	err = tc.Wait(ctx, createUPID, &tasks.WaitOptions{Timeout: taskTimeout})
+	err = createTask.Wait(ctx, &tasks.WaitOptions{Timeout: taskTimeout})
 	e2e.RequireNoError(t, "wait for vm creation", err)
 
 	// 2. status — verify the guest exists and is off.
@@ -144,16 +143,15 @@ func TestQemuLifecycleCreateResizeDelete(t *testing.T) {
 	}
 
 	// 4. resize — grow the disk by 1G, to 2G.
-	resizeUPID, err := qc.Resize(ctx, vmid, &qemu.ResizeOptions{
+	resizeTask, err := qc.Resize(ctx, vmid, &qemu.ResizeOptions{
 		Disk: "scsi0",
 		Size: "+1G",
 	})
 	e2e.RequireNoError(t, "resize disk", err)
 
-	if resizeUPID != "" {
-		err = tc.Wait(ctx, resizeUPID, &tasks.WaitOptions{Timeout: taskTimeout})
-		e2e.RequireNoError(t, "wait for resize", err)
-	}
+	// Wait returns at once if Proxmox resized synchronously (no task).
+	err = resizeTask.Wait(ctx, &tasks.WaitOptions{Timeout: taskTimeout})
+	e2e.RequireNoError(t, "wait for resize", err)
 
 	// 5. content — verify the resize took effect.
 	volumes, err = cc.List(ctx, &storage.ContentListOptions{VMID: vmid})
@@ -166,10 +164,10 @@ func TestQemuLifecycleCreateResizeDelete(t *testing.T) {
 	}
 
 	// 6. delete.
-	deleteUPID, err := qc.Delete(ctx, vmid, nil)
+	deleteTask, err := qc.Delete(ctx, vmid, nil)
 	e2e.RequireNoError(t, "delete vm", err)
 
-	err = tc.Wait(ctx, deleteUPID, &tasks.WaitOptions{Timeout: taskTimeout})
+	err = deleteTask.Wait(ctx, &tasks.WaitOptions{Timeout: taskTimeout})
 	e2e.RequireNoError(t, "wait for vm deletion", err)
 
 	// 7. status — verify the delete.

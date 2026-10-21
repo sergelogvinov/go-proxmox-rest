@@ -25,6 +25,7 @@ import (
 	"fmt"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // Getter is the subset of the root client used by this package. It is
@@ -33,6 +34,9 @@ import (
 type Getter interface {
 	Get(ctx context.Context, path string, out any, params map[string]string) error
 	Create(ctx context.Context, path string, out any, params map[string]string) error
+	// Delete is used only by the *task.Task handles this package
+	// returns (Task.Stop).
+	Delete(ctx context.Context, path string, out any, params map[string]string) error
 }
 
 // Client provides access to the /nodes/{node}/vzdump resource tree,
@@ -51,7 +55,7 @@ func New(c Getter, node string) *Client {
 // Create starts an on-demand backup via POST /nodes/{node}/vzdump.
 // opts.VMID or opts.All is required — Proxmox otherwise silently
 // no-ops rather than erroring, so this validates it client-side.
-// Returns the backup task's UPID.
+// Returns a *task.Task handle for the backup task.
 // This user=>all endpoint has no fixed privilege. Runtime checks are conditional:
 // VM.Backup for every selected guest; storage allocation for backup/fleecing;
 // Datastore.Allocate for pruning; and Sys.Modify for privileged options or stop.
@@ -59,25 +63,25 @@ func New(c Getter, node string) *Client {
 // option-dependent storage and system checks are documented above.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Backup,match=all
-func (c *Client) Create(ctx context.Context, opts *Options) (string, error) {
+func (c *Client) Create(ctx context.Context, opts *Options) (*task.Task, error) {
 	if opts == nil {
-		return "", fmt.Errorf("vzdump: options are required")
+		return nil, fmt.Errorf("vzdump: options are required")
 	}
 	if len(opts.VMID) == 0 && !opts.All {
-		return "", fmt.Errorf("vzdump: either VMID or All is required")
+		return nil, fmt.Errorf("vzdump: either VMID or All is required")
 	}
 
 	p, err := params.Encode(opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var upid string
 	if err := c.client.Create(ctx, "/nodes/"+c.node+"/vzdump", &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }
 
 // Defaults retrieves the node's currently configured backup defaults

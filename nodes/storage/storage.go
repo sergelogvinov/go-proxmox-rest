@@ -33,7 +33,7 @@ limitations under the License.
 // guest config; DownloadURL, OCIRegistryPull, and Upload are the ways to
 // get a file into storage without an existing guest — DownloadURL and
 // OCIRegistryPull as server-side fetches, Upload as a client-supplied
-// multipart file — and all three, like Copy, return a plain UPID and
+// multipart file — and all three, like Copy, return a *task.Task handle and
 // fit the envelope model just as well as any other task-returning
 // write; Identity is a plain GET returning a small {id, type} object
 // and fits the model as directly as Status does. All five are included,

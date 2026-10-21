@@ -21,6 +21,7 @@ import (
 	"strconv"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // path builds the .../qemu/{vmid}/status/{action} URL for the given node,
@@ -43,17 +44,16 @@ func (c *Client) Status(ctx context.Context, vmid int) (*Status, error) {
 }
 
 // Start starts a guest via POST /nodes/{node}/qemu/{vmid}/status/start.
-// opts may be nil to use Proxmox's defaults. Returns the start task's
-// UPID.
+// opts may be nil to use Proxmox's defaults. Returns a *task.Task handle for the start task.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.PowerMgmt,match=all
-func (c *Client) Start(ctx context.Context, vmid int, opts *StartOptions) (string, error) {
+func (c *Client) Start(ctx context.Context, vmid int, opts *StartOptions) (*task.Task, error) {
 	var p map[string]string
 	if opts != nil {
 		var err error
 		p, err = params.Encode(opts)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
@@ -63,17 +63,17 @@ func (c *Client) Start(ctx context.Context, vmid int, opts *StartOptions) (strin
 // Stop immediately stops a guest via
 // POST /nodes/{node}/qemu/{vmid}/status/stop — like pulling the power
 // plug, this may damage guest data; prefer Shutdown for a graceful
-// power-off. opts may be nil to use Proxmox's defaults. Returns the stop
-// task's UPID.
+// power-off. opts may be nil to use Proxmox's defaults. Returns a *task.Task handle for the stop
+// task.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.PowerMgmt,match=all
-func (c *Client) Stop(ctx context.Context, vmid int, opts *StopOptions) (string, error) {
+func (c *Client) Stop(ctx context.Context, vmid int, opts *StopOptions) (*task.Task, error) {
 	var p map[string]string
 	if opts != nil {
 		var err error
 		p, err = params.Encode(opts)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
@@ -82,16 +82,16 @@ func (c *Client) Stop(ctx context.Context, vmid int, opts *StopOptions) (string,
 
 // Reset resets a running guest via
 // POST /nodes/{node}/qemu/{vmid}/status/reset. opts may be nil to use
-// Proxmox's defaults. Returns the reset task's UPID.
+// Proxmox's defaults. Returns a *task.Task handle for the reset task.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.PowerMgmt,match=all
-func (c *Client) Reset(ctx context.Context, vmid int, opts *ResetOptions) (string, error) {
+func (c *Client) Reset(ctx context.Context, vmid int, opts *ResetOptions) (*task.Task, error) {
 	var p map[string]string
 	if opts != nil {
 		var err error
 		p, err = params.Encode(opts)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
@@ -100,16 +100,16 @@ func (c *Client) Reset(ctx context.Context, vmid int, opts *ResetOptions) (strin
 
 // Shutdown gracefully powers off a guest (an ACPI power-off event) via
 // POST /nodes/{node}/qemu/{vmid}/status/shutdown. opts may be nil to use
-// Proxmox's defaults. Returns the shutdown task's UPID.
+// Proxmox's defaults. Returns a *task.Task handle for the shutdown task.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.PowerMgmt,match=all
-func (c *Client) Shutdown(ctx context.Context, vmid int, opts *ShutdownOptions) (string, error) {
+func (c *Client) Shutdown(ctx context.Context, vmid int, opts *ShutdownOptions) (*task.Task, error) {
 	var p map[string]string
 	if opts != nil {
 		var err error
 		p, err = params.Encode(opts)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
@@ -119,16 +119,16 @@ func (c *Client) Shutdown(ctx context.Context, vmid int, opts *ShutdownOptions) 
 // Reboot shuts a guest down and starts it again, applying any pending
 // configuration changes, via
 // POST /nodes/{node}/qemu/{vmid}/status/reboot. opts may be nil to use
-// Proxmox's defaults. Returns the reboot task's UPID.
+// Proxmox's defaults. Returns a *task.Task handle for the reboot task.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.PowerMgmt,match=all
-func (c *Client) Reboot(ctx context.Context, vmid int, opts *RebootOptions) (string, error) {
+func (c *Client) Reboot(ctx context.Context, vmid int, opts *RebootOptions) (*task.Task, error) {
 	var p map[string]string
 	if opts != nil {
 		var err error
 		p, err = params.Encode(opts)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
@@ -137,19 +137,18 @@ func (c *Client) Reboot(ctx context.Context, vmid int, opts *RebootOptions) (str
 
 // Suspend suspends a running guest via
 // POST /nodes/{node}/qemu/{vmid}/status/suspend. opts may be nil to
-// suspend to RAM (pause) rather than to disk. Returns the suspend task's
-// UPID.
+// suspend to RAM (pause) rather than to disk. Returns a *task.Task handle for the suspend task.
 // Suspending to disk additionally and conditionally requires VM.Config.Disk on
 // /vms/{vmid} and Datastore.AllocateSpace on the resolved state storage.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.PowerMgmt,match=all
-func (c *Client) Suspend(ctx context.Context, vmid int, opts *SuspendOptions) (string, error) {
+func (c *Client) Suspend(ctx context.Context, vmid int, opts *SuspendOptions) (*task.Task, error) {
 	var p map[string]string
 	if opts != nil {
 		var err error
 		p, err = params.Encode(opts)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
@@ -158,29 +157,29 @@ func (c *Client) Suspend(ctx context.Context, vmid int, opts *SuspendOptions) (s
 
 // Resume resumes a suspended (or paused) guest via
 // POST /nodes/{node}/qemu/{vmid}/status/resume. opts may be nil to use
-// Proxmox's defaults. Returns the resume task's UPID.
+// Proxmox's defaults. Returns a *task.Task handle for the resume task.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.PowerMgmt,match=all
-func (c *Client) Resume(ctx context.Context, vmid int, opts *ResumeOptions) (string, error) {
+func (c *Client) Resume(ctx context.Context, vmid int, opts *ResumeOptions) (*task.Task, error) {
 	var p map[string]string
 	if opts != nil {
 		var err error
 		p, err = params.Encode(opts)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
 	return c.action(ctx, vmid, "resume", p)
 }
 
-// action POSTs to the given .../status/{name} sub-path, returning the
-// resulting task's UPID.
-func (c *Client) action(ctx context.Context, vmid int, name string, p map[string]string) (string, error) {
+// action POSTs to the given .../status/{name} sub-path, returning a
+// *task.Task handle for the resulting task.
+func (c *Client) action(ctx context.Context, vmid int, name string, p map[string]string) (*task.Task, error) {
 	var upid string
 	if err := c.client.Create(ctx, path(c.node, vmid, name), &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }

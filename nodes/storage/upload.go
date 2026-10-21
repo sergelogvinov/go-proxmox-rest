@@ -22,6 +22,7 @@ import (
 	"io"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // UploadOptions holds the parameters for Client.Upload
@@ -50,32 +51,32 @@ type UploadOptions struct {
 // Upload uploads a file directly into storage via multipart POST
 // /nodes/{node}/storage/{storage}/upload, streaming opts.File from the
 // caller — unlike DownloadURL, which fetches server-side from a URL.
-// Returns the upload task's UPID.
+// Returns a *task.Task handle for the upload task.
 //
 // +proxmox:rbac:path=/storage/{storage},method=POST,privs=Datastore.AllocateTemplate,match=all
-func (c *Client) Upload(ctx context.Context, storageID string, opts *UploadOptions) (string, error) {
+func (c *Client) Upload(ctx context.Context, storageID string, opts *UploadOptions) (*task.Task, error) {
 	if opts == nil {
-		return "", fmt.Errorf("storage: upload options are required")
+		return nil, fmt.Errorf("storage: upload options are required")
 	}
 	if opts.Content == "" {
-		return "", fmt.Errorf("storage: upload content is required")
+		return nil, fmt.Errorf("storage: upload content is required")
 	}
 	if opts.Filename == "" {
-		return "", fmt.Errorf("storage: upload filename is required")
+		return nil, fmt.Errorf("storage: upload filename is required")
 	}
 	if opts.File == nil {
-		return "", fmt.Errorf("storage: upload file is required")
+		return nil, fmt.Errorf("storage: upload file is required")
 	}
 
 	fields, err := params.Encode(opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var upid string
 	if err := c.client.Upload(ctx, "/nodes/"+c.node+"/storage/"+storageID+"/upload", &upid, fields, "filename", opts.Filename, opts.File); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }

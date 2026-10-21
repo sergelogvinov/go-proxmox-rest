@@ -315,13 +315,13 @@ Two modes, selected once at `NewCluster` time:
   drives it explicitly:
 
   ```go
-  upid, err := c.Nodes().Qemu().Resize(ctx, "pve1", 100, &qemu.ResizeOptions{
+  t, err := c.Nodes("pve1").Qemu().Resize(ctx, 100, &qemu.ResizeOptions{
       Disk: "scsi1", Size: "+10G",
   })
-  // upid's task is "running"; the resize has NOT been applied to state yet.
+  // t's task is "running"; the resize has NOT been applied to state yet.
 
-  cluster.Tasks().Complete(upid) // applies the staged mutation, flips to StateStopped/"OK"
-  // or: cluster.Tasks().Fail(upid, "some error") // discards the mutation, ExitStatus = the message
+  cluster.Tasks().Complete(t.UPID()) // applies the staged mutation, flips to StateStopped/"OK"
+  // or: cluster.Tasks().Fail(t.UPID(), "some error") // discards the mutation, ExitStatus = the message
   ```
 
   This is what makes retry logic, "poll until done" helpers, and

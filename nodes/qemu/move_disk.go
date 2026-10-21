@@ -22,6 +22,7 @@ import (
 	"strconv"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // MoveDiskOptions holds the parameters for Client.MoveDisk
@@ -58,30 +59,29 @@ type MoveDiskOptions struct {
 
 // MoveDisk moves a guest's disk to a different storage, or to a
 // different guest entirely, via
-// POST /nodes/{node}/qemu/{vmid}/move_disk. Returns the move task's
-// UPID.
+// POST /nodes/{node}/qemu/{vmid}/move_disk. Returns a *task.Task handle for the move task.
 // Moving to storage conditionally requires Datastore.AllocateSpace there;
 // reassignment conditionally requires VM.Config.Disk on the target VM and
 // Datastore.AllocateSpace on the source volume's storage.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Disk,match=all
-func (c *Client) MoveDisk(ctx context.Context, vmid int, opts *MoveDiskOptions) (string, error) {
+func (c *Client) MoveDisk(ctx context.Context, vmid int, opts *MoveDiskOptions) (*task.Task, error) {
 	if opts == nil {
-		return "", fmt.Errorf("qemu: move disk options are required")
+		return nil, fmt.Errorf("qemu: move disk options are required")
 	}
 	if opts.Disk == "" {
-		return "", fmt.Errorf("qemu: move disk requires a disk")
+		return nil, fmt.Errorf("qemu: move disk requires a disk")
 	}
 
 	p, err := params.Encode(opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var upid string
 	if err := c.client.Create(ctx, "/nodes/"+c.node+"/qemu/"+strconv.Itoa(vmid)+"/move_disk", &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }

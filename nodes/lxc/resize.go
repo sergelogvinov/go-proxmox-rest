@@ -22,6 +22,7 @@ import (
 	"strconv"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // ResizeOptions holds the parameters for Client.Resize
@@ -41,30 +42,30 @@ type ResizeOptions struct {
 }
 
 // Resize extends a container mount point's size via
-// PUT /nodes/{node}/lxc/{vmid}/resize. Returns the resize task's UPID.
+// PUT /nodes/{node}/lxc/{vmid}/resize. Returns a *task.Task handle for the resize task.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Config.Disk,match=all
 // +proxmox:rbac:path=/storage/{storage},method=PUT,privs=Datastore.AllocateSpace,match=all
-func (c *Client) Resize(ctx context.Context, vmid int, opts *ResizeOptions) (string, error) {
+func (c *Client) Resize(ctx context.Context, vmid int, opts *ResizeOptions) (*task.Task, error) {
 	if opts == nil {
-		return "", fmt.Errorf("lxc: resize options are required")
+		return nil, fmt.Errorf("lxc: resize options are required")
 	}
 	if opts.Disk == "" {
-		return "", fmt.Errorf("lxc: resize requires a disk")
+		return nil, fmt.Errorf("lxc: resize requires a disk")
 	}
 	if opts.Size == "" {
-		return "", fmt.Errorf("lxc: resize requires a size")
+		return nil, fmt.Errorf("lxc: resize requires a size")
 	}
 
 	p, err := params.Encode(opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var upid string
 	if err := c.client.Update(ctx, "/nodes/"+c.node+"/lxc/"+strconv.Itoa(vmid)+"/resize", &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }

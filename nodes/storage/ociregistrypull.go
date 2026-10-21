@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // OCIRegistryPullOptions holds the parameters for
@@ -38,7 +39,7 @@ type OCIRegistryPullOptions struct {
 
 // OCIRegistryPull pulls an OCI image from a registry directly into
 // storage via POST /nodes/{node}/storage/{storage}/oci-registry-pull.
-// Returns the pull task's UPID.
+// Returns a *task.Task handle for the pull task.
 // Besides Datastore.AllocateTemplate on the storage, Proxmox also
 // requires Sys.AccessNetwork on the node, since this makes the node
 // fetch from an arbitrary registry. The marker records the
@@ -47,23 +48,23 @@ type OCIRegistryPullOptions struct {
 // ANDed path.
 //
 // +proxmox:rbac:path=/storage/{storage},method=POST,privs=Datastore.AllocateTemplate,match=all
-func (c *Client) OCIRegistryPull(ctx context.Context, storageID string, opts *OCIRegistryPullOptions) (string, error) {
+func (c *Client) OCIRegistryPull(ctx context.Context, storageID string, opts *OCIRegistryPullOptions) (*task.Task, error) {
 	if opts == nil {
-		return "", fmt.Errorf("storage: oci-registry-pull options are required")
+		return nil, fmt.Errorf("storage: oci-registry-pull options are required")
 	}
 	if opts.Reference == "" {
-		return "", fmt.Errorf("storage: oci-registry-pull reference is required")
+		return nil, fmt.Errorf("storage: oci-registry-pull reference is required")
 	}
 
 	p, err := params.Encode(opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var upid string
 	if err := c.client.Create(ctx, "/nodes/"+c.node+"/storage/"+storageID+"/oci-registry-pull", &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(c.client, c.node, upid), nil
 }

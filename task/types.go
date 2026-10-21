@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tasks
+package task
 
-// State is a task's current running state, as reported by Client.Status.
-// Distinct from Task.Status (List/Log), which holds the exit-status
-// string once a task has finished.
+// State is a task's current running state, as reported by Task.Status.
+// Distinct from Entry.Status (List), which holds the exit-status string
+// once a task has finished.
 type State string
 
 const (
@@ -36,9 +36,9 @@ const (
 	SourceAll     Source = "all"
 )
 
-// Task describes a finished or currently running task, as returned by
-// GET /nodes/{node}/tasks.
-type Task struct {
+// Entry describes a finished or currently running task in a node's task
+// history, as returned by GET /nodes/{node}/tasks.
+type Entry struct {
 	// UPID is the task's unique process ID.
 	UPID string `json:"upid,omitempty" url:"upid,omitempty"`
 	// Node is the node the task ran/runs on.
@@ -67,7 +67,7 @@ type Task struct {
 	Status string `json:"status,omitempty" url:"status,omitempty"`
 }
 
-// ListOptions filters the tasks returned by Client.List. A nil
+// ListOptions filters the tasks returned by List. A nil
 // *ListOptions (or the zero value) requests Proxmox's defaults (the most
 // recent 50 archived tasks).
 type ListOptions struct {

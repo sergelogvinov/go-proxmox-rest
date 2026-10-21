@@ -122,6 +122,13 @@ thin adapters that supply `/cluster/firewall` or
 security groups and its own `Options`). Like `types`, it is a leaf the
 siblings import, so the dependency rule above still holds.
 
+The top-level `task` package is the same kind of leaf for background
+tasks. Every endpoint that starts one returns a `*task.Task` handle
+(`UPID`, `Node`, `Status`, `Log`, `Stop`, `Wait`) bound to the client
+that started it, so `nodes/qemu`, `nodes/storage`, … hand back a task
+without importing `nodes/tasks`. `nodes/tasks` is a thin adapter over
+`task` for a bare UPID string, plus the node's task history.
+
 `types/qemu.go` adds a wrinkle worth calling out explicitly: `cluster/qemu`
 and `nodes/capabilities` both define a `CPUModel` type, but they are *not*
 the same shape — `cluster/qemu.CPUModel` is a custom CPU model's full

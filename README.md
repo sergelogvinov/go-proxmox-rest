@@ -103,8 +103,22 @@ Available API areas include:
 - `client.Storage()` for cluster storage configuration
 - `client.Version(ctx)` for the Proxmox VE version
 
-Many write operations return a task identifier (UPID). Use the node task client
-to inspect or wait for the task when the API operation is asynchronous.
+Write operations that start a background task return a `*task.Task` handle.
+Wait on it, or inspect its status and log:
+
+```go
+t, err := client.Nodes("pve1").Qemu().Start(ctx, 100, nil)
+if err != nil {
+	log.Fatal(err)
+}
+
+if err := t.Wait(ctx, &task.WaitOptions{Timeout: 5 * time.Minute}); err != nil {
+	log.Fatal(err)
+}
+```
+
+`t.UPID()` returns the task identifier. If all you have is a UPID string,
+`client.Nodes("pve1").Tasks().Task(upid)` gives you the same handle.
 
 ## Testing with the fake API
 

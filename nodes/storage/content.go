@@ -22,6 +22,7 @@ import (
 	"strconv"
 
 	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // contentResource provides access to
@@ -121,15 +122,16 @@ func (r *contentResource) Update(ctx context.Context, volume string, opts *Updat
 // DELETE /nodes/{node}/storage/{storage}/content/{volume}. delay is the
 // number of seconds (1-30) to wait for the removal to finish before
 // falling back to a background task; zero requests Proxmox's default (a
-// background task, its UPID returned immediately). The returned UPID is
-// empty when the removal completed synchronously within delay.
+// background task, its handle returned immediately). The returned
+// *task.Task has an empty UPID when the removal completed synchronously
+// within delay; its Wait then returns nil at once.
 // Ordinary volumes require Datastore.Allocate. An owned backup instead requires
 // both Datastore.AllocateSpace and VM.Backup on its owner VM.
 // The marker records the ordinary-volume branch; the owned-backup alternative
 // is documented above.
 //
 // +proxmox:rbac:path=/storage/{storage},method=DELETE,privs=Datastore.Allocate,match=all
-func (r *contentResource) Delete(ctx context.Context, volume string, delay int) (string, error) {
+func (r *contentResource) Delete(ctx context.Context, volume string, delay int) (*task.Task, error) {
 	var p map[string]string
 	if delay > 0 {
 		p = map[string]string{"delay": strconv.Itoa(delay)}
@@ -137,8 +139,8 @@ func (r *contentResource) Delete(ctx context.Context, volume string, delay int) 
 
 	var upid string
 	if err := r.client.Delete(ctx, "/nodes/"+r.node+"/storage/"+r.storageID+"/content/"+volume, &upid, p); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return upid, nil
+	return task.New(r.client, r.node, upid), nil
 }

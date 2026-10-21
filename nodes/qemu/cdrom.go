@@ -19,6 +19,8 @@ package qemu
 import (
 	"context"
 	"fmt"
+
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // AttachISOOptions holds the parameters for Client.AttachISO.
@@ -38,16 +40,16 @@ type AttachISOOptions struct {
 // opts.Drive isn't already configured. Proxmox has no dedicated attach
 // endpoint for this — it's a thin convenience wrapper around
 // UpdateConfigAsync, writing "<volume>,media=cdrom" to the given slot
-// the same way the web UI's "CD/DVD Drive" dialog does. Returns the
-// config-update task's UPID.
+// the same way the web UI's "CD/DVD Drive" dialog does. Returns a
+// *task.Task handle for the config-update task.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.CDROM,match=all
-func (c *Client) AttachISO(ctx context.Context, vmid int, opts *AttachISOOptions) (string, error) {
+func (c *Client) AttachISO(ctx context.Context, vmid int, opts *AttachISOOptions) (*task.Task, error) {
 	if opts == nil {
-		return "", fmt.Errorf("qemu: attach iso options are required")
+		return nil, fmt.Errorf("qemu: attach iso options are required")
 	}
 	if opts.Volume == "" {
-		return "", fmt.Errorf("qemu: attach iso volume is required")
+		return nil, fmt.Errorf("qemu: attach iso volume is required")
 	}
 
 	return c.setCDROM(ctx, vmid, opts.Drive, opts.Volume)
@@ -57,25 +59,25 @@ func (c *Client) AttachISO(ctx context.Context, vmid int, opts *AttachISOOptions
 // POST /nodes/{node}/qemu/{vmid}/config, leaving drive configured as an
 // empty CD-ROM ("none,media=cdrom") rather than removing the slot from
 // the config — removing it entirely is Unlink's job, not this one's.
-// Returns the config-update task's UPID.
+// Returns a *task.Task handle for the config-update task.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.CDROM,match=all
-func (c *Client) DetachISO(ctx context.Context, vmid int, drive string) (string, error) {
+func (c *Client) DetachISO(ctx context.Context, vmid int, drive string) (*task.Task, error) {
 	return c.setCDROM(ctx, vmid, drive, "none")
 }
 
 // setCDROM builds a single-drive Config for the bus/slot named by drive
 // and applies it via UpdateConfigAsync. Shared by AttachISO and
 // DetachISO, which differ only in the volume written to the slot.
-func (c *Client) setCDROM(ctx context.Context, vmid int, drive, volume string) (string, error) {
+func (c *Client) setCDROM(ctx context.Context, vmid int, drive, volume string) (*task.Task, error) {
 	if drive == "" {
-		return "", fmt.Errorf("qemu: cdrom drive is required")
+		return nil, fmt.Errorf("qemu: cdrom drive is required")
 	}
 
 	prefix, index, ok := splitIndexedKey(drive)
 	cfg := &Config{}
 	if !ok || prefix == "virtio" || !setConfigDrive(cfg, prefix, index, Drive{File: volume, Media: "cdrom"}) {
-		return "", fmt.Errorf("qemu: cdrom drive %q must be an ide, sata, or scsi slot", drive)
+		return nil, fmt.Errorf("qemu: cdrom drive %q must be an ide, sata, or scsi slot", drive)
 	}
 
 	return c.UpdateConfigAsync(ctx, vmid, cfg)

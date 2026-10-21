@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+
+	"github.com/sergelogvinov/go-proxmox-rest/task"
 )
 
 // AttachDriveOptions holds the parameters for Client.AttachDrive.
@@ -43,22 +45,22 @@ type AttachDriveOptions struct {
 // UpdateConfigAsync, writing opts.Options's property string to the
 // given slot the same way the web UI's "Add: Hard Disk" (existing
 // volume) or "Edit" dialog does. Unlike AttachISO, media is left
-// unset — use AttachISO for CD-ROM drives. Returns the config-update
-// task's UPID.
+// unset — use AttachISO for CD-ROM drives. Returns a *task.Task handle for the config-update
+// task.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Disk,match=all
-func (c *Client) AttachDrive(ctx context.Context, vmid int, opts *AttachDriveOptions) (string, error) {
+func (c *Client) AttachDrive(ctx context.Context, vmid int, opts *AttachDriveOptions) (*task.Task, error) {
 	if opts == nil {
-		return "", fmt.Errorf("qemu: attach drive options are required")
+		return nil, fmt.Errorf("qemu: attach drive options are required")
 	}
 	if opts.Options.File == "" {
-		return "", fmt.Errorf("qemu: attach drive volume (Options.File) is required")
+		return nil, fmt.Errorf("qemu: attach drive volume (Options.File) is required")
 	}
 
 	prefix, index, ok := splitIndexedKey(opts.Drive)
 	cfg := &Config{}
 	if !ok || !setConfigDrive(cfg, prefix, index, opts.Options) {
-		return "", fmt.Errorf("qemu: drive %q must be an ide, sata, scsi, or virtio slot", opts.Drive)
+		return nil, fmt.Errorf("qemu: drive %q must be an ide, sata, scsi, or virtio slot", opts.Drive)
 	}
 
 	return c.UpdateConfigAsync(ctx, vmid, cfg)
@@ -81,17 +83,17 @@ type DetachDriveOptions struct {
 // web UI's "Detach" action — rather than the slot disappearing
 // outright. To free the volume too, follow up with Unlink on the
 // resulting unusedN key (found via a subsequent Config call). Returns
-// the config-update task's UPID.
+// a *task.Task handle for the config-update task.
 //
 // +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Disk,match=all
-func (c *Client) DetachDrive(ctx context.Context, vmid int, opts *DetachDriveOptions) (string, error) {
+func (c *Client) DetachDrive(ctx context.Context, vmid int, opts *DetachDriveOptions) (*task.Task, error) {
 	if opts == nil {
-		return "", fmt.Errorf("qemu: detach drive options are required")
+		return nil, fmt.Errorf("qemu: detach drive options are required")
 	}
 
 	prefix, _, ok := splitIndexedKey(opts.Drive)
 	if !ok || !isDriveFamily(prefix) {
-		return "", fmt.Errorf("qemu: drive %q must be an ide, sata, scsi, or virtio slot", opts.Drive)
+		return nil, fmt.Errorf("qemu: drive %q must be an ide, sata, scsi, or virtio slot", opts.Drive)
 	}
 
 	cfg := &Config{
