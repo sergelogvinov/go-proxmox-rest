@@ -19,6 +19,8 @@ package firewall
 import (
 	"context"
 	"fmt"
+
+	fw "github.com/sergelogvinov/go-proxmox-rest/internal/firewall"
 )
 
 // groupsResource provides access to the /cluster/firewall/groups resource:
@@ -32,8 +34,13 @@ type groupsResource struct {
 // Rules returns an accessor for the given security group's rules under
 // /cluster/firewall/groups/{name}, reusing the same List/Get/Create/Update/
 // Delete shape as the cluster-wide rules (Client.Rules()).
-func (g *groupsResource) Rules(name string) *ruleResource {
-	return &ruleResource{client: g.client, base: "/cluster/firewall/groups/" + name}
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
+// +proxmox:rbac:path=/,method=DELETE,privs=Sys.Modify,match=all
+func (g *groupsResource) Rules(name string) *fw.Rules {
+	return fw.NewRules(g.client, "/cluster/firewall/groups/"+name)
 }
 
 // List retrieves all security groups via GET /cluster/firewall/groups.

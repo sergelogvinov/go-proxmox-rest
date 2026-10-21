@@ -16,21 +16,23 @@ limitations under the License.
 
 // Package firewall provides access to the Proxmox VE cluster firewall API
 // (endpoints under /cluster/firewall).
+//
+// Rules, aliases, IP sets and options are implemented once, in
+// internal/firewall, and shared with the per-guest nodes/qemu/firewall and
+// nodes/lxc/firewall packages; this package supplies the /cluster/firewall
+// base path, the cluster-only security groups, and its own Options type.
 package firewall
 
 import (
 	"context"
+
+	fw "github.com/sergelogvinov/go-proxmox-rest/internal/firewall"
 )
 
 // Getter is the subset of the root client used by this package. It is
 // satisfied by *proxmox.Client, which keeps the firewall package decoupled
 // from the root package (no import cycle).
-type Getter interface {
-	Get(ctx context.Context, path string, out any, params map[string]string) error
-	Create(ctx context.Context, path string, out any, params map[string]string) error
-	Update(ctx context.Context, path string, out any, params map[string]string) error
-	Delete(ctx context.Context, path string, out any, params map[string]string) error
-}
+type Getter = fw.Getter
 
 // Client provides access to the /cluster/firewall resource tree, the
 // cluster-wide firewall configuration (rules, security groups, aliases, IP
@@ -46,15 +48,23 @@ func New(c Getter) *Client {
 
 // Options returns an accessor for GET/PUT /cluster/firewall/options, the
 // cluster-wide firewall configuration.
-func (c *Client) Options() *optionsResource {
-	return &optionsResource{client: c.client}
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
+func (c *Client) Options() *fw.Options[Options] {
+	return fw.NewOptions[Options](c.client, "/cluster/firewall/options")
 }
 
 // Rules returns an accessor for the cluster-wide firewall rules under
 // /cluster/firewall/rules. For a security group's rules, see
 // Groups().Rules(name).
-func (c *Client) Rules() *ruleResource {
-	return &ruleResource{client: c.client, base: "/cluster/firewall/rules"}
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
+// +proxmox:rbac:path=/,method=DELETE,privs=Sys.Modify,match=all
+func (c *Client) Rules() *fw.Rules {
+	return fw.NewRules(c.client, "/cluster/firewall/rules")
 }
 
 // Groups returns an accessor for the /cluster/firewall/groups resource,
@@ -65,14 +75,24 @@ func (c *Client) Groups() *groupsResource {
 
 // Aliases returns an accessor for the /cluster/firewall/aliases resource,
 // cluster-wide IP/network aliases.
-func (c *Client) Aliases() *aliasesResource {
-	return &aliasesResource{client: c.client}
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
+// +proxmox:rbac:path=/,method=DELETE,privs=Sys.Modify,match=all
+func (c *Client) Aliases() *fw.Aliases {
+	return fw.NewAliases(c.client, "/cluster/firewall/aliases")
 }
 
 // IPSet returns an accessor for the /cluster/firewall/ipset resource,
-// cluster-wide IP sets.
-func (c *Client) IPSet() *ipsetResource {
-	return &ipsetResource{client: c.client}
+// cluster-wide IP sets, and (via Entries) their members.
+//
+// +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
+// +proxmox:rbac:path=/,method=POST,privs=Sys.Modify,match=all
+// +proxmox:rbac:path=/,method=PUT,privs=Sys.Modify,match=all
+// +proxmox:rbac:path=/,method=DELETE,privs=Sys.Modify,match=all
+func (c *Client) IPSet() *fw.IPSets {
+	return fw.NewIPSets(c.client, "/cluster/firewall/ipset")
 }
 
 // Refs retrieves the aliases and/or IP sets that may be referenced from a
@@ -82,15 +102,5 @@ func (c *Client) IPSet() *ipsetResource {
 //
 // +proxmox:rbac:path=/,method=GET,privs=Sys.Audit,match=all
 func (c *Client) Refs(ctx context.Context, refType RefType) ([]Ref, error) {
-	var params map[string]string
-	if refType != "" {
-		params = map[string]string{"type": string(refType)}
-	}
-
-	var refs []Ref
-	if err := c.client.Get(ctx, "/cluster/firewall/refs", &refs, params); err != nil {
-		return nil, err
-	}
-
-	return refs, nil
+	return fw.Refs(ctx, c.client, "/cluster/firewall/refs", refType)
 }

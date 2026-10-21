@@ -19,22 +19,26 @@ package firewall
 import (
 	"context"
 	"fmt"
+
+	"github.com/sergelogvinov/go-proxmox-rest/types"
 )
 
-// ruleResource provides access to a guest's firewall rule list:
-// GET/POST {base} and GET/PUT/DELETE {base}/{pos}. base is
-// .../firewall/rules for the guest identified by the guest Client.Rules
-// was called with.
-type ruleResource struct {
+// Rules provides access to a firewall rule list: GET/POST {base} and
+// GET/PUT/DELETE {base}/{pos}. base is a .../firewall/rules path, or
+// /cluster/firewall/groups/{name} for a security group's rules.
+type Rules struct {
 	client Getter
 	base   string
 }
 
-// List retrieves rules via GET /nodes/{node}/qemu/{vmid}/firewall/rules.
-//
-// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
-func (r *ruleResource) List(ctx context.Context) ([]Rule, error) {
-	var rules []Rule
+// NewRules returns the rule list rooted at base.
+func NewRules(c Getter, base string) *Rules {
+	return &Rules{client: c, base: base}
+}
+
+// List retrieves all rules via GET {base}.
+func (r *Rules) List(ctx context.Context) ([]types.Rule, error) {
+	var rules []types.Rule
 	if err := r.client.Get(ctx, r.base, &rules, nil); err != nil {
 		return nil, err
 	}
@@ -42,11 +46,9 @@ func (r *ruleResource) List(ctx context.Context) ([]Rule, error) {
 	return rules, nil
 }
 
-// Get retrieves a rule via GET /nodes/{node}/qemu/{vmid}/firewall/rules/{pos}.
-//
-// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
-func (r *ruleResource) Get(ctx context.Context, pos int) (*Rule, error) {
-	var rule Rule
+// Get retrieves the rule at pos via GET {base}/{pos}.
+func (r *Rules) Get(ctx context.Context, pos int) (*types.Rule, error) {
+	var rule types.Rule
 	if err := r.client.Get(ctx, fmt.Sprintf("%s/%d", r.base, pos), &rule, nil); err != nil {
 		return nil, err
 	}
@@ -60,16 +62,15 @@ func (r *ruleResource) Get(ctx context.Context, pos int) (*Rule, error) {
 // data) and does not report the position it was assigned. The new rule
 // is appended at the end of the list unless opts.Pos is set to insert
 // it elsewhere; call List afterwards to find it.
-// POST /nodes/{node}/qemu/{vmid}/firewall/rules.
-//
-// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Network,match=all
-func (r *ruleResource) Create(ctx context.Context, opts *RuleOptions) error {
+func (r *Rules) Create(ctx context.Context, opts *types.RuleOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: rule options are required")
 	}
+
 	if opts.Type == "" {
 		return fmt.Errorf("firewall: rule type is required")
 	}
+
 	if opts.Action == "" {
 		return fmt.Errorf("firewall: rule action is required")
 	}
@@ -88,17 +89,16 @@ func (r *ruleResource) Create(ctx context.Context, opts *RuleOptions) error {
 // fields that are not changing. To reposition a rule instead of
 // changing its fields, set opts.MoveTo — Proxmox ignores every other
 // field in that case.
-// PUT /nodes/{node}/qemu/{vmid}/firewall/rules/{pos}.
-//
-// +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Config.Network,match=all
-func (r *ruleResource) Update(ctx context.Context, pos int, opts *RuleOptions) error {
+func (r *Rules) Update(ctx context.Context, pos int, opts *types.RuleOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: rule options are required")
 	}
+
 	if opts.MoveTo == nil {
 		if opts.Type == "" {
 			return fmt.Errorf("firewall: rule type is required")
 		}
+
 		if opts.Action == "" {
 			return fmt.Errorf("firewall: rule action is required")
 		}
@@ -112,13 +112,10 @@ func (r *ruleResource) Update(ctx context.Context, pos int, opts *RuleOptions) e
 	return r.client.Update(ctx, fmt.Sprintf("%s/%d", r.base, pos), nil, params)
 }
 
-// Delete removes a rule via DELETE {base}/{pos}. digest, when
+// Delete removes the rule at pos via DELETE {base}/{pos}. digest, when
 // non-empty, guards against deleting a rule that has changed since it
 // was last read.
-// DELETE /nodes/{node}/qemu/{vmid}/firewall/rules/{pos}.
-//
-// +proxmox:rbac:path=/vms/{vmid},method=DELETE,privs=VM.Config.Network,match=all
-func (r *ruleResource) Delete(ctx context.Context, pos int, digest string) error {
+func (r *Rules) Delete(ctx context.Context, pos int, digest string) error {
 	var params map[string]string
 	if digest != "" {
 		params = map[string]string{"digest": digest}

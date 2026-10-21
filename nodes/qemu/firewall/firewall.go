@@ -19,6 +19,11 @@ limitations under the License.
 // rules, aliases, IP sets, options, the firewall log, and reference
 // lookups.
 //
+// The resources themselves are implemented once, in internal/firewall,
+// and shared with nodes/lxc/firewall and cluster/firewall: Proxmox backs
+// all three scopes with the same PVE::Firewall::Rules/Aliases/IPSet
+// modules. This package only supplies the guest's base path.
+//
 // This package's types are all re-exported (as aliases) from the shared
 // types package rather than defined here — see its doc comment and
 // docs/design.md §2. Rule/Alias/IPSet/IPSetEntry/Ref are the same wire
@@ -36,18 +41,13 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/sergelogvinov/go-proxmox-rest/internal/params"
+	fw "github.com/sergelogvinov/go-proxmox-rest/internal/firewall"
 )
 
 // Getter is the subset of the root client used by this package. It is
 // satisfied by *proxmox.Client, which keeps the firewall package
 // decoupled from the root package (no import cycle).
-type Getter interface {
-	Get(ctx context.Context, path string, out any, params map[string]string) error
-	Create(ctx context.Context, path string, out any, params map[string]string) error
-	Update(ctx context.Context, path string, out any, params map[string]string) error
-	Delete(ctx context.Context, path string, out any, params map[string]string) error
-}
+type Getter = fw.Getter
 
 // Client provides access to the /nodes/{node}/qemu/{vmid}/firewall
 // resource tree, scoped to the node given to New. Every method/accessor
@@ -77,27 +77,46 @@ func path(node string, vmid int, sub string) string {
 // Options returns an accessor for
 // GET/PUT /nodes/{node}/qemu/{vmid}/firewall/options, the guest's
 // firewall configuration.
-func (c *Client) Options(vmid int) *optionsResource {
-	return &optionsResource{client: c.client, path: path(c.node, vmid, "options")}
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
+// +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Config.Network,match=all
+func (c *Client) Options(vmid int) *fw.Options[Options] {
+	return fw.NewOptions[Options](c.client, path(c.node, vmid, "options"))
 }
 
 // Rules returns an accessor for the guest's firewall rules under
 // /nodes/{node}/qemu/{vmid}/firewall/rules.
-func (c *Client) Rules(vmid int) *ruleResource {
-	return &ruleResource{client: c.client, base: path(c.node, vmid, "rules")}
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Network,match=all
+// +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Config.Network,match=all
+// +proxmox:rbac:path=/vms/{vmid},method=DELETE,privs=VM.Config.Network,match=all
+func (c *Client) Rules(vmid int) *fw.Rules {
+	return fw.NewRules(c.client, path(c.node, vmid, "rules"))
 }
 
 // Aliases returns an accessor for
 // /nodes/{node}/qemu/{vmid}/firewall/aliases, the guest's IP/network
 // aliases.
-func (c *Client) Aliases(vmid int) *aliasesResource {
-	return &aliasesResource{client: c.client, base: path(c.node, vmid, "aliases")}
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Network,match=all
+// +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Config.Network,match=all
+// +proxmox:rbac:path=/vms/{vmid},method=DELETE,privs=VM.Config.Network,match=all
+func (c *Client) Aliases(vmid int) *fw.Aliases {
+	return fw.NewAliases(c.client, path(c.node, vmid, "aliases"))
 }
 
 // IPSet returns an accessor for
-// /nodes/{node}/qemu/{vmid}/firewall/ipset, the guest's IP sets.
-func (c *Client) IPSet(vmid int) *ipsetResource {
-	return &ipsetResource{client: c.client, base: path(c.node, vmid, "ipset")}
+// /nodes/{node}/qemu/{vmid}/firewall/ipset, the guest's IP sets, and
+// (via Entries) their members.
+//
+// +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
+// +proxmox:rbac:path=/vms/{vmid},method=POST,privs=VM.Config.Network,match=all
+// +proxmox:rbac:path=/vms/{vmid},method=PUT,privs=VM.Config.Network,match=all
+// +proxmox:rbac:path=/vms/{vmid},method=DELETE,privs=VM.Config.Network,match=all
+func (c *Client) IPSet(vmid int) *fw.IPSets {
+	return fw.NewIPSets(c.client, path(c.node, vmid, "ipset"))
 }
 
 // Refs retrieves the aliases and/or IP sets that may be referenced from
@@ -108,17 +127,7 @@ func (c *Client) IPSet(vmid int) *ipsetResource {
 //
 // +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Audit,match=all
 func (c *Client) Refs(ctx context.Context, vmid int, refType RefType) ([]Ref, error) {
-	var p map[string]string
-	if refType != "" {
-		p = map[string]string{"type": string(refType)}
-	}
-
-	var refs []Ref
-	if err := c.client.Get(ctx, path(c.node, vmid, "refs"), &refs, p); err != nil {
-		return nil, err
-	}
-
-	return refs, nil
+	return fw.Refs(ctx, c.client, path(c.node, vmid, "refs"), refType)
 }
 
 // Log retrieves the guest's firewall log entries (lines from
@@ -128,19 +137,5 @@ func (c *Client) Refs(ctx context.Context, vmid int, refType RefType) ([]Ref, er
 //
 // +proxmox:rbac:path=/vms/{vmid},method=GET,privs=VM.Console,match=all
 func (c *Client) Log(ctx context.Context, vmid int, opts *LogOptions) ([]LogEntry, error) {
-	var p map[string]string
-	if opts != nil {
-		var err error
-		p, err = params.Encode(opts)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	var entries []LogEntry
-	if err := c.client.Get(ctx, path(c.node, vmid, "log"), &entries, p); err != nil {
-		return nil, err
-	}
-
-	return entries, nil
+	return fw.Log(ctx, c.client, path(c.node, vmid, "log"), opts)
 }
