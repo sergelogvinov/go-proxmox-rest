@@ -54,8 +54,9 @@ go-proxmox-rest
 ├── cluster/
 │   ├── resources.go           // Cluster().Resources()
 │   ├── options.go
-│   ├── ha/                    // cluster/ha/ — /cluster/ha/* (groups, rules)
+│   ├── ha/                    // cluster/ha/ — /cluster/ha/* (groups, resources, rules)
 │   │   ├── groups.go          // Cluster().HA().Groups()
+│   │   ├── resources.go       // Cluster().HA().Resources()
 │   │   ├── rules.go           // Cluster().HA().Rules()
 │   │   └── types.go
 │   └── ...

@@ -191,6 +191,122 @@ func (o *RuleOptions) encode() (map[string]string, error) {
 	return params.Encode(o)
 }
 
+// ResourceType is the kind of guest an HA resource refers to; it filters
+// GET /cluster/ha/resources.
+type ResourceType string
+
+const (
+	// ResourceTypeVM is a QEMU virtual machine ("vm:<vmid>").
+	ResourceTypeVM ResourceType = "vm"
+	// ResourceTypeCT is an LXC container ("ct:<vmid>").
+	ResourceTypeCT ResourceType = "ct"
+)
+
+// ResourceState is the requested state of an HA resource. The CRM reads it
+// and acts accordingly.
+type ResourceState string
+
+const (
+	// ResourceStateStarted keeps the resource running (the default).
+	ResourceStateStarted ResourceState = "started"
+	// ResourceStateStopped keeps the resource stopped while still
+	// tracking it, so it is recovered to another node on failure.
+	ResourceStateStopped ResourceState = "stopped"
+	// ResourceStateEnabled is an alias for ResourceStateStarted.
+	ResourceStateEnabled ResourceState = "enabled"
+	// ResourceStateDisabled stops the resource and does not recover it.
+	ResourceStateDisabled ResourceState = "disabled"
+	// ResourceStateIgnored removes the resource from HA tracking while
+	// keeping its configuration.
+	ResourceStateIgnored ResourceState = "ignored"
+)
+
+// Resource describes a guest under HA management, as returned by
+// GET /cluster/ha/resources and GET /cluster/ha/resources/{sid}.
+type Resource struct {
+	// SID is the HA resource ID, e.g. "vm:100" or "ct:101".
+	SID string `json:"sid,omitempty" url:"sid,omitempty"`
+	// Type is the resource kind: "vm" or "ct".
+	Type string `json:"type,omitempty" url:"type,omitempty"`
+	// State is the requested resource state, e.g. "started".
+	State string `json:"state,omitempty" url:"state,omitempty"`
+	// Comment is the resource description.
+	Comment string `json:"comment,omitempty" url:"comment,omitempty"`
+	// Group is the HA group the resource belongs to (only before the
+	// cluster's groups are migrated to rules).
+	Group string `json:"group,omitempty" url:"group,omitempty"`
+	// MaxRelocate is the maximum number of relocate tries when the
+	// resource fails to start.
+	MaxRelocate int `json:"max_relocate,omitempty" url:"max_relocate,omitempty"`
+	// MaxRestart is the maximum number of restart tries on a node after a
+	// failed start.
+	MaxRestart int `json:"max_restart,omitempty" url:"max_restart,omitempty"`
+	// Failback is 1 if the resource automatically migrates back to the
+	// highest-priority node of its node-affinity rules. Nil means Proxmox's
+	// default (enabled).
+	Failback *int `json:"failback,omitempty" url:"failback,omitempty"`
+	// AutoRebalance is 1 if the resource may be migrated during automatic
+	// rebalancing. Nil means Proxmox's default (enabled).
+	AutoRebalance *int `json:"auto-rebalance,omitempty" url:"auto-rebalance,omitempty"`
+	// Digest is the configuration digest, usable with
+	// ResourceOptions.Digest to guard concurrent updates.
+	Digest string `json:"digest,omitempty" url:"digest,omitempty"`
+}
+
+// ResourceOptions holds the write parameters shared by
+// POST /cluster/ha/resources (Create) and PUT /cluster/ha/resources/{sid}
+// (Update).
+//
+// SID is required by Create; Update ignores it (the sid is already part of
+// the URL). Type is Create only. Pointer fields are always sent when
+// non-nil (even when zero/empty), which is how Update expresses "clear this
+// field" — Create simply sends whatever is set. Delete and Digest are
+// meaningful to Update only.
+type ResourceOptions struct {
+	// SID is the HA resource ID, e.g. "vm:100". A bare VMID is also
+	// accepted and resolved by Proxmox. Required by Create; not settable on
+	// Update.
+	SID string `url:"sid"`
+	// Type is the resource kind, needed only when SID is a bare VMID
+	// (Create only).
+	Type ResourceType `url:"type"`
+	// State is the requested resource state; Proxmox defaults to
+	// "started".
+	State ResourceState `url:"state"`
+	// Comment is the resource description.
+	Comment *string `url:"comment"`
+	// Group is the HA group identifier (only before the cluster's groups
+	// are migrated to rules).
+	Group *string `url:"group"`
+	// MaxRelocate is the maximum number of relocate tries when the
+	// resource fails to start.
+	MaxRelocate *int `url:"max_relocate"`
+	// MaxRestart is the maximum number of restart tries on a node after a
+	// failed start.
+	MaxRestart *int `url:"max_restart"`
+	// Failback automatically migrates the resource back to the
+	// highest-priority node of its node-affinity rules.
+	Failback *bool `url:"failback"`
+	// AutoRebalance allows the resource to be migrated during automatic
+	// rebalancing.
+	AutoRebalance *bool `url:"auto-rebalance"`
+	// Delete lists properties to reset to their default value
+	// (Update only).
+	Delete []string `url:"delete"`
+	// Digest prevents changes if the current configuration has changed in
+	// between (value from GET /cluster/ha/resources/{sid}). Update only.
+	Digest string `url:"digest"`
+}
+
+// encode converts the options to form parameters.
+func (o *ResourceOptions) encode() (map[string]string, error) {
+	if o == nil {
+		return nil, fmt.Errorf("ha: resource options are required")
+	}
+
+	return params.Encode(o)
+}
+
 // ResourceMode controls how HA-managed resources are treated while the
 // cluster-wide fencing stack is disarmed. It appears both as
 // StatusEntry.ResourceMode (read, type "fencing" entries) and as the
