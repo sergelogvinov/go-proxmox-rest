@@ -16,7 +16,15 @@ limitations under the License.
 
 package vzdump
 
-import "github.com/sergelogvinov/go-proxmox-rest/types"
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/sergelogvinov/go-proxmox-rest/types"
+)
 
 // Compress, Mode, MailNotification, NotificationMode and
 // PBSChangeDetectionMode are identical between this package and
@@ -57,12 +65,62 @@ const (
 	PBSChangeDetectionMetadata = types.PBSChangeDetectionMetadata
 )
 
+// PropertyString is an opaque Proxmox property string, e.g.
+// "max-workers=8". Create sends it verbatim. Defaults receives it as a
+// nested JSON object instead (PVE::VZDump::read_vzdump_defaults parses
+// performance, fleecing and prune-backups before returning them), so
+// UnmarshalJSON accepts either form and flattens an object back into
+// "key=value" pairs sorted by key.
+type PropertyString string
+
+// UnmarshalJSON decodes a JSON string or a flat JSON object into p.
+func (p *PropertyString) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 || data[0] != '{' {
+		var s string
+		if err := json.Unmarshal(data, &s); err != nil {
+			return err
+		}
+		*p = PropertyString(s)
+
+		return nil
+	}
+
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(data, &m); err != nil {
+		return err
+	}
+
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		raw := m[k]
+
+		var s string
+		if json.Unmarshal(raw, &s) != nil {
+			if raw[0] == '{' || raw[0] == '[' {
+				return fmt.Errorf("vzdump: property %q: nested value %s is not supported", k, raw)
+			}
+			s = string(raw)
+		}
+		parts = append(parts, k+"="+s)
+	}
+	*p = PropertyString(strings.Join(parts, ","))
+
+	return nil
+}
+
 // Options holds the parameters shared by Client.Create
 // (POST /nodes/{node}/vzdump) and the response shape of Client.Defaults
 // (GET /nodes/{node}/vzdump/defaults) — Proxmox's own schema reuses the
 // same property set for both. Fields whose format is itself a property
 // string (Performance, Fleecing, PruneBackups) are kept as opaque
-// strings rather than parsed further; see PVE::VZDump::Common's
+// PropertyString values rather than parsed further; see PVE::VZDump::Common's
 // "backup-performance"/"backup-fleecing" formats and the root package's
 // storage.Storage.PruneBackups for the same convention.
 type Options struct {
@@ -124,10 +182,10 @@ type Options struct {
 	Ionice int `json:"ionice,omitempty" url:"ionice,omitempty"`
 	// Performance holds performance-related settings as a property
 	// string, e.g. "max-workers=8".
-	Performance string `json:"performance,omitempty" url:"performance,omitempty"`
+	Performance PropertyString `json:"performance,omitempty" url:"performance,omitempty"`
 	// Fleecing holds backup-fleecing settings (VM only) as a property
 	// string, e.g. "enabled=1,storage=local".
-	Fleecing string `json:"fleecing,omitempty" url:"fleecing,omitempty"`
+	Fleecing PropertyString `json:"fleecing,omitempty" url:"fleecing,omitempty"`
 	// LockWait is the maximum time (minutes) to wait for the global
 	// backup lock.
 	LockWait int `json:"lockwait,omitempty" url:"lockwait,omitempty"`
@@ -136,7 +194,7 @@ type Options struct {
 	StopWait int `json:"stopwait,omitempty" url:"stopwait,omitempty"`
 	// PruneBackups is the retention rule string used instead of the
 	// storage's configured retention, e.g. "keep-last=3,keep-daily=7".
-	PruneBackups string `json:"prune-backups,omitempty" url:"prune-backups,omitempty"`
+	PruneBackups PropertyString `json:"prune-backups,omitempty" url:"prune-backups,omitempty"`
 	// Remove prunes older backups per PruneBackups. Proxmox defaults
 	// this to true.
 	Remove bool `json:"remove,omitempty" url:"remove,omitempty"`

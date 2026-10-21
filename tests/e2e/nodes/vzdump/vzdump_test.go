@@ -15,6 +15,7 @@ package vzdump_e2e
 import (
 	"testing"
 
+	"github.com/sergelogvinov/go-proxmox-rest/nodes/storage"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/vzdump"
 	e2e "github.com/sergelogvinov/go-proxmox-rest/tests/e2e"
 )
@@ -42,9 +43,10 @@ func TestVZDumpCreateValidation(t *testing.T) {
 }
 
 // TestVZDumpDefaults verifies GET /nodes/{node}/vzdump/defaults decodes
-// without error and resolves to a usable backup target (Proxmox falls
-// back to the "local" storage when neither storage nor dumpdir is
-// configured).
+// without error and resolves to a usable backup target. It passes a
+// storage that accepts backup content explicitly: without one, Proxmox
+// falls back to "local", which fails with "wrong content type" on nodes
+// where "local" does not hold backups.
 func TestVZDumpDefaults(t *testing.T) {
 	cfg := e2e.MustConfig(t)
 	if cfg.Parallel {
@@ -57,7 +59,16 @@ func TestVZDumpDefaults(t *testing.T) {
 	client := e2e.NewE2EClient(t, cfg)
 	ctx := t.Context()
 
-	defaults, err := client.Nodes(cfg.Node).VZDump().Defaults(ctx, "")
+	storages, err := client.Nodes(cfg.Node).Storage().List(ctx, &storage.ListOptions{
+		Content: []string{"backup"},
+		Enabled: true,
+	})
+	e2e.RequireNoError(t, "list storages with backup content", err)
+	if len(storages) == 0 {
+		t.Skip("no enabled storage with backup content on PVE_E2E_NODE; skipping vzdump defaults check")
+	}
+
+	defaults, err := client.Nodes(cfg.Node).VZDump().Defaults(ctx, storages[0].Storage)
 	e2e.RequireNoError(t, "vzdump defaults", err)
 	if defaults.Storage == "" && defaults.DumpDir == "" {
 		t.Errorf("defaults: both Storage and DumpDir are empty, want at least one set")
