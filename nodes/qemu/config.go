@@ -94,6 +94,13 @@ func (c *Client) UpdateConfigAsync(ctx context.Context, vmid int, cfg *Config) (
 	return task.New(c.client, c.node, upid), nil
 }
 
+// EncodeConfig returns cfg in Proxmox's flat key/value form (net0,
+// serial0, nameserver, ...), exactly as Create and the UpdateConfig
+// variants send it. Read-only fields are omitted.
+func EncodeConfig(cfg *Config) (map[string]string, error) {
+	return encodeConfig(cfg)
+}
+
 // encodeConfig encodes cfg for a config write. The indexed hardware
 // families (netN, scsiN, ...) are encoded by params.Encode itself, via
 // their `url:"<prefix>,indexed"` tags.

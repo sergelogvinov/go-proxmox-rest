@@ -69,6 +69,13 @@ func (c *Client) UpdateConfig(ctx context.Context, vmid int, cfg *Config) error 
 	return c.client.Update(ctx, configPath(c.node, vmid), nil, p)
 }
 
+// EncodeConfig returns cfg in Proxmox's flat key/value form (net0, mp0,
+// nameserver, ...), exactly as UpdateConfig and Create send it.
+// Read-only fields are omitted.
+func EncodeConfig(cfg *Config) (map[string]string, error) {
+	return encodeConfig(cfg)
+}
+
 // encodeConfig encodes cfg for a config write. The indexed families
 // (netN, mpN, unusedN) are encoded by params.Encode itself, via their
 // `url:"<prefix>,indexed"` tags.
