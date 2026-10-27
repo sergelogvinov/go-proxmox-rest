@@ -171,3 +171,27 @@ func TestConfigIndexedRoundTrip(t *testing.T) {
 		t.Fatalf("round trip mismatch:\n got  %v\n want %v", p, wire)
 	}
 }
+
+func TestEncodeConfigExported(t *testing.T) {
+	t.Run("nil config", func(t *testing.T) {
+		if _, err := EncodeConfig(nil); err == nil {
+			t.Fatal("EncodeConfig(nil) error = nil, want error")
+		}
+	})
+
+	t.Run("flat keys, read-only omitted", func(t *testing.T) {
+		p, err := EncodeConfig(&Config{
+			Name:       "vm1",
+			Nameserver: "1.1.1.1",
+			Parent:     "snap1",
+		})
+		if err != nil {
+			t.Fatalf("EncodeConfig() error = %v", err)
+		}
+
+		want := map[string]string{"name": "vm1", "nameserver": "1.1.1.1"}
+		if !reflect.DeepEqual(p, want) {
+			t.Fatalf("EncodeConfig() = %v, want %v", p, want)
+		}
+	})
+}
