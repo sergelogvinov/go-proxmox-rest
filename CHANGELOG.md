@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.2.0](https://github.com/sergelogvinov/go-proxmox-rest/compare/v0.1.1...v0.2.0) (2026-10-28)
+
+
+### Features
+
+* add HA resources API ([44afd00](https://github.com/sergelogvinov/go-proxmox-rest/commit/44afd00ef372b8630f603fdfe4d1cbdebc1165d3))
+* **fakeapi:** model a guest launch and fail one route on purpose ([4606789](https://github.com/sergelogvinov/go-proxmox-rest/commit/4606789a7b7671bd81274071b7a979deb6a2a67d))
+* **qemu:** export EncodeConfig ([894de17](https://github.com/sergelogvinov/go-proxmox-rest/commit/894de17e48883278e8d5273dfeecf31f638d0db4))
+* return task handles from async operations ([bfec256](https://github.com/sergelogvinov/go-proxmox-rest/commit/bfec2566d1842c99e14f4b3f604fd86ac4649950))
+
+
+### Bug Fixes
+
+* classify Proxmox errors in one place ([309dc6c](https://github.com/sergelogvinov/go-proxmox-rest/commit/309dc6c6807ebc734a52a899d48d1ce027b43cbf))
+* decode indexed config families through params ([e514881](https://github.com/sergelogvinov/go-proxmox-rest/commit/e51488166fe50756421452d2cfab6faba0589e93))
+* decode vzdump defaults' property-string fields ([9d0393c](https://github.com/sergelogvinov/go-proxmox-rest/commit/9d0393cf8523f7bd3c30ea3c5c6689139e87e0c8))
+* read APIError message from JSON body behind reverse proxy ([b5f9192](https://github.com/sergelogvinov/go-proxmox-rest/commit/b5f919227c10c391da5490c88d98096d52d22719)), closes [#7](https://github.com/sergelogvinov/go-proxmox-rest/issues/7)
+* run HA e2e tests against Proxmox VE 9 ([507754e](https://github.com/sergelogvinov/go-proxmox-rest/commit/507754eb5acd3f1fd2f1cb9a079c5c937d397e29))
+* treat "not HA managed" as not found ([f2f5c32](https://github.com/sergelogvinov/go-proxmox-rest/commit/f2f5c3293eeaa2bac84866d7adef9479be25ac8a))
+
 ## [0.1.1](https://github.com/sergelogvinov/go-proxmox-rest/compare/v0.1.0...v0.1.1) (2026-10-05)
 
 
