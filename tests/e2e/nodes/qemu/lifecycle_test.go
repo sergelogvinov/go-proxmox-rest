@@ -3,6 +3,7 @@
 package qemu_e2e
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -173,4 +174,115 @@ func TestQemuLifecycleCreateResizeDelete(t *testing.T) {
 	// 7. status — verify the delete.
 	_, err = qc.Status(ctx, vmid)
 	e2e.RequireError(t, "status of deleted guest", err)
+}
+
+// TestQemuLifecycleCloneDelete pins down the clone and delete behavior
+// fakeapi models: a full clone gets its own "vm-<newid>-disk-<n>" volume on
+// the target storage, and deleting the clone removes that volume but
+// leaves the source's.
+//
+//	create(src) -> clone(dst) -> content(src+dst disks) -> delete(dst) -> content(src disk only)
+func TestQemuLifecycleCloneDelete(t *testing.T) {
+	cfg := e2e.MustConfig(t)
+	if cfg.Parallel {
+		t.Parallel()
+	}
+	if cfg.Node == "" {
+		t.Skip("PVE_E2E_NODE is not set; skipping qemu lifecycle test")
+	}
+
+	client := e2e.NewE2EClient(t, cfg)
+	ctx := t.Context()
+
+	storageName := newImagesStorage(t, cfg, client)
+	qc := client.Nodes(cfg.Node).Qemu()
+	cc := client.Nodes(cfg.Node).Storage().Content(storageName)
+
+	deleteGuest := func(vmid int) {
+		if !cfg.CleanupOnFailure {
+			return
+		}
+
+		t.Cleanup(func() {
+			cleanupCtx, cancel := e2e.CleanupContext()
+			defer cancel()
+
+			e2e.RetryCleanup(t, "delete vm", func() error {
+				deleteTask, delErr := qc.Delete(cleanupCtx, vmid, nil)
+				if proxmox.IsNotFound(delErr) {
+					return nil
+				}
+				if delErr != nil {
+					return delErr
+				}
+
+				return deleteTask.Wait(cleanupCtx, &tasks.WaitOptions{Timeout: taskTimeout})
+			})
+		})
+	}
+
+	srcID, err := client.Cluster().NextID(ctx, 0)
+	e2e.RequireNoError(t, "allocate source vmid", err)
+
+	createTask, err := qc.Create(ctx, &qemu.CreateOptions{
+		VMID: srcID,
+		Config: qemu.Config{
+			Name:   e2e.UniqueName(cfg.Prefix),
+			SCSIHW: "virtio-scsi-single",
+			SCSI:   map[int]qemu.Drive{0: {File: storageName + ":1"}},
+		},
+	})
+	e2e.RequireNoError(t, "create source vm", err)
+	deleteGuest(srcID)
+
+	err = createTask.Wait(ctx, &tasks.WaitOptions{Timeout: taskTimeout})
+	e2e.RequireNoError(t, "wait for source vm creation", err)
+
+	dstID, err := client.Cluster().NextID(ctx, srcID+1)
+	e2e.RequireNoError(t, "allocate clone vmid", err)
+
+	full := true
+	cloneTask, err := qc.Clone(ctx, srcID, &qemu.CloneOptions{
+		NewID:   dstID,
+		Name:    e2e.UniqueName(cfg.Prefix),
+		Full:    &full,
+		Storage: storageName,
+	})
+	e2e.RequireNoError(t, "clone vm", err)
+	deleteGuest(dstID)
+
+	err = cloneTask.Wait(ctx, &tasks.WaitOptions{Timeout: taskTimeout})
+	e2e.RequireNoError(t, "wait for clone", err)
+
+	dstCfg, err := qc.Config(ctx, dstID, nil)
+	e2e.RequireNoError(t, "clone config", err)
+
+	wantVolume := fmt.Sprintf("%s:vm-%d-disk-0", storageName, dstID)
+	if dstCfg.SCSI[0].File != wantVolume {
+		t.Errorf("clone scsi0 = %q, want %q", dstCfg.SCSI[0].File, wantVolume)
+	}
+
+	volumes, err := cc.List(ctx, &storage.ContentListOptions{VMID: dstID})
+	e2e.RequireNoError(t, "list clone content", err)
+	if len(volumes) != 1 || volumes[0].VolID != wantVolume {
+		t.Fatalf("clone content = %+v, want one volume %q", volumes, wantVolume)
+	}
+
+	deleteTask, err := qc.Delete(ctx, dstID, nil)
+	e2e.RequireNoError(t, "delete clone", err)
+
+	err = deleteTask.Wait(ctx, &tasks.WaitOptions{Timeout: taskTimeout})
+	e2e.RequireNoError(t, "wait for clone deletion", err)
+
+	volumes, err = cc.List(ctx, &storage.ContentListOptions{VMID: dstID})
+	e2e.RequireNoError(t, "list clone content after delete", err)
+	if len(volumes) != 0 {
+		t.Errorf("clone content after delete = %+v, want none", volumes)
+	}
+
+	volumes, err = cc.List(ctx, &storage.ContentListOptions{VMID: srcID})
+	e2e.RequireNoError(t, "list source content after clone delete", err)
+	if len(volumes) != 1 {
+		t.Errorf("source content after clone delete = %+v, want its one disk", volumes)
+	}
 }

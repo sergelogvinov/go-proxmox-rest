@@ -17,8 +17,11 @@ limitations under the License.
 package fakeapi
 
 import (
+	"cmp"
+	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -50,8 +53,11 @@ func newUPID(state *clusterState, node, typ, id string) (upid string, startTime 
 // Tasks().Status(ctx, node, upid) immediately reports StateStopped/"OK".
 // Under WithManualTasks, apply is staged instead: the task is left
 // running until a test calls TaskController.Complete or Fail. Either way
-// the returned UPID is what handlers should hand back to the client.
-func (s *clusterState) startTask(node, typ, id string, apply func() error) string {
+// the returned UPID is what handlers should hand back to the client. ctx
+// is the request's: an AsFailedTask fault in it fails the task.
+func (s *clusterState) startTask(ctx context.Context, node, typ, id string, apply func() error) string {
+	apply = taskFault(ctx, apply)
+
 	s.mu.Lock()
 	upid, startTime := newUPID(s, node, typ, id)
 	ts := &taskState{
@@ -118,6 +124,31 @@ func (tc *TaskController) Complete(upid string) {
 	}
 
 	finishTask(tc.state, ts, apply())
+}
+
+// Running returns the UPIDs of every task still running, oldest first —
+// under WithManualTasks, the tasks a test has yet to Complete or Fail. A
+// UPID names its task's type (e.g. "qmclone", "imgcopy") as its sixth
+// ":"-separated field.
+func (tc *TaskController) Running() []string {
+	tc.state.mu.Lock()
+	defer tc.state.mu.Unlock()
+
+	running := []*taskState{}
+	for _, ts := range tc.state.tasks {
+		if ts.running {
+			running = append(running, ts)
+		}
+	}
+
+	slices.SortFunc(running, func(a, b *taskState) int { return cmp.Compare(a.upid, b.upid) })
+
+	upids := make([]string, len(running))
+	for i, ts := range running {
+		upids[i] = ts.upid
+	}
+
+	return upids
 }
 
 // Fail discards a manual-mode task's staged mutation and flips it to

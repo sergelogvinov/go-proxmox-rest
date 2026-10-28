@@ -45,6 +45,8 @@ type clusterState struct {
 	haRules  map[string]*haRuleState
 	tasks    map[string]*taskState
 	tickets  map[string]string // PVEAuthCookie value -> username
+	faults   map[string]*fault // "METHOD /path/pattern" -> fault, see FailRequests
+	pools    map[string]*poolState
 	taskSeq  int64
 	manual   bool
 
@@ -83,6 +85,7 @@ type nodeState struct {
 	// sized nodes; see Node.SetResources.
 	cores    int
 	memTotal int64
+	cpuModel string
 
 	storages   map[string]*storageState
 	guests     map[int]*vmState        // QEMU, keyed by VMID
@@ -125,9 +128,12 @@ type storageState struct {
 	typ     string
 	shared  bool
 	content []storage.Volume
-	total   int64
-	used    int64
-	avail   int64
+	// contentTypes are the content types the storage accepts; empty
+	// means every type. See WithContentTypes.
+	contentTypes []string
+	total        int64
+	used         int64
+	avail        int64
 }
 
 // vmState is one QEMU guest.
@@ -147,6 +153,20 @@ type vmState struct {
 	cfg       map[string]string
 	status    qemu.VMStatus
 	startedAt time.Time
+
+	// fwOptions and fwRules are the guest's firewall options and rule
+	// list, stored as wire-parameter maps like cfg; a rule's position is
+	// its index.
+	fwOptions map[string]string
+	fwRules   []map[string]string
+}
+
+// poolState is one resource pool and its QEMU guest members, in the
+// order they joined.
+type poolState struct {
+	id      string
+	comment string
+	vmids   []int
 }
 
 // containerState is one LXC container, the same shape as vmState. LXC
@@ -188,6 +208,8 @@ func newClusterState() *clusterState {
 		haGroups: map[string]*haGroupState{},
 		haRules:  map[string]*haRuleState{},
 		tasks:    map[string]*taskState{},
+		faults:   map[string]*fault{},
+		pools:    map[string]*poolState{},
 	}
 }
 
@@ -198,6 +220,7 @@ func newNodeState(cs *clusterState, name string) *nodeState {
 		online:     true,
 		cores:      defaultNodeCores,
 		memTotal:   defaultNodeMemory,
+		cpuModel:   "FakeAPI vCPU",
 		storages:   map[string]*storageState{},
 		guests:     map[int]*vmState{},
 		containers: map[int]*containerState{},

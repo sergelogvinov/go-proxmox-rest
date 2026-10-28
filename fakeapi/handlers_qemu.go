@@ -79,7 +79,7 @@ func handleQemuCreate(w http.ResponseWriter, r *http.Request, n *nodeState) {
 
 	start := query.Get("start") == "1"
 
-	upid := n.cs.startTask(n.name, "qmcreate", strconv.Itoa(vmid), func() error {
+	upid := n.cs.startTask(r.Context(), n.name, "qmcreate", strconv.Itoa(vmid), func() error {
 		n.cs.mu.Lock()
 		defer n.cs.mu.Unlock()
 
@@ -136,7 +136,7 @@ func handleQemuConfig(w http.ResponseWriter, r *http.Request, n *nodeState) {
 
 	case http.MethodPost:
 		query := r.URL.Query()
-		upid := n.cs.startTask(n.name, "qmconfig", strconv.Itoa(vmid), func() error {
+		upid := n.cs.startTask(r.Context(), n.name, "qmconfig", strconv.Itoa(vmid), func() error {
 			n.cs.mu.Lock()
 			applyConfigUpdate(vm.cfg, query)
 			n.cs.mu.Unlock()
@@ -210,7 +210,7 @@ func handleQemuResize(w http.ResponseWriter, r *http.Request, n *nodeState) {
 		return
 	}
 
-	upid := n.cs.startTask(n.name, "qmresize", strconv.Itoa(vmid), func() error {
+	upid := n.cs.startTask(r.Context(), n.name, "qmresize", strconv.Itoa(vmid), func() error {
 		n.cs.mu.Lock()
 		defer n.cs.mu.Unlock()
 
@@ -264,7 +264,7 @@ func handleQemuAction(w http.ResponseWriter, r *http.Request, n *nodeState) {
 		return
 	}
 
-	upid := n.cs.startTask(n.name, taskType, strconv.Itoa(vmid), func() error {
+	upid := n.cs.startTask(r.Context(), n.name, taskType, strconv.Itoa(vmid), func() error {
 		n.cs.mu.Lock()
 		defer n.cs.mu.Unlock()
 

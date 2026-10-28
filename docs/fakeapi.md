@@ -118,6 +118,10 @@ fakeapi/
 ├── handlers_cluster.go  // /cluster/status, /cluster/resources
 ├── handlers_nodes.go    // /nodes, /nodes/{node}/status
 ├── handlers_qemu.go     // /nodes/{node}/qemu/{vmid}/{config,status,resize,unlink,move_disk}
+├── handlers_qemu_lifecycle.go // /nodes/{node}/qemu/{vmid}[/clone,/cloudinit]: clone, delete
+├── handlers_firewall.go // /nodes/{node}/qemu/{vmid}/firewall/{options,rules}
+├── handlers_pools.go    // /pools
+├── faults.go         // FailRequests: fail one route on purpose (§9.1)
 ├── handlers_storage.go  // /nodes/{node}/storage[/{storage}/{status,content}]
 ├── handlers_tasks.go    // /nodes/{node}/tasks/{upid}/status
 ├── handlers_access.go   // /access/ticket (so password/ticket auth is also testable)
@@ -272,17 +276,25 @@ structure that could drift from what the client actually sends.
 |---|---|---|---|
 | `/access/ticket` | POST | root `Client.ensureSession` | issues a session the fake also validates on subsequent ticket-auth requests |
 | `/cluster/status` | GET | `cluster` | reflects seeded nodes + `FailNode`/quorum (§9) |
-| `/cluster/resources` | GET | `cluster` | synthesizes `node`/`storage`/`qemu` entries from state; `type` filter honored |
+| `/cluster/resources` | GET | `cluster` | synthesizes `node`/`storage`/`qemu` entries from state; `type` filter honored; `qemu` entries carry `template`, `tags` and `pool` |
+| `/cluster/nextid` | GET | `cluster` | lowest free id from 100, or the `vmid` hint if free; a used hint is a 400 |
+| `/pools`, `/pools/?poolid=` | GET/POST/PUT/DELETE | `pools` | seed with `WithPool`; PUT adds/removes `vms`, refusing a member of another pool unless `allow-move` |
 | `/nodes` | GET | `nodes` | node list with online/offline `status` |
-| `/nodes/{node}/status` | GET | `nodes` | 404 semantics for an unknown node name |
+| `/nodes/{node}/status` | GET | `nodes` | 404 semantics for an unknown node name; CPU model set with `Node.SetCPUModel` |
 | `/nodes/{node}/qemu/{vmid}/config` | GET/PUT/POST | `nodes/qemu` | PUT applies synchronously; POST goes through the task engine (§8) |
 | `/nodes/{node}/qemu/{vmid}/status/current` | GET | `nodes/qemu` | |
 | `/nodes/{node}/qemu/{vmid}/status/{start,stop,reset,shutdown,reboot,suspend,resume}` | POST | `nodes/qemu` | flips `vmState.status`; always task-backed like real Proxmox |
 | `/nodes/{node}/qemu/{vmid}/resize` | PUT | `nodes/qemu` | rewrites the target disk's `size=` property |
+| `/nodes/{node}/qemu/{vmid}/clone` | POST | `nodes/qemu` | task; each disk becomes `vm-<newid>-disk-<n>` on the target storage, NICs get new MACs, `smbios1` a new UUID, joins `pool` |
+| `/nodes/{node}/qemu/{vmid}` | DELETE | `nodes/qemu` | task; refuses a running guest; removes the guest's own disks (`vm-`/`base-<vmid>-`) and pool membership, not volumes it merely references |
+| `/nodes/{node}/qemu/{vmid}/cloudinit` | PUT | `nodes/qemu` | only checks the guest exists; no drive contents are modeled |
+| `/nodes/{node}/qemu/{vmid}/firewall/options` | GET/PUT | `nodes/qemu/firewall` | |
+| `/nodes/{node}/qemu/{vmid}/firewall/rules[/{pos}]` | GET/POST/PUT/DELETE | `nodes/qemu/firewall` | POST inserts at position 0 and ignores `pos`, like pve-firewall; PUT `moveto` repositions; DELETE renumbers |
 | `/nodes/{node}/qemu/{vmid}/unlink` | PUT | `nodes/qemu` | moves the given keys to `unusedN`, mirroring real Proxmox's default unlink behavior |
 | `/nodes/{node}/qemu/{vmid}/move_disk` | POST | `nodes/qemu` | reassigns a volume's storage/vmid in state |
-| `/nodes/{node}/storage` | GET | `nodes/storage` | |
+| `/nodes/{node}/storage` | GET | `nodes/storage` | `content` filter honored against `WithContentTypes`; a storage seeded without it accepts every type |
 | `/nodes/{node}/storage/{storage}/status` | GET | `nodes/storage` | |
+| `/nodes/{node}/storage/{storage}/upload` | POST | `nodes/storage` | task; lists `<storage>:<content>/<filename>` with the upload's size, no bytes kept; refuses an existing file |
 | `/nodes/{node}/storage/{storage}/content` | GET/POST | `nodes/storage` | POST allocates a synthetic volume, no real bytes written anywhere |
 | `/nodes/{node}/storage/{storage}/content/{volume}` | GET/PUT/DELETE | `nodes/storage` | DELETE is unconditional — see §13 |
 | `/nodes/{node}/tasks/{upid}/status` | GET | `nodes/tasks` | |
@@ -327,6 +339,11 @@ Two modes, selected once at `NewCluster` time:
   This is what makes retry logic, "poll until done" helpers, and
   `Tasks().Stop` genuinely testable — the state transition is under the
   test's control instead of always winning the race instantly.
+
+  When the test doesn't hold each task's UPID itself — the caller under
+  test starts the tasks — `cluster.Tasks().Running()` lists the UPIDs still
+  running, oldest first; each names its task type (`qmclone`, `imgcopy`,
+  ...) as its sixth `:`-separated field.
 
 ## 9. Simulating node failure
 
@@ -381,6 +398,30 @@ status, _ := c.Cluster().Status(ctx)
 cluster.RecoverNode("pve3")
 _, err = c.Nodes().Status(ctx, "pve3") // succeeds again
 ```
+
+### 9.1 Failing one route
+
+`FailNode` takes a whole node down. To fail one step of a multi-call
+workflow instead, `Cluster.FailRequests(route, opts...)` fails every
+request to one route until `ClearFaults`. `route` is a method plus the path
+pattern exactly as §7 lists it, and matches it for every node and guest:
+
+```go
+cluster.FailRequests("POST /nodes/{node}/qemu/{vmid}/clone")
+// Clone returns a *proxmox.APIError with StatusCode 500; nothing is cloned.
+
+cluster.FailRequests("POST /nodes/{node}/qemu/{vmid}/clone", fakeapi.AsFailedTask())
+// Clone returns a UPID; Wait reports the task failed, but the clone exists —
+// the "task failed partway and left its work behind" case.
+
+cluster.ClearFaults()
+```
+
+A fault matches the route alone, never "the n-th call": a test that fails
+the third `GET .../config` would break whenever the caller's read count
+changes, without its behavior changing. `WithFaultMessage` sets the error
+text. `Cluster.Client` retries a failed request with millisecond waits, so
+faults don't slow a test down.
 
 ## 10. Error responses & the `Is*` predicates
 

@@ -17,9 +17,11 @@ limitations under the License.
 package fakeapi
 
 import (
+	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/sergelogvinov/go-proxmox-rest/cluster"
 )
@@ -126,7 +128,7 @@ func handleClusterResources(state *clusterState) http.HandlerFunc {
 
 			if filter == "" || filter == cluster.ResourceTypeVM {
 				for _, vmid := range sortedGuestIDs(n) {
-					resources = append(resources, qemuResource(name, n.guests[vmid]))
+					resources = append(resources, qemuResource(state, name, n.guests[vmid]))
 				}
 				for _, vmid := range sortedContainerIDs(n) {
 					resources = append(resources, lxcResource(name, n.containers[vmid]))
@@ -171,8 +173,10 @@ func storageResource(node string, st *storageState) cluster.Resource {
 	}
 }
 
-func qemuResource(node string, vm *vmState) cluster.Resource {
-	return cluster.Resource{
+// qemuResource renders vm's cluster/resources entry. Called with state.mu
+// held.
+func qemuResource(state *clusterState, node string, vm *vmState) cluster.Resource {
+	res := cluster.Resource{
 		ID:     "qemu/" + strconv.Itoa(vm.vmid),
 		Type:   "qemu",
 		Node:   node,
@@ -182,6 +186,54 @@ func qemuResource(node string, vm *vmState) cluster.Resource {
 		MaxCPU: parseIntDefault(vm.cfg["cores"], 1),
 		MaxMem: memoryMBToBytes(parseIntDefault(vm.cfg["memory"], 512)),
 		Uptime: int(guestUptime(vm.status == "running", vm.startedAt).Seconds()),
+	}
+
+	if vm.cfg["template"] == "1" {
+		res.Template = 1
+	}
+
+	if tags := vm.cfg["tags"]; tags != "" {
+		res.Tags = strings.FieldsFunc(tags, func(r rune) bool { return r == ';' || r == ',' || r == ' ' })
+	}
+
+	if p := poolOf(state, vm.vmid); p != nil {
+		res.Pool = p.id
+	}
+
+	return res
+}
+
+// handleClusterNextID backs GET /cluster/nextid. With "vmid" it answers that
+// id if no guest uses it, and a 400 otherwise; without, the lowest free id
+// from 100 up.
+func handleClusterNextID(state *clusterState) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		state.mu.Lock()
+		defer state.mu.Unlock()
+
+		if v := r.URL.Query().Get("vmid"); v != "" {
+			vmid, err := strconv.Atoi(v)
+			if err != nil {
+				writeError(w, http.StatusBadRequest, "parameter verification failed", map[string]string{"vmid": "not a number"})
+				return
+			}
+
+			if guestExists(state, vmid) {
+				writeError(w, http.StatusBadRequest, "parameter verification failed", map[string]string{"vmid": fmt.Sprintf("VM %d already exists", vmid)})
+				return
+			}
+
+			writeData(w, vmid)
+
+			return
+		}
+
+		vmid := 100
+		for guestExists(state, vmid) {
+			vmid++
+		}
+
+		writeData(w, vmid)
 	}
 }
 

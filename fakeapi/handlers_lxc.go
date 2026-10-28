@@ -84,7 +84,7 @@ func handleLXCCreate(w http.ResponseWriter, r *http.Request, n *nodeState) {
 
 	start := query.Get("start") == "1"
 
-	upid := n.cs.startTask(n.name, "vzcreate", strconv.Itoa(vmid), func() error {
+	upid := n.cs.startTask(r.Context(), n.name, "vzcreate", strconv.Itoa(vmid), func() error {
 		n.cs.mu.Lock()
 		defer n.cs.mu.Unlock()
 
@@ -195,7 +195,7 @@ func handleLXCAction(w http.ResponseWriter, r *http.Request, n *nodeState) {
 		return
 	}
 
-	upid := n.cs.startTask(n.name, taskType, strconv.Itoa(vmid), func() error {
+	upid := n.cs.startTask(r.Context(), n.name, taskType, strconv.Itoa(vmid), func() error {
 		n.cs.mu.Lock()
 		defer n.cs.mu.Unlock()
 

@@ -33,13 +33,14 @@ func newRouter(state *clusterState) http.Handler {
 	mux := http.NewServeMux()
 
 	reg := func(pattern string, h http.HandlerFunc) {
-		mux.HandleFunc(pattern, requireAuth(state, h))
+		mux.HandleFunc(pattern, requireAuth(state, withFaults(state, pattern, h)))
 	}
 
 	reg("POST /access/ticket", handleTicket(state))
 
 	reg("GET /cluster/status", handleClusterStatus(state))
 	reg("GET /cluster/resources", handleClusterResources(state))
+	reg("GET /cluster/nextid", handleClusterNextID(state))
 
 	reg("/cluster/ha/groups", handleHAGroupsCollection(state))
 	reg("/cluster/ha/groups/{group}", handleHAGroupItem(state))
@@ -49,6 +50,9 @@ func newRouter(state *clusterState) http.Handler {
 	reg("GET /nodes", handleNodesList(state))
 	reg("GET /nodes/{node}/status", withNode(state, handleNodeStatus))
 
+	reg("/pools", handlePoolsCollection(state))
+	reg("/pools/{$}", handlePoolsItem(state))
+
 	reg("GET /storage", handleStorageRootList(state))
 	reg("GET /storage/{storage}", handleStorageRootGet(state))
 
@@ -57,6 +61,12 @@ func newRouter(state *clusterState) http.Handler {
 	reg("GET /nodes/{node}/qemu/{vmid}/status/current", withNode(state, handleQemuStatusCurrent))
 	reg("POST /nodes/{node}/qemu/{vmid}/status/{action}", withNode(state, handleQemuAction))
 	reg("PUT /nodes/{node}/qemu/{vmid}/resize", withNode(state, handleQemuResize))
+	reg("POST /nodes/{node}/qemu/{vmid}/clone", withNode(state, handleQemuClone))
+	reg("DELETE /nodes/{node}/qemu/{vmid}", withNode(state, handleQemuDelete))
+	reg("PUT /nodes/{node}/qemu/{vmid}/cloudinit", withNode(state, handleQemuCloudInit))
+	reg("/nodes/{node}/qemu/{vmid}/firewall/options", withNode(state, handleFirewallOptions))
+	reg("/nodes/{node}/qemu/{vmid}/firewall/rules", withNode(state, handleFirewallRules))
+	reg("/nodes/{node}/qemu/{vmid}/firewall/rules/{pos}", withNode(state, handleFirewallRule))
 
 	reg("POST /nodes/{node}/lxc", withNode(state, handleLXCCreate))
 	reg("/nodes/{node}/lxc/{vmid}/config", withNode(state, handleLXCConfig))
@@ -65,6 +75,7 @@ func newRouter(state *clusterState) http.Handler {
 
 	reg("GET /nodes/{node}/storage", withNode(state, handleStorageList))
 	reg("GET /nodes/{node}/storage/{storage}/status", withNode(state, handleStorageStatus))
+	reg("POST /nodes/{node}/storage/{storage}/upload", withNode(state, handleStorageUpload))
 	reg("/nodes/{node}/storage/{storage}/content", withNode(state, handleStorageContentCollection))
 	reg("/nodes/{node}/storage/{storage}/content/{volume...}", withNode(state, handleStorageContentItem))
 
