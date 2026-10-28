@@ -149,8 +149,9 @@ type Rule struct {
 //
 // Type and Action are required by Create. Proxmox does not echo the created
 // rule back (POST responds with null data) and does not report the
-// position it was assigned, so after Create use List to find the new rule
-// — it is appended at the end unless Pos is set to insert it elsewhere.
+// position it was assigned, but it always inserts the new rule at position
+// 0, shifting every existing rule down by one (pve-firewall's create_rule
+// unshifts it). To place it elsewhere, Update it with MoveTo afterwards.
 //
 // Pointer fields are always sent when non-nil (even zero/empty), which is
 // how Update expresses "clear this field"; Create simply sends whatever is
@@ -186,10 +187,9 @@ type RuleOptions struct {
 	Macro *string `url:"macro"`
 	// Log is the log level applied to matches of this rule.
 	Log *RuleLogLevel `url:"log"`
-	// Pos is, on Create, the position to insert the new rule at (existing
-	// rules from that position on shift down); Proxmox appends to the end
-	// when unset. Not meaningful on Update — use MoveTo to reposition an
-	// existing rule instead.
+	// Pos is accepted by Create but ignored: Proxmox always inserts a new
+	// rule at position 0. Not meaningful on Update either — use MoveTo to
+	// reposition a rule.
 	Pos *int `url:"pos"`
 	// MoveTo is, on Update only, the new position to move the rule to.
 	// Proxmox ignores every other field in the same call when this is

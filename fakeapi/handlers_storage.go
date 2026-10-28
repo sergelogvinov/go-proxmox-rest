@@ -18,6 +18,7 @@ package fakeapi
 
 import (
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -30,9 +31,19 @@ func handleStorageList(w http.ResponseWriter, r *http.Request, n *nodeState) {
 	n.cs.mu.Lock()
 	defer n.cs.mu.Unlock()
 
+	var want []string
+	if c := r.URL.Query().Get("content"); c != "" {
+		want = strings.Split(c, ",")
+	}
+
 	list := make([]storage.Storage, 0, len(n.storages))
 	for _, id := range sortedStorageIDs(n) {
-		list = append(list, storageView(n.storages[id], true))
+		st := n.storages[id]
+		if !acceptsContent(st, want) {
+			continue
+		}
+
+		list = append(list, storageView(st, true))
 	}
 
 	writeData(w, list)
@@ -54,6 +65,21 @@ func handleStorageStatus(w http.ResponseWriter, r *http.Request, n *nodeState) {
 	}
 
 	writeData(w, storageView(st, false))
+}
+
+// acceptsContent reports whether st accepts every content type in want.
+func acceptsContent(st *storageState, want []string) bool {
+	if len(st.contentTypes) == 0 {
+		return true
+	}
+
+	for _, c := range want {
+		if !slices.Contains(st.contentTypes, c) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func storageView(st *storageState, includeID bool) storage.Storage {
@@ -236,7 +262,7 @@ func handleStorageContentItem(w http.ResponseWriter, r *http.Request, n *nodeSta
 		}
 		n.cs.mu.Unlock()
 
-		upid := n.cs.startTask(n.name, "imgdel", full, func() error {
+		upid := n.cs.startTask(r.Context(), n.name, "imgdel", full, func() error {
 			n.cs.mu.Lock()
 			defer n.cs.mu.Unlock()
 
@@ -312,7 +338,7 @@ func handleStorageContentCopy(w http.ResponseWriter, r *http.Request, n *nodeSta
 		return
 	}
 
-	upid := n.cs.startTask(n.name, "imgcopy", full, func() error {
+	upid := n.cs.startTask(r.Context(), n.name, "imgcopy", full, func() error {
 		n.cs.mu.Lock()
 		defer n.cs.mu.Unlock()
 
@@ -335,4 +361,69 @@ func findVolume(st *storageState, volid string) int {
 		}
 	}
 	return -1
+}
+
+// uploadContentFormat is the volume format an upload of each content type
+// is listed with.
+var uploadContentFormat = map[string]string{
+	"iso":    "iso",
+	"vztmpl": "tzst",
+	"import": "raw",
+}
+
+// handleStorageUpload backs POST /nodes/{node}/storage/{storage}/upload —
+// Upload. The upload is a task that lists the file as
+// "<storage>:<content>/<filename>" once it completes; the fake records only
+// its size, not its bytes. Like real Proxmox it refuses to replace an
+// existing file.
+func handleStorageUpload(w http.ResponseWriter, r *http.Request, n *nodeState) {
+	id := r.PathValue("storage")
+
+	n.cs.mu.Lock()
+	st := n.storages[id]
+	n.cs.mu.Unlock()
+	if st == nil {
+		notFound(w, "storage")
+		return
+	}
+
+	file, header, err := r.FormFile("filename")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "parameter verification failed", map[string]string{"filename": err.Error()})
+		return
+	}
+	_ = file.Close()
+
+	content := r.FormValue("content")
+	format, ok := uploadContentFormat[content]
+	if !ok {
+		writeError(w, http.StatusBadRequest, "parameter verification failed", map[string]string{"content": "value '" + content + "' does not have a value in the enumeration 'iso, vztmpl, import'"})
+		return
+	}
+
+	volid := id + ":" + content + "/" + header.Filename
+
+	n.cs.mu.Lock()
+	exists := findVolume(st, volid) >= 0
+	n.cs.mu.Unlock()
+	if exists {
+		writeError(w, http.StatusBadRequest, "refusing to override existing file '"+header.Filename+"'", nil)
+		return
+	}
+
+	upid := n.cs.startTask(r.Context(), n.name, "imgcopy", "", func() error {
+		n.cs.mu.Lock()
+		defer n.cs.mu.Unlock()
+
+		st.content = append(st.content, storage.Volume{
+			VolID:  volid,
+			Format: format,
+			Size:   header.Size,
+			CTime:  time.Now().Unix(),
+		})
+
+		return nil
+	})
+
+	writeData(w, upid)
 }

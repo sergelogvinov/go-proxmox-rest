@@ -79,7 +79,7 @@ func handleNodeStatus(w http.ResponseWriter, r *http.Request, n *nodeState) {
 		CPU:        cpuUsed,
 		CPUInfo: &nodes.CPUInfo{
 			Cores: n.cores, CPUs: n.cores, Sockets: 1,
-			Model: "FakeAPI vCPU",
+			Model: n.cpuModel,
 		},
 		Memory: &nodes.Memory{
 			Total:     n.memTotal,

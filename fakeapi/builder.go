@@ -47,6 +47,18 @@ func (n *Node) SetResources(cores int, memoryBytes int64) *Node {
 	return n
 }
 
+// SetCPUModel sets the CPU model name GET /nodes/{node}/status reports
+// (default "FakeAPI vCPU"), for callers that derive CPU topology from it.
+// Returns the receiver for chaining.
+func (n *Node) SetCPUModel(model string) *Node {
+	n.state.mu.Lock()
+	defer n.state.mu.Unlock()
+
+	n.node.cpuModel = model
+
+	return n
+}
+
 // Storage is the seeding/mutation handle for one storage on a node,
 // returned by Node.AddStorage.
 type Storage struct {
@@ -73,6 +85,13 @@ func WithCapacity(total, used, avail int64) StorageOption {
 		s.used = used
 		s.avail = avail
 	}
+}
+
+// WithContentTypes sets the content types the storage accepts ("images",
+// "iso", ...), which GET /nodes/{node}/storage's "content" filter matches
+// against. A storage seeded without it accepts every content type.
+func WithContentTypes(types ...string) StorageOption {
+	return func(s *storageState) { s.contentTypes = types }
 }
 
 // WithShared marks the storage as shared across nodes — a config attribute

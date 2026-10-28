@@ -60,8 +60,8 @@ func (r *Rules) Get(ctx context.Context, pos int) (*types.Rule, error) {
 //
 // Proxmox does not echo the created rule back (the response is null
 // data) and does not report the position it was assigned. The new rule
-// is appended at the end of the list unless opts.Pos is set to insert
-// it elsewhere; call List afterwards to find it.
+// is always inserted at position 0, shifting every existing rule down by
+// one; opts.Pos is ignored. Update it with MoveTo to place it elsewhere.
 func (r *Rules) Create(ctx context.Context, opts *types.RuleOptions) error {
 	if opts == nil {
 		return fmt.Errorf("firewall: rule options are required")

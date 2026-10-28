@@ -3,6 +3,8 @@
 package firewall_e2e
 
 import (
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/qemu/firewall"
@@ -177,6 +179,98 @@ func TestFirewallRulesValidation(t *testing.T) {
 
 	err = rr.Update(ctx, 0, &firewall.RuleOptions{})
 	e2e.RequireError(t, "update with missing type and action", err)
+}
+
+// TestFirewallRulesOrder pins down how Proxmox positions rules, which
+// fakeapi models: Create inserts at position 0 (pve-firewall's create_rule
+// unshifts), Update with MoveTo past the end appends, and Delete renumbers
+// every later rule.
+func TestFirewallRulesOrder(t *testing.T) {
+	cfg := e2e.MustConfig(t)
+	if cfg.Parallel {
+		t.Parallel()
+	}
+	if cfg.Node == "" {
+		t.Skip("PVE_E2E_NODE is not set; skipping qemu firewall tests")
+	}
+
+	client := e2e.NewE2EClient(t, cfg)
+	rr := client.Nodes(cfg.Node).Qemu().Firewall().Rules(uniqueVMID())
+	ctx := t.Context()
+
+	prefix := e2e.UniqueName(cfg.Prefix)
+
+	if cfg.CleanupOnFailure {
+		t.Cleanup(func() {
+			cleanupCtx, cancel := e2e.CleanupContext()
+			defer cancel()
+
+			e2e.RetryCleanup(t, "delete firewall rules", func() error {
+				list, err := rr.List(cleanupCtx)
+				if err != nil {
+					return err
+				}
+
+				for _, r := range slices.Backward(list) {
+					if strings.HasPrefix(r.Comment, prefix) {
+						if err := rr.Delete(cleanupCtx, r.Pos, ""); err != nil {
+							return err
+						}
+					}
+				}
+
+				return nil
+			})
+		})
+	}
+
+	order := func(step string) []string {
+		t.Helper()
+
+		list, err := rr.List(ctx)
+		e2e.RequireNoError(t, "list firewall rules "+step, err)
+
+		out := []string{}
+		for i, r := range list {
+			if r.Pos != i {
+				t.Errorf("%s: rule %d reports Pos %d", step, i, r.Pos)
+			}
+			if name, ok := strings.CutPrefix(r.Comment, prefix+"-"); ok {
+				out = append(out, name)
+			}
+		}
+
+		return out
+	}
+
+	for _, name := range []string{"a", "b", "c"} {
+		comment := prefix + "-" + name
+		err := rr.Create(ctx, &firewall.RuleOptions{
+			Type:    firewall.RuleTypeIn,
+			Action:  string(firewall.PolicyAccept),
+			Comment: &comment,
+		})
+		e2e.RequireNoError(t, "create firewall rule "+name, err)
+	}
+
+	if got := order("after create"); !slices.Equal(got, []string{"c", "b", "a"}) {
+		t.Fatalf("after create: order = %v, want [c b a] (each create inserts at position 0)", got)
+	}
+
+	moveto := 3
+	err := rr.Update(ctx, 0, &firewall.RuleOptions{MoveTo: &moveto})
+	e2e.RequireNoError(t, "move firewall rule", err)
+
+	if got := order("after move"); !slices.Equal(got, []string{"b", "a", "c"}) {
+		t.Fatalf("after move: order = %v, want [b a c] (moveto past the end appends)", got)
+	}
+
+	err = rr.Delete(ctx, 0, "")
+	e2e.RequireNoError(t, "delete firewall rule", err)
+
+	if got := order("after delete"); !slices.Equal(got, []string{"a", "c"}) {
+		t.Fatalf("after delete: order = %v, want [a c]", got)
+	}
 }
 
 // findFirewallRuleByComment returns the first rule in list whose

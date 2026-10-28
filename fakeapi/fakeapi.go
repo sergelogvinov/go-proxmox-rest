@@ -33,6 +33,7 @@ package fakeapi
 import (
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	proxmox "github.com/sergelogvinov/go-proxmox-rest"
 	"github.com/sergelogvinov/go-proxmox-rest/cluster/ha"
@@ -87,6 +88,13 @@ func WithNodes(names ...string) ClusterOption {
 		for _, name := range names {
 			s.nodes[name] = newNodeState(s, name)
 		}
+	}
+}
+
+// WithPool seeds an empty resource pool with the given id.
+func WithPool(id string) ClusterOption {
+	return func(s *clusterState) {
+		s.pools[id] = &poolState{id: id}
 	}
 }
 
@@ -248,7 +256,9 @@ func (cl *Cluster) Close() {
 // point at one cluster. t may be nil (see NewCluster); if non-nil and
 // client construction fails (which New only does for options this
 // package never passes), the failure is reported via t.Fatalf instead of
-// a panic.
+// a panic. The client still retries a failed request, but waits only a
+// millisecond between attempts, so a test that fails requests on purpose
+// (FailNode, FailRequests) stays fast.
 func (cl *Cluster) Client(t testing.TB) *proxmox.Client {
 	if t != nil {
 		t.Helper()
@@ -259,6 +269,8 @@ func (cl *Cluster) Client(t testing.TB) *proxmox.Client {
 		proxmox.WithURL(cl.server.URL),
 		proxmox.WithTokenAuth(fakeTokenID, fakeTokenSecret),
 		proxmox.WithLogger(quietLogger{}),
+		proxmox.WithRetryWaitTime(time.Millisecond),
+		proxmox.WithRetryMaxWaitTime(time.Millisecond),
 	)
 	if err != nil {
 		if t != nil {
