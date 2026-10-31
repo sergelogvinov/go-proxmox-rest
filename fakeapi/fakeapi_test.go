@@ -400,6 +400,64 @@ func TestManualTasks(t *testing.T) {
 	}
 }
 
+// TestManualTasksCompleteWhileStarting completes tasks from another
+// goroutine as soon as they show up, as a test polling Running does: a task
+// must be complete-able the moment it is listed (run with -race).
+func TestManualTasksCompleteWhileStarting(t *testing.T) {
+	const vms = 50
+
+	cl := fakeapi.NewCluster(t, fakeapi.WithNodes("pve1"), fakeapi.WithManualTasks())
+	for vmid := 100; vmid < 100+vms; vmid++ {
+		cl.Node("pve1").AddVM(vmid, &qemu.Config{Name: "web"})
+	}
+
+	c := cl.Client(t)
+	ctx := context.Background()
+
+	stop := make(chan struct{})
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+
+			for _, upid := range cl.Tasks().Running() {
+				cl.Tasks().Complete(upid)
+			}
+		}
+	}()
+
+	for vmid := 100; vmid < 100+vms; vmid++ {
+		if _, err := c.Nodes("pve1").Qemu().Start(ctx, vmid, nil); err != nil {
+			t.Fatalf("start %d: %v", vmid, err)
+		}
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	for len(cl.Tasks().Running()) > 0 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+
+	close(stop)
+	<-done
+
+	for vmid := 100; vmid < 100+vms; vmid++ {
+		status, err := c.Nodes("pve1").Qemu().Status(ctx, vmid)
+		if err != nil {
+			t.Fatalf("status %d: %v", vmid, err)
+		}
+		if status.Status != qemu.VMStatusRunning {
+			t.Fatalf("VM %d: expected running once its task was completed, got %s", vmid, status.Status)
+		}
+	}
+}
+
 func TestTasksWait(t *testing.T) {
 	cl := fakeapi.NewCluster(t, fakeapi.WithNodes("pve1"))
 	cl.Node("pve1").AddVM(100, &qemu.Config{Name: "web-01"})

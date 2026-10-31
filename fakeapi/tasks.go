@@ -69,12 +69,18 @@ func (s *clusterState) startTask(ctx context.Context, node, typ, id string, appl
 		running:   true,
 		startTime: startTime,
 	}
-	s.tasks[upid] = ts
+
+	// A manual task is staged before it is listed, so a Complete racing
+	// this request finds its apply.
 	manual := s.manual
+	if manual {
+		ts.apply = apply
+	}
+
+	s.tasks[upid] = ts
 	s.mu.Unlock()
 
 	if manual {
-		ts.apply = apply
 		return upid
 	}
 
