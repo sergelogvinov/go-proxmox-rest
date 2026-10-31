@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/sergelogvinov/go-proxmox-rest/compare/v0.2.0...v0.2.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **fakeapi:** stage a manual task's apply before listing it ([8da3e5d](https://github.com/sergelogvinov/go-proxmox-rest/commit/8da3e5d518a05d84662cede060bc900f55ed7414))
+
 ## [0.2.0](https://github.com/sergelogvinov/go-proxmox-rest/compare/v0.1.1...v0.2.0) (2026-10-28)
 
 
