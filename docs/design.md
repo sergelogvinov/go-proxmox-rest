@@ -651,6 +651,13 @@ packages that detect a missing resource client-side (`pools.Get` wraps
 `apierr.ErrNotFound`) all classify through the same `apierr.Classify`, so
 Proxmox's error texts are matched in one table.
 
+A guest agent command that fails inside the guest is not an HTTP error:
+Proxmox answers 200 with the agent's `{"error": {"class", "desc"}}` as the
+command's `result`. The `nodes/qemu/agent` commands that unwrap `result`
+return it as an `*agent.GuestError`, matchable with `errors.As`. It stays
+in that package, since only the agent returns it and `Classify` has no
+use for it.
+
 ---
 
 ## 9. Authentication (ADR)
